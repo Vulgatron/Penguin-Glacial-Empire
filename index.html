@@ -1,0 +1,4575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Penguin Glacial Empire</title>
+  <!-- Android & Standard PWA Meta Tags -->
+  <meta name="theme-color" content="#061121">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="Glacial Empire">
+  <!-- iOS Safari PWA Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Glacial Empire">
+  <meta name="format-detection" content="telephone=no">
+  <!-- Manifest & Icons -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <style>
+    :root {
+      --bg-dark: #061121;
+      --bg-card: rgba(12, 35, 64, 0.85);
+      --bg-glass: rgba(15, 42, 77, 0.78);
+      --border-glass: rgba(160, 240, 255, 0.25);
+      --border-highlight: rgba(160, 240, 255, 0.65);
+      --accent-cyan: #38bdf8;
+      --accent-glow: #7dd3fc;
+      --accent-gold: #fbbf24;
+      --accent-green: #34d399;
+      --accent-purple: #c084fc;
+      --accent-red: #f87171;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--bg-dark);
+      font-family: var(--font-family);
+      color: var(--text-main);
+      position: fixed;
+      overscroll-behavior: none;
+    }
+
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* TOP HUD */
+    #top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      padding: 12px 16px;
+      padding-top: calc(12px + env(safe-area-inset-top, 0px));
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(180deg, rgba(6, 17, 33, 0.88) 0%, rgba(6, 17, 33, 0.45) 75%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .hud-group {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .fish-display {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    .fish-icon-anim {
+      font-size: 22px;
+      display: inline-block;
+      animation: fishFloat 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes fishFloat {
+      0% { transform: translateY(0) rotate(-6deg); }
+      100% { transform: translateY(-3px) rotate(6deg); }
+    }
+
+    .fish-amount {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      letter-spacing: -0.5px;
+    }
+
+    .dps-tag {
+      font-size: 11px;
+      color: var(--accent-cyan);
+      font-weight: 600;
+      background: rgba(56, 189, 248, 0.15);
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 2px;
+    }
+
+    /* Glacier Level Bar */
+    .level-container {
+      pointer-events: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 6px 12px;
+      display: flex;
+      flex-direction: column;
+      min-width: 130px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .level-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 4px;
+    }
+
+    .level-badge {
+      color: var(--accent-gold);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+    }
+
+    /* Top Action Buttons */
+    .top-btn {
+      pointer-events: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      color: var(--text-main);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    .top-btn:active {
+      transform: scale(0.92);
+      background: rgba(56, 189, 248, 0.25);
+    }
+
+    /* AURORA EVENT BANNER / STATUS */
+    #aurora-timer-pill {
+      pointer-events: auto;
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(56, 189, 248, 0.35));
+      border: 1px solid rgba(168, 85, 247, 0.55);
+      border-radius: 14px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      animation: pulseGlow 2.5s infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 5px rgba(168, 85, 247, 0.4); }
+      50% { box-shadow: 0 0 14px rgba(56, 189, 248, 0.7); }
+    }
+
+    /* COLLAPSIBLE BOTTOM SHEET */
+    #bottom-sheet {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      max-width: 600px;
+      margin: 0 auto;
+      background: var(--bg-glass);
+      border-top: 1px solid var(--border-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 24px 24px 0 0;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.4);
+      max-height: 52vh;
+      padding-bottom: env(safe-area-inset-bottom, 8px);
+    }
+
+    #bottom-sheet.collapsed {
+      transform: translateY(100%);
+      pointer-events: none;
+    }
+
+    .sheet-handle-bar {
+      width: 40px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 2px;
+      margin: 8px auto 4px auto;
+    }
+
+    .sheet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px 10px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      gap: 8px;
+    }
+
+    .sheet-tabs {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .sheet-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid transparent;
+      color: var(--text-sub);
+      padding: 6px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .tab-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent-cyan);
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+
+    .tab-badge-dot {
+      background: #ef4444;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-left: 2px;
+      box-shadow: 0 0 6px #ef4444;
+      animation: pulseDot 1.2s infinite alternate;
+    }
+
+    @keyframes pulseDot {
+      0% { transform: scale(0.9); opacity: 0.8; }
+      100% { transform: scale(1.3); opacity: 1; }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .buy-mult-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--accent-gold);
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .collapse-toggle-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-main);
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    /* Content Area */
+    .sheet-content {
+      overflow-y: auto;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Cards */
+    .roster-card {
+      background: rgba(15, 33, 58, 0.7);
+      border: 1px solid rgba(160, 240, 255, 0.18);
+      border-radius: 16px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .roster-card.can-afford {
+      border-color: rgba(56, 189, 248, 0.5);
+      background: rgba(18, 45, 80, 0.85);
+    }
+
+    .roster-card.completed-objective {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(16, 45, 50, 0.85);
+    }
+
+    .penguin-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .penguin-count-badge {
+      position: absolute;
+      bottom: -4px;
+      right: -4px;
+      background: var(--accent-cyan);
+      color: #061121;
+      font-size: 10px;
+      font-weight: 800;
+      border-radius: 8px;
+      padding: 1px 5px;
+    }
+
+    .roster-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .roster-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .roster-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .roster-level {
+      font-size: 11px;
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    .roster-stat {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .roster-desc {
+      font-size: 10px;
+      color: #7dd3fc;
+      opacity: 0.9;
+    }
+
+    .buy-btn {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(37, 99, 235, 0.35));
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #ffffff;
+      padding: 8px 12px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      min-width: 82px;
+      transition: all 0.15s;
+    }
+
+    .buy-btn:active {
+      transform: scale(0.95);
+    }
+
+    .buy-btn:disabled {
+      opacity: 0.45;
+      filter: grayscale(0.8);
+      cursor: not-allowed;
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .buy-btn-label {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .buy-btn-cost {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-gold);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    /* DAILY OBJECTIVES STYLES */
+    .daily-summary-banner {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(168, 85, 247, 0.15));
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 16px;
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+
+    .daily-title-box {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .daily-title-text {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .daily-reset-time {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .daily-completion-badge {
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid var(--accent-cyan);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border-radius: 10px;
+    }
+
+    .objective-progress-box {
+      width: 100%;
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .objective-progress-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    .claim-action-btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: 1px solid #34d399;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 8px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      min-width: 82px;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+      animation: pulseGlowGreen 2s infinite;
+      transition: transform 0.15s;
+    }
+
+    @keyframes pulseGlowGreen {
+      0%, 100% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.4); }
+      50% { box-shadow: 0 0 15px rgba(52, 211, 153, 0.8); }
+    }
+
+    .claim-action-btn:active {
+      transform: scale(0.95);
+    }
+
+    .btn-claimed {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 8px 12px;
+      border-radius: 12px;
+      cursor: not-allowed;
+      min-width: 82px;
+      text-align: center;
+    }
+
+    .btn-in-progress {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 8px 10px;
+      border-radius: 12px;
+      cursor: not-allowed;
+      min-width: 82px;
+      text-align: center;
+    }
+
+    /* STATISTICS SCREEN STYLES */
+    .stats-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .stats-hero-card {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(168, 85, 247, 0.2));
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 18px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .stats-hero-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stats-hero-rank {
+      font-size: 11px;
+      color: var(--accent-gold);
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .stats-playtime-badge {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 6px 10px;
+      text-align: right;
+    }
+
+    .stats-playtime-label {
+      font-size: 9px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .stats-playtime-val {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--accent-cyan);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat-card {
+      background: rgba(15, 33, 58, 0.7);
+      border: 1px solid rgba(160, 240, 255, 0.18);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .stat-card.highlight {
+      border-color: rgba(56, 189, 248, 0.45);
+      background: rgba(18, 45, 80, 0.85);
+    }
+
+    .stat-card.gold-highlight {
+      border-color: rgba(251, 191, 36, 0.45);
+      background: rgba(45, 38, 20, 0.75);
+    }
+
+    .stat-card.purple-highlight {
+      border-color: rgba(168, 85, 247, 0.45);
+      background: rgba(40, 20, 58, 0.75);
+    }
+
+    .stat-card-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    .stat-card-val {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.3px;
+    }
+
+    .stat-section-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+      padding-left: 2px;
+    }
+
+    /* STATS ACHIEVEMENTS & PERKS STYLES */
+    .stat-section-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      padding: 0 2px;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .stat-section-subtitle {
+      font-size: 10px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .achievements-pct-pill {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--accent-gold);
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .empty-stats-card {
+      background: rgba(15, 33, 58, 0.6);
+      border: 1px dashed rgba(160, 240, 255, 0.25);
+      border-radius: 14px;
+      padding: 18px 14px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .perks-stat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .perk-stat-item {
+      background: rgba(15, 33, 58, 0.75);
+      border: 1px solid rgba(160, 240, 255, 0.2);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(8px);
+      position: relative;
+    }
+
+    .perk-stat-item.rarity-legendary {
+      border-color: rgba(251, 191, 36, 0.65);
+      background: rgba(45, 35, 15, 0.85);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.22);
+    }
+    .perk-stat-item.rarity-mythic {
+      border-color: rgba(236, 72, 153, 0.65);
+      background: rgba(45, 18, 40, 0.85);
+      box-shadow: 0 0 12px rgba(236, 72, 153, 0.22);
+    }
+    .perk-stat-item.rarity-rare {
+      border-color: rgba(56, 189, 248, 0.45);
+    }
+    .perk-stat-item.rarity-common {
+      border-color: rgba(52, 211, 153, 0.45);
+    }
+    .perk-stat-item.rarity-trivial {
+      border-color: rgba(100, 116, 139, 0.45);
+    }
+
+    .perk-stat-icon {
+      font-size: 26px;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+    }
+
+    .perk-stat-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .perk-stat-title-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .perk-stat-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .perk-stat-count {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.2);
+      padding: 1px 6px;
+      border-radius: 8px;
+    }
+
+    .perk-stat-desc {
+      font-size: 11px;
+      color: #cbd5e1;
+      line-height: 1.3;
+    }
+
+    .perk-preservation-tag {
+      font-size: 9px;
+      font-weight: 800;
+      padding: 3px 7px;
+      border-radius: 8px;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .perk-preservation-tag.legendary-tag {
+      background: rgba(251, 191, 36, 0.25);
+      border: 1px solid rgba(251, 191, 36, 0.6);
+      color: #fde68a;
+    }
+
+    .perk-preservation-tag.reset-tag {
+      background: rgba(100, 116, 139, 0.25);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      color: #94a3b8;
+    }
+
+    .achievements-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .achievement-card {
+      background: rgba(15, 33, 58, 0.7);
+      border: 1px solid rgba(160, 240, 255, 0.18);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s;
+    }
+
+    .achievement-card.unlocked {
+      background: rgba(20, 48, 80, 0.85);
+      border-color: rgba(56, 189, 248, 0.5);
+      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.15);
+    }
+
+    .achievement-card.locked {
+      opacity: 0.75;
+      background: rgba(10, 22, 40, 0.6);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .achievement-icon {
+      font-size: 26px;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .achievement-icon.unlocked-icon {
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    .achievement-icon.locked-icon {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      filter: grayscale(1);
+      opacity: 0.6;
+    }
+
+    .achievement-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .achievement-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .achievement-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .achievement-status-badge {
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    .achievement-status-badge.unlocked {
+      background: rgba(52, 211, 153, 0.2);
+      border: 1px solid rgba(52, 211, 153, 0.5);
+      color: #34d399;
+    }
+
+    .achievement-status-badge.locked {
+      background: rgba(148, 163, 184, 0.15);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #94a3b8;
+    }
+
+    .achievement-desc {
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.3;
+    }
+
+    .achievement-progress-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .achievement-prog-text {
+      font-size: 10px;
+      font-weight: 700;
+      color: #64748b;
+      white-space: nowrap;
+    }
+
+    /* Prestige Screen Items */
+    .prestige-box {
+      background: rgba(147, 51, 234, 0.15);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .prestige-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #e9d5ff;
+    }
+
+    .prestige-shard-icon {
+      font-size: 36px;
+      animation: floatPrestige 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatPrestige {
+      0% { transform: translateY(0) scale(1); }
+      100% { transform: translateY(-6px) scale(1.08); }
+    }
+
+    .prestige-stat-val {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--accent-gold);
+    }
+
+    .prestige-btn {
+      background: linear-gradient(135deg, #9333ea, #4f46e5);
+      border: none;
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 12px 20px;
+      border-radius: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(147, 51, 234, 0.4);
+      transition: transform 0.15s;
+    }
+
+    .prestige-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* FLOATING ACTION PILL */
+    #collapsed-pill {
+      position: absolute;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      right: 16px;
+      z-index: 25;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: 24px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+
+    #collapsed-pill.hidden {
+      opacity: 0;
+      transform: translateY(20px) scale(0.9);
+      pointer-events: none;
+    }
+
+    .pill-dps-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .pill-affordable-count {
+      background: #ef4444;
+      color: white;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 10px;
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+      animation: bounceCount 1s infinite alternate;
+    }
+
+    @keyframes bounceCount {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.15); }
+    }
+
+    .pill-expand-icon {
+      font-size: 13px;
+      color: var(--accent-cyan);
+    }
+
+    /* FULLSCREEN AURORA BLESSING MODAL */
+    #aurora-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      background: rgba(3, 10, 20, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    #aurora-modal.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .aurora-modal-card {
+      width: 100%;
+      max-width: 520px;
+      background: linear-gradient(180deg, rgba(17, 36, 68, 0.95) 0%, rgba(10, 24, 46, 0.95) 100%);
+      border: 2px solid rgba(168, 85, 247, 0.6);
+      border-radius: 24px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 0 40px rgba(168, 85, 247, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .aurora-header-banner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .aurora-title {
+      font-size: 22px;
+      font-weight: 900;
+      background: linear-gradient(90deg, #7dd3fc, #c084fc, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .aurora-subtitle {
+      font-size: 11px;
+      color: #cbd5e1;
+      text-align: center;
+    }
+
+    /* 10-Second Countdown Circular Timer */
+    .timer-container {
+      position: relative;
+      width: 74px;
+      height: 74px;
+      margin: 6px 0 14px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .timer-svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .timer-circle-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.12);
+      stroke-width: 6;
+    }
+
+    .timer-circle-fg {
+      fill: none;
+      stroke: #38bdf8;
+      stroke-width: 6;
+      stroke-dasharray: 200;
+      stroke-dashoffset: 0;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.1s linear, stroke 0.3s;
+    }
+
+    .timer-text {
+      position: absolute;
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .timeout-warning {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent-red);
+      margin-bottom: 12px;
+      text-align: center;
+      background: rgba(248, 113, 113, 0.12);
+      padding: 3px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(248, 113, 113, 0.3);
+    }
+
+    /* 3 Perk Cards */
+    .perks-grid {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    @media (max-width: 480px) {
+      .perks-grid {
+        flex-direction: column;
+      }
+    }
+
+    .perk-card {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .perk-card:active {
+      transform: scale(0.96);
+    }
+
+    .perk-card.rarity-trivial {
+      border-color: #64748b;
+      background: rgba(100, 116, 139, 0.18);
+    }
+    .perk-card.rarity-common {
+      border-color: #34d399;
+      background: rgba(52, 211, 153, 0.18);
+    }
+    .perk-card.rarity-rare {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.18);
+    }
+    .perk-card.rarity-legendary {
+      border-color: #fbbf24;
+      background: rgba(251, 191, 36, 0.22);
+      box-shadow: 0 0 15px rgba(251, 191, 36, 0.25);
+    }
+    .perk-card.rarity-mythic {
+      border-color: #ec4899;
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.28), rgba(168, 85, 247, 0.28));
+      box-shadow: 0 0 20px rgba(236, 72, 153, 0.35);
+    }
+
+    .perk-badge {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 8px;
+      border-radius: 8px;
+    }
+    .badge-trivial { background: #475569; color: #cbd5e1; }
+    .badge-common { background: #059669; color: #ffffff; }
+    .badge-rare { background: #0284c7; color: #ffffff; }
+    .badge-legendary { background: #d97706; color: #ffffff; }
+    .badge-mythic { background: #be185d; color: #ffffff; }
+
+    .perk-icon {
+      font-size: 28px;
+    }
+
+    .perk-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+
+    .perk-desc {
+      font-size: 11px;
+      color: #cbd5e1;
+      line-height: 1.3;
+      flex: 1;
+    }
+
+    .perk-select-btn {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 0;
+      border-radius: 10px;
+    }
+
+    /* TOAST BANNER */
+    #toast-banner {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: var(--bg-card);
+      border: 1px solid var(--border-highlight);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #ffffff;
+      z-index: 60;
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.25s, opacity 0.25s;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    #toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* OFFLINE MODAL */
+    #offline-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 55;
+      background: rgba(2, 8, 18, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .offline-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--bg-card);
+      border: 2px solid var(--accent-cyan);
+      border-radius: 24px;
+      padding: 24px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.3);
+    }
+
+    /* LORE SECTION */
+    .lore-stat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .lore-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 16px;
+      padding: 14px;
+      transition: all 0.25s ease;
+    }
+
+    .lore-card.unlocked {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 58, 138, 0.25) 100%);
+      border-color: rgba(56, 189, 248, 0.45);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+
+    .lore-card.locked {
+      opacity: 0.65;
+      border-color: rgba(100, 116, 139, 0.3);
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .lore-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .lore-icon-box {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .lore-card.locked .lore-icon-box {
+      background: rgba(100, 116, 139, 0.15);
+      border-color: rgba(100, 116, 139, 0.3);
+      filter: grayscale(1);
+    }
+
+    .lore-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .lore-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .lore-chapter-tag {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #38bdf8;
+    }
+
+    .lore-date {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .lore-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-top: 1px;
+    }
+
+    .lore-lock-status {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 8px;
+    }
+
+    .lore-lock-status.unlocked {
+      background: rgba(52, 211, 153, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.35);
+    }
+
+    .lore-lock-status.locked {
+      background: rgba(148, 163, 184, 0.12);
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .lore-excerpt {
+      font-size: 12px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-style: italic;
+    }
+
+    .lore-req-hint {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Game Canvas Container -->
+  <div id="canvas-container">
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <!-- Top Status Bar (HUD) -->
+  <div id="top-bar">
+    <div class="hud-group">
+      <!-- Fish Balance -->
+      <div class="fish-display" id="fish-display-box">
+        <span class="fish-icon-anim">🐟</span>
+        <span class="fish-amount" id="fish-count">0</span>
+        <span class="dps-tag" id="dps-count">+0/s</span>
+      </div>
+    </div>
+
+    <!-- Glacier Level Bar -->
+    <div class="level-container">
+      <div class="level-header">
+        <span class="level-badge">🧊 Level <span id="glacier-level">1</span></span>
+        <span id="level-req-text">0 / 100</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="glacier-level-fill"></div>
+      </div>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="hud-group">
+      <div id="aurora-timer-pill" title="Next Aurora Blessing">
+        <span>✨</span>
+        <span id="aurora-countdown">45s</span>
+      </div>
+      <button class="top-btn" id="audio-toggle-btn" title="Toggle Sound">🔊</button>
+      <button class="top-btn" id="info-btn" title="Game Info">ℹ️</button>
+    </div>
+  </div>
+
+  <!-- Collapsible Bottom Drawer -->
+  <div id="bottom-sheet">
+    <div class="sheet-handle-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-tabs">
+        <button class="tab-btn active" data-tab="penguins">🐧 Penguins</button>
+        <button class="tab-btn" data-tab="tech">🔬 Tech</button>
+        <button class="tab-btn" data-tab="daily">🎯 Daily <span id="daily-tab-dot" class="tab-badge-dot" style="display:none;"></span></button>
+        <button class="tab-btn" data-tab="prestige">✨ Prestige</button>
+        <button class="tab-btn" data-tab="stats">📊 Stats</button>
+      </div>
+      <div class="header-actions">
+        <button class="buy-mult-btn" id="buy-mult-toggle">1x</button>
+        <button class="collapse-toggle-btn" id="collapse-drawer-btn" title="Collapse Menu">▼</button>
+      </div>
+    </div>
+
+    <!-- Tab Contents -->
+    <div class="sheet-content" id="sheet-content-container">
+      <!-- Injected dynamically via JS -->
+    </div>
+  </div>
+
+  <!-- Floating Action Pill (Shown when Sheet is Collapsed) -->
+  <div id="collapsed-pill" class="hidden">
+    <div class="pill-dps-badge">
+      <span>🐟</span>
+      <span id="pill-dps">0/s</span>
+    </div>
+    <span class="pill-affordable-count" id="pill-badge">0</span>
+    <span class="pill-expand-icon">▲ Open Menu</span>
+  </div>
+
+  <!-- Fullscreen Aurora Blessing RNG Modal -->
+  <div id="aurora-modal">
+    <div class="aurora-modal-card">
+      <div class="aurora-header-banner">
+        <div class="aurora-title">✨ Aurora Blessing ✨</div>
+        <div class="aurora-subtitle">Select a celestial perk before the cosmic winds shift!</div>
+      </div>
+
+      <!-- 10s Circular Timer Bar -->
+      <div class="timer-container">
+        <svg class="timer-svg" viewBox="0 0 74 74">
+          <circle class="timer-circle-bg" cx="37" cy="37" r="31"></circle>
+          <circle class="timer-circle-fg" id="timer-fg-circle" cx="37" cy="37" r="31"></circle>
+        </svg>
+        <span class="timer-text" id="timer-num">10.0s</span>
+      </div>
+
+      <div class="timeout-warning">
+        ⚠️ FORCED PENALTY: When timer reaches 0, the worst option will be chosen automatically!
+      </div>
+
+      <!-- 3 Perk Cards -->
+      <div class="perks-grid" id="perks-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Banner -->
+  <div id="toast-banner">
+    <span id="toast-icon">✨</span>
+    <span id="toast-text">Alert message</span>
+  </div>
+
+  <!-- Offline Progress Modal -->
+  <div id="offline-modal">
+    <div class="offline-card">
+      <div style="font-size: 44px;">❄️🐧❄️</div>
+      <h2 style="font-size: 20px; font-weight: 800; color: #ffffff;">Welcome Back!</h2>
+      <p style="font-size: 13px; color: #cbd5e1; line-height: 1.4;">
+        While you were resting, your loyal penguin colony kept diving through the ice sheets!
+      </p>
+      <div style="background: rgba(56, 189, 248, 0.15); border: 1px solid var(--accent-cyan); border-radius: 16px; padding: 12px; width: 100%;">
+        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Fish Banked</div>
+        <div style="font-size: 22px; font-weight: 900; color: var(--accent-gold);" id="offline-fish-val">+0 🐟</div>
+      </div>
+      <button class="prestige-btn" id="offline-claim-btn" style="width: 100%;">Claim Catch</button>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       PENGUIN GLACIAL EMPIRE - ENGINE & GAME LOGIC
+       ========================================================================== */
+
+    // --- Web Audio API Synthesizer (Zero External Assets) ---
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playPlink() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        const freq = 1200 + Math.random() * 400;
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.08);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+
+      playChirp() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(1400, now);
+        osc.frequency.linearRampToValueAtTime(2200, now + 0.06);
+        osc.frequency.linearRampToValueAtTime(1600, now + 0.12);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.14);
+      }
+
+      playSlide() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(180, now + 0.18);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.18);
+      }
+
+      playSplash() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(450, now);
+        osc.frequency.exponentialRampToValueAtTime(90, now + 0.15);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
+      }
+
+      playLevelUp() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const noteTime = now + idx * 0.08;
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, noteTime);
+
+          gain.gain.setValueAtTime(0.2, noteTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.35);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(noteTime);
+          osc.stop(noteTime + 0.35);
+        });
+      }
+
+      playBuzzer() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc1.type = 'sawtooth';
+        osc2.type = 'square';
+        osc1.frequency.setValueAtTime(110, now);
+        osc2.frequency.setValueAtTime(116, now);
+
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.45);
+        osc2.stop(now + 0.45);
+      }
+
+      playAuroraChord() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const chord = [392.00, 493.88, 587.33, 783.99];
+
+        chord.forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.04);
+
+          gain.gain.setValueAtTime(0.08, now + i * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + i * 0.04);
+          osc.stop(now + 1.2);
+        });
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    // --- GAME DATA DEFINITIONS ---
+
+    const PENGUIN_SPECIES = [
+      {
+        id: 'adelie',
+        name: 'Adélie Scout',
+        avatar: '🐧',
+        desc: 'Lightweight & swift waddler',
+        baseCost: 15,
+        costMult: 1.15,
+        baseYield: 1,
+        baseSpeed: 1.6,
+        diveTime: 1.5,
+        color: '#1e293b'
+      },
+      {
+        id: 'gentoo',
+        name: 'Gentoo Skater',
+        avatar: '🛷',
+        desc: 'Belly-slides across ice at high velocity',
+        baseCost: 100,
+        costMult: 1.16,
+        baseYield: 5,
+        baseSpeed: 2.5,
+        diveTime: 1.2,
+        color: '#ea580c'
+      },
+      {
+        id: 'chinstrap',
+        name: 'Chinstrap Diver',
+        avatar: '🤿',
+        desc: 'Deep marine specialist with large catch capacity',
+        baseCost: 800,
+        costMult: 1.17,
+        baseYield: 24,
+        baseSpeed: 1.8,
+        diveTime: 0.9,
+        color: '#0284c7'
+      },
+      {
+        id: 'emperor',
+        name: 'Emperor Monarch',
+        avatar: '👑',
+        desc: 'Regal majesty with aura speeding up nearby penguins',
+        baseCost: 5000,
+        costMult: 1.18,
+        baseYield: 120,
+        baseSpeed: 1.2,
+        diveTime: 1.8,
+        color: '#f59e0b'
+      },
+      {
+        id: 'cyber',
+        name: 'Cyber/Mecha Penguin',
+        avatar: '🤖',
+        desc: 'Equipped with rocket thrusters & sub-zero lasers',
+        baseCost: 35000,
+        costMult: 1.20,
+        baseYield: 650,
+        baseSpeed: 3.2,
+        diveTime: 0.6,
+        color: '#38bdf8'
+      }
+    ];
+
+    const GLACIER_TECH = [
+      {
+        id: 'thermal_parkas',
+        name: 'Thermal Insulation',
+        icon: '🧥',
+        desc: 'Colony waddles +15% faster per level',
+        baseCost: 50,
+        costMult: 1.35,
+        effect: 0.15
+      },
+      {
+        id: 'reinforced_line',
+        name: 'Reinforced Fishing Lines',
+        icon: '🎣',
+        desc: 'Catch capacity +25% per level',
+        baseCost: 200,
+        costMult: 1.4,
+        effect: 0.25
+      },
+      {
+        id: 'smooth_ice',
+        name: 'Smooth Ice Polishing',
+        icon: '⛸️',
+        desc: 'Slide velocity & frequency +30% per level',
+        baseCost: 1000,
+        costMult: 1.45,
+        effect: 0.30
+      },
+      {
+        id: 'bioluminescent_krill',
+        name: 'Bioluminescent Krill',
+        icon: '🦐',
+        desc: 'Tap clicks yield +50% extra fish per level',
+        baseCost: 5000,
+        costMult: 1.5,
+        effect: 0.50
+      },
+      {
+        id: 'cryo_storage',
+        name: 'Sub-Zero Cryo Storage',
+        icon: '❄️',
+        desc: 'Depot banking bonus +20% per level',
+        baseCost: 25000,
+        costMult: 1.6,
+        effect: 0.20
+      },
+      {
+        id: 'aurora_coils',
+        name: 'Aurora Resonance Coils',
+        icon: '🌌',
+        desc: 'Aurora Blessing events arrive 4s faster per level',
+        baseCost: 100000,
+        costMult: 1.7,
+        effect: 4
+      }
+    ];
+
+    // 15 UNIQUE AURORA BLESSING PERKS
+    const AURORA_PERKS_POOL = [
+      { id: 't_pebble', tier: 1, rarity: 'trivial', name: 'Chilly Pebble', icon: '🪨', desc: 'Tripped on a smooth arctic pebble. +1 Flat Fish immediately.', grant: (g) => { g.addFish(1); } },
+      { id: 't_slush', tier: 1, rarity: 'trivial', name: 'Slushy Feet (Debuff)', icon: '🧊', desc: 'Cold slush! -8% waddle speed for 20s, but grants +5 flat fish.', grant: (g) => { g.addFish(5); g.slushDebuffTimer = 20; } },
+      { id: 't_breeze', tier: 1, rarity: 'trivial', name: 'Breeze of Frost', icon: '💨', desc: 'A tiny polar gust blows by. +0.5% temporary slide speed.', grant: (g) => { g.tempSpeedBoost += 0.005; } },
+      { id: 'c_booties', tier: 2, rarity: 'common', name: 'Thermal Booties', icon: '🥾', desc: '+15% penguin waddle speed across all species permanently.', grant: () => {} },
+      { id: 'c_herring', tier: 2, rarity: 'common', name: 'Schooling Herring', icon: '🐟', desc: 'Dense fish school in the hole! +20% catch capacity permanently.', grant: () => {} },
+      { id: 'c_quickcatch', tier: 2, rarity: 'common', name: 'Quick Net Catch', icon: '⏱️', desc: 'Instantly gain 30 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(25, g.dps * 30)); } },
+      { id: 'c_flappers', tier: 2, rarity: 'common', name: 'Crisp Flappers', icon: '🪽', desc: '+35% manual screen and penguin tap/click fish yield.', grant: () => {} },
+      { id: 'r_sledding', tier: 3, rarity: 'rare', name: 'Glacial Sledding League', icon: '🛷', desc: 'Gentoo and sliding penguins gain +50% slide speed permanently.', grant: () => {} },
+      { id: 'r_trench', tier: 3, rarity: 'rare', name: 'Deep Trench Oxygen', icon: '🌊', desc: 'Diving cycle 25% faster and carries +40% dive capacity.', grant: () => {} },
+      { id: 'r_squid', tier: 3, rarity: 'rare', name: 'Abyssal Squid Haul', icon: '🦑', desc: 'Instantly harvest 100 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(90, g.dps * 100)); } },
+      { id: 'r_magnetic', tier: 3, rarity: 'rare', name: 'Aurora Magnetic Krill', icon: '🧲', desc: 'Rare Golden Fish spawns swim across the ice shelf twice as often for 120s.', grant: (g) => { g.goldenFishTimer = 120; } },
+      { id: 'l_frenzy', tier: 4, rarity: 'legendary', name: 'Blizzard Feeding Frenzy', icon: '🌨️', desc: 'Antarctic storm triples (3x) all fish yield for 45 seconds!', grant: (g) => { g.frenzyTimer = 45; } },
+      { id: 'l_monarch', tier: 4, rarity: 'legendary', name: "Emperor's Royal Decree", icon: '👑', desc: 'Emperor Monarch aura radius +100%, and boosts all penguin speeds by +50%.', grant: () => {} },
+      { id: 'l_mammoth', tier: 4, rarity: 'legendary', name: 'Mammoth Ice Cache', icon: '🦣', desc: 'Unearth ancient frozen fish: instantly gain 300 seconds of fish production!', grant: (g) => { g.addFish(Math.max(250, g.dps * 300)); } },
+      { id: 'm_supernova', tier: 5, rarity: 'mythic', name: 'Cosmic Glacial Supernova', icon: '🌌', desc: 'Cosmic awakening: all penguins equip jet boosters (+250% speed), +4x fish yield, and instant 600s fish!', grant: (g) => { g.addFish(Math.max(600, g.dps * 600)); g.supernovaTimer = 60; } }
+    ];
+
+    // =========================================================================
+    // DAILY OBJECTIVES MANAGER
+    // =========================================================================
+    class DailyObjectivesManager {
+      constructor() {
+        this.dateKey = new Date().toISOString().slice(0, 10);
+        this.objectives = this.getDefaultObjectives();
+      }
+
+      getDefaultObjectives() {
+        return [
+          {
+            id: 'obj_slides',
+            type: 'slides',
+            title: 'Glacial Sledder',
+            desc: 'Perform 5 belly slides across ice sheets',
+            icon: '🛷',
+            target: 5,
+            progress: 0,
+            rewardType: 'fish',
+            rewardAmount: 250,
+            rewardLabel: '+250 🐟 Fish',
+            claimed: false
+          },
+          {
+            id: 'obj_collect_fish',
+            type: 'collect_fish',
+            title: 'Tundra Catch',
+            desc: 'Collect 500 fish from diving or tapping',
+            icon: '🐟',
+            target: 500,
+            progress: 0,
+            rewardType: 'fish',
+            rewardAmount: 500,
+            rewardLabel: '+500 🐟 Fish',
+            claimed: false
+          },
+          {
+            id: 'obj_taps',
+            type: 'taps',
+            title: 'Cheering Flipper',
+            desc: 'Tap the screen or cheer penguins 20 times',
+            icon: '👆',
+            target: 20,
+            progress: 0,
+            rewardType: 'fish',
+            rewardAmount: 300,
+            rewardLabel: '+300 🐟 Fish',
+            claimed: false
+          },
+          {
+            id: 'obj_dives',
+            type: 'dives',
+            title: 'Ice Hole Diver',
+            desc: 'Complete 8 dives at fishing holes',
+            icon: '🤿',
+            target: 8,
+            progress: 0,
+            rewardType: 'fish',
+            rewardAmount: 600,
+            rewardLabel: '+600 🐟 Fish',
+            claimed: false
+          },
+          {
+            id: 'obj_aurora',
+            type: 'aurora',
+            title: 'Aurora Seeker',
+            desc: 'Claim 1 Aurora Blessing event',
+            icon: '✨',
+            target: 1,
+            progress: 0,
+            rewardType: 'shards',
+            rewardAmount: 1,
+            rewardLabel: '+1 💎 Frost Essence',
+            claimed: false
+          }
+        ];
+      }
+
+      checkDailyReset() {
+        const today = new Date().toISOString().slice(0, 10);
+        if (this.dateKey !== today) {
+          this.dateKey = today;
+          this.objectives = this.getDefaultObjectives();
+          showToast('📅 New Daily Objectives are available!');
+        }
+      }
+
+      track(type, amount = 1) {
+        this.checkDailyReset();
+        let updated = false;
+        this.objectives.forEach(obj => {
+          if (obj.type === type && !obj.claimed) {
+            if (obj.progress < obj.target) {
+              obj.progress = Math.min(obj.target, obj.progress + amount);
+              updated = true;
+              if (obj.progress >= obj.target) {
+                showToast(`🎯 Objective Ready: "${obj.title}"!`, '🎁');
+                sound.playChirp();
+              }
+            }
+          }
+        });
+        if (updated && state.currentTab === 'daily') {
+          updateSheetContent();
+        }
+      }
+
+      claim(id) {
+        const obj = this.objectives.find(o => o.id === id);
+        if (!obj || obj.claimed || obj.progress < obj.target) return;
+
+        obj.claimed = true;
+        sound.playLevelUp();
+
+        if (obj.rewardType === 'fish') {
+          state.addFish(obj.rewardAmount);
+        } else if (obj.rewardType === 'shards') {
+          state.prestigeShards += obj.rewardAmount;
+        }
+
+        showToast(`🎁 Claimed ${obj.rewardLabel}!`);
+        state.save();
+        updateSheetContent();
+      }
+
+      getClaimableCount() {
+        return this.objectives.filter(o => !o.claimed && o.progress >= o.target).length;
+      }
+    }
+
+    const dailyManager = new DailyObjectivesManager();
+
+    // Helper functions for Statistics
+    function formatPlaytime(ms) {
+      const totalSec = Math.max(0, Math.floor(ms / 1000));
+      const hours = Math.floor(totalSec / 3600);
+      const minutes = Math.floor((totalSec % 3600) / 60);
+      const seconds = totalSec % 60;
+      if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+      }
+      return `${minutes}m ${seconds}s`;
+    }
+
+    function getColonyRank(lifetimeFish) {
+      if (lifetimeFish >= 1000000000) return '🌌 Cosmic Glacial Sovereign';
+      if (lifetimeFish >= 100000000) return '👑 Grand Emperor of Antarctica';
+      if (lifetimeFish >= 10000000) return '🔱 Sub-Zero Archon';
+      if (lifetimeFish >= 1000000) return '🏔️ Glacier Baron';
+      if (lifetimeFish >= 100000) return '🤿 Master Ice Fisher';
+      if (lifetimeFish >= 10000) return '🧊 Tundra Expeditionist';
+      if (lifetimeFish >= 1000) return '🐧 Colony Organizer';
+      return '❄️ Frosty Apprentice';
+    }
+
+    // =========================================================================
+    // ACHIEVEMENTS SYSTEM
+    // =========================================================================
+    const ACHIEVEMENTS_LIST = [
+      {
+        id: 'ach_first_tap',
+        title: 'Frosty Flapper',
+        icon: '👆',
+        desc: 'Tap the screen or a penguin to cheer your colony',
+        check: (s) => (s.totalManualClicks || 0) >= 1,
+        progress: (s) => ({ cur: Math.min(1, s.totalManualClicks || 0), max: 1 })
+      },
+      {
+        id: 'ach_colony_five',
+        title: 'Waddle Squad',
+        icon: '🐧',
+        desc: 'Recruit a colony of 5 or more penguins',
+        check: (s) => {
+          let c = 0; Object.keys(s.penguins).forEach(k => c += s.penguins[k].count);
+          return c >= 5;
+        },
+        progress: (s) => {
+          let c = 0; Object.keys(s.penguins).forEach(k => c += s.penguins[k].count);
+          return { cur: Math.min(5, c), max: 5 };
+        }
+      },
+      {
+        id: 'ach_colony_twenty',
+        title: 'Colony Empire',
+        icon: '🏛️',
+        desc: 'Grow your colony to 20 or more penguins',
+        check: (s) => {
+          let c = 0; Object.keys(s.penguins).forEach(k => c += s.penguins[k].count);
+          return c >= 20;
+        },
+        progress: (s) => {
+          let c = 0; Object.keys(s.penguins).forEach(k => c += s.penguins[k].count);
+          return { cur: Math.min(20, c), max: 20 };
+        }
+      },
+      {
+        id: 'ach_emperor',
+        title: 'Imperial Crown',
+        icon: '👑',
+        desc: 'Recruit an Emperor Monarch to inspire the ice shelf',
+        check: (s) => Boolean(s.penguins.emperor && s.penguins.emperor.count >= 1),
+        progress: (s) => ({ cur: (s.penguins.emperor && s.penguins.emperor.count >= 1) ? 1 : 0, max: 1 })
+      },
+      {
+        id: 'ach_cyber',
+        title: 'Cybernetic Polar Era',
+        icon: '🤖',
+        desc: 'Recruit a futuristic Cyber / Mecha Penguin',
+        check: (s) => Boolean(s.penguins.cyber && s.penguins.cyber.count >= 1),
+        progress: (s) => ({ cur: (s.penguins.cyber && s.penguins.cyber.count >= 1) ? 1 : 0, max: 1 })
+      },
+      {
+        id: 'ach_dives_25',
+        title: 'Deep Ice Trench',
+        icon: '🤿',
+        desc: 'Complete 25 successful fishing hole dives',
+        check: (s) => (s.totalDives || 0) >= 25,
+        progress: (s) => ({ cur: Math.min(25, s.totalDives || 0), max: 25 })
+      },
+      {
+        id: 'ach_slides_20',
+        title: 'Belly Sledding Ace',
+        icon: '🛷',
+        desc: 'Perform 20 swift belly slides across the snow',
+        check: (s) => (s.totalSlides || 0) >= 20,
+        progress: (s) => ({ cur: Math.min(20, s.totalSlides || 0), max: 20 })
+      },
+      {
+        id: 'ach_glacier_lvl5',
+        title: 'Glacial Outpost',
+        icon: '🧊',
+        desc: 'Expand the colony ice shelf to Level 5',
+        check: (s) => s.glacierLevel >= 5,
+        progress: (s) => ({ cur: Math.min(5, s.glacierLevel), max: 5 })
+      },
+      {
+        id: 'ach_glacier_lvl15',
+        title: 'Polar Stronghold',
+        icon: '🏔️',
+        desc: 'Expand the colony ice shelf to Level 15',
+        check: (s) => s.glacierLevel >= 15,
+        progress: (s) => ({ cur: Math.min(15, s.glacierLevel), max: 15 })
+      },
+      {
+        id: 'ach_fish_10k',
+        title: 'Bountiful Tundra',
+        icon: '🐟',
+        desc: 'Accumulate 10,000 Lifetime Fish',
+        check: (s) => (s.lifetimeFish || 0) >= 10000,
+        progress: (s) => ({ cur: Math.min(10000, Math.floor(s.lifetimeFish || 0)), max: 10000 })
+      },
+      {
+        id: 'ach_fish_1m',
+        title: 'Glacial Millionaire',
+        icon: '💰',
+        desc: 'Accumulate 1,000,000 Lifetime Fish',
+        check: (s) => (s.lifetimeFish || 0) >= 1000000,
+        progress: (s) => ({ cur: Math.min(1000000, Math.floor(s.lifetimeFish || 0)), max: 1000000 })
+      },
+      {
+        id: 'ach_tech_10',
+        title: 'Cryo Innovation',
+        icon: '🔬',
+        desc: 'Research 10 total Glacier Tech upgrades',
+        check: (s) => {
+          let lvl = 0; Object.keys(s.tech).forEach(k => lvl += s.tech[k]);
+          return lvl >= 10;
+        },
+        progress: (s) => {
+          let lvl = 0; Object.keys(s.tech).forEach(k => lvl += s.tech[k]);
+          return { cur: Math.min(10, lvl), max: 10 };
+        }
+      },
+      {
+        id: 'ach_aurora_3',
+        title: 'Celestial Attunement',
+        icon: '✨',
+        desc: 'Claim 3 Aurora Blessing perks from the polar sky',
+        check: (s) => (s.totalAuroraBlessingsClaimed || 0) >= 3,
+        progress: (s) => ({ cur: Math.min(3, s.totalAuroraBlessingsClaimed || 0), max: 3 })
+      },
+      {
+        id: 'ach_legendary_perk',
+        title: 'Crown of the Aurora',
+        icon: '🌟',
+        desc: 'Collect a Legendary Aurora Blessing perk',
+        check: (s) => Boolean(s.collectedPerks && s.collectedPerks.some(p => p.rarity === 'legendary')),
+        progress: (s) => ({ cur: (s.collectedPerks && s.collectedPerks.some(p => p.rarity === 'legendary')) ? 1 : 0, max: 1 })
+      },
+      {
+        id: 'ach_prestige_first',
+        title: 'Celestial Rebirth',
+        icon: '💎',
+        desc: 'Perform Glacial Rebirth and collect Frost Essence',
+        check: (s) => (s.totalRebirths || 0) >= 1,
+        progress: (s) => ({ cur: Math.min(1, s.totalRebirths || 0), max: 1 })
+      }
+    ];
+
+    // =========================================================================
+    // GLACIAL LORE CHRONICLES
+    // =========================================================================
+    const GLACIAL_LORE_CHRONICLES = [
+      {
+        id: 'lore_prologue',
+        chapter: 'Prologue',
+        title: 'The Great Frostfall',
+        date: 'Day 1 of the Great Freeze',
+        icon: '📜',
+        reqText: 'Available from the start of your journey',
+        check: (s) => true,
+        text: 'When the Southern Skies ignited in eternal emerald luminescence, our forebears laid the foundational snow-bricks of the first Igloo Depot. The cold was biting, but the resolve of the colony was forged in adamant ice. Here on the floating shelves, we carve our destiny.'
+      },
+      {
+        id: 'lore_ch1',
+        chapter: 'Chapter I',
+        title: 'The Scouts of Adélie Bay',
+        date: 'Expedition Log 14',
+        icon: '🐧',
+        reqText: 'Collect 1,000 Lifetime Fish',
+        check: (s) => (s.lifetimeFish || 0) >= 1000,
+        text: 'With swift flippers carving trails through freezing seafoam, the brave Adélie Scouts ventured beyond the safety of the colony shore. They mapped the three abyssal ice holes whose currents pulse with shimmering Arctic Herring and silver cod.'
+      },
+      {
+        id: 'lore_ch2',
+        chapter: 'Chapter II',
+        title: 'The Blue Ice Racers',
+        date: 'Expedition Log 48',
+        icon: '🛷',
+        reqText: 'Collect 25,000 Lifetime Fish',
+        check: (s) => (s.lifetimeFish || 0) >= 25000,
+        text: 'The sleek Gentoo discoverers uncovered a sacred art: frictionless belly-sliding across the polished blue ice sheets. Gliding at breakneck velocity, they deliver fresh catches to the depot in record time, cheering through the sub-zero blizzards.'
+      },
+      {
+        id: 'lore_ch3',
+        chapter: 'Chapter III',
+        title: 'Depths of the Chinstrap Trench',
+        date: 'Expedition Log 112',
+        icon: '🤿',
+        reqText: 'Collect 500,000 Lifetime Fish',
+        check: (s) => (s.lifetimeFish || 0) >= 500000,
+        text: 'Plunging beneath the pressure of the abyssal thermoclines, the hardy Chinstrap Divers reached depths unseen by daylight. In the deep trenches, they unearthed bioluminescent krill blooms and primal ice relics humming with ancient energy.'
+      },
+      {
+        id: 'lore_ch4',
+        chapter: 'Chapter IV',
+        title: 'Crown of the Emperor',
+        date: 'Expedition Log 260',
+        icon: '👑',
+        reqText: 'Collect 10,000,000 Lifetime Fish',
+        check: (s) => (s.lifetimeFish || 0) >= 10000000,
+        text: 'Adorned in majestic golden plumage, the Emperor Monarch stepped onto the high glacier pinnacle. With a resonant, booming call that shook the snowdrifts, an aura of sovereign discipline swept through the ranks, supercharging the entire colony.'
+      },
+      {
+        id: 'lore_ch5',
+        chapter: 'Chapter V',
+        title: 'Cybernetic Polar Renaissance',
+        date: 'Chronicle of the Future',
+        icon: '🤖',
+        reqText: 'Perform 1 Glacial Rebirth',
+        check: (s) => (s.totalRebirths || 0) >= 1,
+        text: 'Fusing eternal frost essence with superconductive auroral photonics, the colony engineered the Cyber Mecha-Penguins. Equipped with cryo-thrusters and sub-atomic sonar visors, the empire now rules the glacial expanse for all eternity.'
+      }
+    ];
+
+    function checkAchievements() {
+      if (!state || !state.unlockedAchievements) return;
+      let newlyUnlocked = [];
+
+      ACHIEVEMENTS_LIST.forEach(ach => {
+        if (!state.unlockedAchievements[ach.id]) {
+          if (ach.check(state)) {
+            state.unlockedAchievements[ach.id] = Date.now();
+            newlyUnlocked.push(ach);
+          }
+        }
+      });
+
+      if (newlyUnlocked.length > 0) {
+        sound.playLevelUp();
+        newlyUnlocked.forEach(ach => {
+          showToast(`🏆 Achievement Unlocked: ${ach.title}!`);
+        });
+        if (state.currentTab === 'stats') {
+          updateSheetContent();
+        }
+      }
+    }
+
+    // --- GAME STATE ---
+    class GameState {
+      constructor() {
+        this.fish = 0;
+        this.lifetimeFish = 0;
+        this.glacierLevel = 1;
+        this.levelFish = 0;
+        this.prestigeShards = 0;
+        this.buyMultiplier = 1;
+        this.currentTab = 'penguins';
+        
+        this.penguins = {
+          adelie: { count: 1, level: 1 },
+          gentoo: { count: 0, level: 1 },
+          chinstrap: { count: 0, level: 1 },
+          emperor: { count: 0, level: 1 },
+          cyber: { count: 0, level: 1 }
+        };
+
+        this.tech = {
+          thermal_parkas: 0,
+          reinforced_line: 0,
+          smooth_ice: 0,
+          bioluminescent_krill: 0,
+          cryo_storage: 0,
+          aurora_coils: 0
+        };
+
+        // Collected Aurora Blessing perks & achievements
+        this.collectedPerks = [];
+        this.unlockedAchievements = {};
+
+        this.perkWalkSpeedMult = 1.0;
+        this.perkSlideSpeedMult = 1.0;
+        this.perkCatchMult = 1.0;
+        this.clickMult = 1.0;
+        this.diveSpeedMult = 1.0;
+        this.tempSpeedBoost = 0;
+        this.emperorBoost = 0;
+        this.frenzyTimer = 0;
+        this.supernovaTimer = 0;
+        this.slushDebuffTimer = 0;
+        this.goldenFishTimer = 0;
+
+        this.auroraEventInterval = 45;
+        this.auroraEventTimer = 45;
+        this.isAuroraModalOpen = false;
+        this.auroraTimeoutSeconds = 10;
+        this.currentAuroraCards = [];
+        this.auroraTimerInterval = null;
+
+        this.dps = 0;
+        this.lastSaveTime = Date.now();
+
+        // Statistics tracking
+        this.totalRebirths = 0;
+        this.totalAuroraBlessingsClaimed = 0;
+        this.totalManualClicks = 0;
+        this.totalDives = 0;
+        this.totalSlides = 0;
+        this.gameStartTime = Date.now();
+        this.highestDPS = 0;
+      }
+
+      addCollectedPerk(perk) {
+        if (!this.collectedPerks) this.collectedPerks = [];
+        const existing = this.collectedPerks.find(p => p.id === perk.id);
+        if (existing) {
+          existing.count = (existing.count || 1) + 1;
+          existing.lastAcquiredAt = Date.now();
+        } else {
+          this.collectedPerks.push({
+            id: perk.id,
+            name: perk.name,
+            rarity: perk.rarity,
+            icon: perk.icon,
+            desc: perk.desc,
+            count: 1,
+            isLegendary: (perk.rarity === 'legendary'),
+            firstAcquiredAt: Date.now(),
+            lastAcquiredAt: Date.now()
+          });
+        }
+        this.recalculatePerkMultipliers();
+        checkAchievements();
+      }
+
+      recalculatePerkMultipliers() {
+        this.perkWalkSpeedMult = 1.0;
+        this.perkSlideSpeedMult = 1.0;
+        this.perkCatchMult = 1.0;
+        this.clickMult = 1.0;
+        this.diveSpeedMult = 1.0;
+        this.emperorBoost = 0;
+
+        if (this.collectedPerks && Array.isArray(this.collectedPerks)) {
+          this.collectedPerks.forEach(cp => {
+            const count = cp.count || 1;
+            if (cp.id === 'c_booties') this.perkWalkSpeedMult += 0.15 * count;
+            if (cp.id === 'c_herring') this.perkCatchMult += 0.20 * count;
+            if (cp.id === 'c_flappers') this.clickMult += 0.35 * count;
+            if (cp.id === 'r_sledding') this.perkSlideSpeedMult += 0.50 * count;
+            if (cp.id === 'r_trench') {
+              this.perkCatchMult += 0.40 * count;
+              this.diveSpeedMult += 0.25 * count;
+            }
+            if (cp.id === 'l_monarch') {
+              this.emperorBoost += 1.0 * count;
+              this.perkWalkSpeedMult += 0.50 * count;
+            }
+          });
+        }
+      }
+
+      getLevelReq() {
+        return Math.floor(100 * Math.pow(1.18, this.glacierLevel));
+      }
+
+      getPrestigeMultiplier() {
+        return 1 + (this.prestigeShards * 0.05);
+      }
+
+      getGlacierLevelMultiplier() {
+        return 1 + ((this.glacierLevel - 1) * 0.10);
+      }
+
+      getFishPerClick() {
+        const base = 1;
+        const krillBonus = 1 + (this.tech.bioluminescent_krill * 0.5);
+        const prestige = this.getPrestigeMultiplier();
+        const levelBonus = this.getGlacierLevelMultiplier();
+        const frenzy = this.frenzyTimer > 0 ? 3 : 1;
+        const supernova = this.supernovaTimer > 0 ? 4 : 1;
+        return Math.floor(base * krillBonus * prestige * levelBonus * frenzy * supernova * this.clickMult);
+      }
+
+      calculateDPS() {
+        let total = 0;
+        const prestige = this.getPrestigeMultiplier();
+        const levelBonus = this.getGlacierLevelMultiplier();
+        const cryoBonus = 1 + (this.tech.cryo_storage * 0.2);
+        const lineBonus = 1 + (this.tech.reinforced_line * 0.25);
+        const frenzy = this.frenzyTimer > 0 ? 3 : 1;
+        const supernova = this.supernovaTimer > 0 ? 4 : 1;
+
+        PENGUIN_SPECIES.forEach(sp => {
+          const pData = this.penguins[sp.id];
+          if (pData && pData.count > 0) {
+            let yieldVal = sp.baseYield * (1 + (pData.level - 1) * 0.25) * this.perkCatchMult * lineBonus;
+            if (sp.id === 'emperor' && this.emperorBoost > 0) {
+              yieldVal *= (1 + this.emperorBoost);
+            }
+            const tripSeconds = Math.max(2.5, 9 / (sp.baseSpeed * (1 + this.tech.thermal_parkas * 0.15)));
+            const rate = (yieldVal / tripSeconds) * pData.count;
+            total += rate;
+          }
+        });
+
+        this.dps = total * prestige * levelBonus * cryoBonus * frenzy * supernova;
+        if (this.dps > this.highestDPS) {
+          this.highestDPS = this.dps;
+        }
+        return this.dps;
+      }
+
+      getPenguinCost(id, currentCount) {
+        const def = PENGUIN_SPECIES.find(s => s.id === id);
+        if (!def) return 999999;
+        return Math.floor(def.baseCost * Math.pow(def.costMult, currentCount));
+      }
+
+      getTechCost(id, currentLvl) {
+        const def = GLACIER_TECH.find(t => t.id === id);
+        if (!def) return 999999;
+        return Math.floor(def.baseCost * Math.pow(def.costMult, currentLvl));
+      }
+
+      addFish(amount) {
+        this.fish += amount;
+        this.lifetimeFish += amount;
+        this.levelFish += amount;
+
+        dailyManager.track('collect_fish', amount);
+
+        const req = this.getLevelReq();
+        if (this.levelFish >= req) {
+          this.levelFish -= req;
+          this.glacierLevel++;
+          sound.playLevelUp();
+          showToast(`🧊 Glacier Level Up! Now Level ${this.glacierLevel} (+10% Production)`);
+          spawnLevelUpCelebration();
+          this.save();
+        }
+        checkAchievements();
+      }
+
+      save() {
+        const saveObj = {
+          fish: this.fish,
+          lifetimeFish: this.lifetimeFish,
+          glacierLevel: this.glacierLevel,
+          levelFish: this.levelFish,
+          prestigeShards: this.prestigeShards,
+          penguins: this.penguins,
+          tech: this.tech,
+          collectedPerks: this.collectedPerks,
+          unlockedAchievements: this.unlockedAchievements,
+          perkWalkSpeedMult: this.perkWalkSpeedMult,
+          perkSlideSpeedMult: this.perkSlideSpeedMult,
+          perkCatchMult: this.perkCatchMult,
+          clickMult: this.clickMult,
+          diveSpeedMult: this.diveSpeedMult,
+          emperorBoost: this.emperorBoost,
+          muted: sound.muted,
+          lastSaveTime: Date.now(),
+          dailyObjectives: {
+            dateKey: dailyManager.dateKey,
+            objectives: dailyManager.objectives
+          },
+          totalRebirths: this.totalRebirths,
+          totalAuroraBlessingsClaimed: this.totalAuroraBlessingsClaimed,
+          totalManualClicks: this.totalManualClicks,
+          totalDives: this.totalDives,
+          totalSlides: this.totalSlides,
+          gameStartTime: this.gameStartTime,
+          highestDPS: this.highestDPS
+        };
+
+        const jsonStr = JSON.stringify(saveObj);
+
+        // 1. Primary: Save to native Android SharedPreferences (backed by disk)
+        try {
+          if (window.AndroidBridge && typeof window.AndroidBridge.saveGame === 'function') {
+            window.AndroidBridge.saveGame(jsonStr);
+          }
+        } catch (e) {
+          console.warn('Native AndroidBridge save failed:', e);
+        }
+
+        // 2. Secondary: Save to localStorage as browser fallback
+        try {
+          localStorage.setItem('PENGUIN_GLACIAL_SAVE', jsonStr);
+        } catch (e) {
+          console.warn('localStorage save failed:', e);
+        }
+      }
+
+      load() {
+        try {
+          let raw = null;
+
+          // 1. Primary: Try reading from native Android SharedPreferences
+          try {
+            if (window.AndroidBridge && typeof window.AndroidBridge.loadGame === 'function') {
+              const nativeData = window.AndroidBridge.loadGame();
+              if (nativeData && nativeData.length > 5) {
+                raw = nativeData;
+              }
+            }
+          } catch (e) {
+            console.warn('Native AndroidBridge load error:', e);
+          }
+
+          // 2. Secondary: Fall back to localStorage if native storage was empty or unavailable
+          if (!raw) {
+            raw = localStorage.getItem('PENGUIN_GLACIAL_SAVE');
+          }
+
+          if (raw) {
+            const data = JSON.parse(raw);
+            this.fish = (typeof data.fish === 'number') ? data.fish : 0;
+            this.lifetimeFish = (typeof data.lifetimeFish === 'number') ? data.lifetimeFish : 0;
+            this.glacierLevel = (typeof data.glacierLevel === 'number') ? data.glacierLevel : 1;
+            this.levelFish = (typeof data.levelFish === 'number') ? data.levelFish : 0;
+            this.prestigeShards = (typeof data.prestigeShards === 'number') ? data.prestigeShards : 0;
+            if (data.penguins) this.penguins = Object.assign(this.penguins, data.penguins);
+            if (data.tech) this.tech = Object.assign(this.tech, data.tech);
+
+            if (Array.isArray(data.collectedPerks)) {
+              this.collectedPerks = data.collectedPerks;
+            } else {
+              this.collectedPerks = [];
+            }
+            if (data.unlockedAchievements && typeof data.unlockedAchievements === 'object') {
+              this.unlockedAchievements = data.unlockedAchievements;
+            } else {
+              this.unlockedAchievements = {};
+            }
+
+            this.perkWalkSpeedMult = data.perkWalkSpeedMult || 1.0;
+            this.perkSlideSpeedMult = data.perkSlideSpeedMult || 1.0;
+            this.perkCatchMult = data.perkCatchMult || 1.0;
+            this.clickMult = data.clickMult || 1.0;
+            this.diveSpeedMult = data.diveSpeedMult || 1.0;
+            this.emperorBoost = data.emperorBoost || 0;
+            this.recalculatePerkMultipliers();
+
+            if (typeof data.muted === 'boolean') {
+              sound.muted = data.muted;
+              updateAudioButton();
+            }
+
+            if (data.dailyObjectives && data.dailyObjectives.dateKey === dailyManager.dateKey) {
+              dailyManager.objectives = data.dailyObjectives.objectives;
+            }
+
+            this.totalRebirths = data.totalRebirths || 0;
+            this.totalAuroraBlessingsClaimed = data.totalAuroraBlessingsClaimed || 0;
+            this.totalManualClicks = data.totalManualClicks || 0;
+            this.totalDives = data.totalDives || 0;
+            this.totalSlides = data.totalSlides || 0;
+            this.gameStartTime = data.gameStartTime || Date.now();
+            this.highestDPS = data.highestDPS || 0;
+
+            if (data.lastSaveTime) {
+              const elapsedSec = (Date.now() - data.lastSaveTime) / 1000;
+              if (elapsedSec > 10) {
+                this.calculateDPS();
+                const offlineEarned = Math.floor(this.dps * elapsedSec * 0.85);
+                if (offlineEarned > 5) {
+                  showOfflineModal(offlineEarned);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Load failed:', e);
+        }
+      }
+    }
+
+    const state = new GameState();
+
+    function formatNumber(num) {
+      if (num < 1000) return Math.floor(num).toLocaleString();
+      const units = ['K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp'];
+      const uIdx = Math.floor(Math.log10(num) / 3) - 1;
+      const formatted = (num / Math.pow(10, (uIdx + 1) * 3)).toFixed(1);
+      return formatted + (units[uIdx] || '');
+    }
+
+    // --- CANVAS GRAPHICS & SCENE RENDERING ---
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let width = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 360);
+    let height = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 640);
+    let dpr = window.devicePixelRatio || 1;
+
+    function resizeCanvas() {
+      const container = document.getElementById('canvas-container');
+      const w = (container && container.clientWidth) || window.innerWidth || document.documentElement.clientWidth;
+      const h = (container && container.clientHeight) || window.innerHeight || document.documentElement.clientHeight;
+      if (!w || !h) return;
+
+      const hadZero = (width <= 1 || height <= 1);
+      width = w;
+      height = h;
+      dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if (hadZero && typeof snowParticles !== 'undefined') {
+        snowParticles.forEach(p => {
+          p.x = Math.random() * width;
+          p.y = Math.random() * height;
+        });
+      }
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    if (typeof ResizeObserver !== 'undefined') {
+      const containerEl = document.getElementById('canvas-container');
+      if (containerEl) {
+        new ResizeObserver(() => resizeCanvas()).observe(containerEl);
+      }
+    }
+    resizeCanvas();
+
+    const DEPOT = {
+      x: 0.5,
+      y: 0.44,
+      radius: 46,
+      doorOffset: { x: 0, y: 18 }
+    };
+
+    const WAITING_AREA = {
+      x: 0.5,
+      y: 0.58,
+      spreadX: 180,
+      spreadY: 25
+    };
+
+    const FISHING_HOLES = [
+      {
+        id: 1,
+        xRatio: 0.22,
+        yRatio: 0.73,
+        radiusX: 44,
+        radiusY: 20,
+        rippleTimer: 0,
+        slots: [
+          { angle: -Math.PI * 0.75, occupiedBy: null },
+          { angle: -Math.PI * 0.25, occupiedBy: null },
+          { angle: Math.PI * 0.5, occupiedBy: null }
+        ]
+      },
+      {
+        id: 2,
+        xRatio: 0.50,
+        yRatio: 0.81,
+        radiusX: 50,
+        radiusY: 22,
+        rippleTimer: 1.2,
+        slots: [
+          { angle: -Math.PI * 0.75, occupiedBy: null },
+          { angle: -Math.PI * 0.25, occupiedBy: null },
+          { angle: Math.PI * 0.5, occupiedBy: null }
+        ]
+      },
+      {
+        id: 3,
+        xRatio: 0.78,
+        yRatio: 0.74,
+        radiusX: 44,
+        radiusY: 20,
+        rippleTimer: 2.4,
+        slots: [
+          { angle: -Math.PI * 0.75, occupiedBy: null },
+          { angle: -Math.PI * 0.25, occupiedBy: null },
+          { angle: Math.PI * 0.5, occupiedBy: null }
+        ]
+      }
+    ];
+
+    function claimAvailableSlot(penguinId) {
+      for (let hole of FISHING_HOLES) {
+        for (let slot of hole.slots) {
+          if (slot.occupiedBy === null) {
+            slot.occupiedBy = penguinId;
+            return { hole, slot };
+          }
+        }
+      }
+      return null;
+    }
+
+    function releaseSlot(penguinId) {
+      for (let hole of FISHING_HOLES) {
+        for (let slot of hole.slots) {
+          if (slot.occupiedBy === penguinId) {
+            slot.occupiedBy = null;
+          }
+        }
+      }
+    }
+
+    function getSlotWorldPos(hole, slot) {
+      const hx = width * hole.xRatio;
+      const hy = height * hole.yRatio;
+      return {
+        x: hx + Math.cos(slot.angle) * (hole.radiusX + 6),
+        y: hy + Math.sin(slot.angle) * (hole.radiusY + 4)
+      };
+    }
+
+    const snowParticles = [];
+    const MAX_SNOW = 65;
+    for (let i = 0; i < MAX_SNOW; i++) {
+      snowParticles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        radius: 1 + Math.random() * 2.5,
+        speedY: 0.5 + Math.random() * 1.5,
+        speedX: -0.5 + Math.random() * 1.0,
+        opacity: 0.2 + Math.random() * 0.6
+      });
+    }
+
+    const tapParticles = [];
+    function addTapParticle(x, y, text, color = '#38bdf8', size = 16) {
+      tapParticles.push({
+        x,
+        y,
+        text,
+        color,
+        size,
+        life: 1.0,
+        vy: -2.0 - Math.random() * 1.5,
+        vx: (Math.random() - 0.5) * 1.5
+      });
+    }
+
+    const fireworks = [];
+    function spawnLevelUpCelebration() {
+      for (let i = 0; i < 35; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 6;
+        fireworks.push({
+          x: width * 0.5,
+          y: height * 0.45,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1.5,
+          color: ['#38bdf8', '#818cf8', '#fbbf24', '#c084fc', '#34d399'][Math.floor(Math.random() * 5)],
+          size: 3 + Math.random() * 3,
+          life: 1.0
+        });
+      }
+    }
+
+    let penguinUniqueCounter = 0;
+
+    class ActivePenguin {
+      constructor(speciesId) {
+        this.uid = ++penguinUniqueCounter;
+        this.speciesId = speciesId;
+        this.species = PENGUIN_SPECIES.find(s => s.id === speciesId) || PENGUIN_SPECIES[0];
+
+        this.x = width * DEPOT.x + (Math.random() - 0.5) * 24;
+        this.y = height * DEPOT.y + DEPOT.doorOffset.y + (Math.random() - 0.5) * 10;
+
+        this.claimedTarget = null;
+        this.pathWaypoints = [];
+        this.currentWaypointIdx = 0;
+        this.waitingTargetX = 0;
+        this.waitingTargetY = 0;
+        this.waitingTimer = 0;
+
+        this.state = 'NAVIGATE_TO_HOLE';
+        this.isSliding = (this.species.id === 'gentoo' || Math.random() < 0.35);
+        this.diveTimer = 0;
+        this.facing = 1;
+        this.stepPhase = Math.random() * 10;
+        this.carriedFish = 0;
+        this.slideEffectTimer = 0;
+
+        this.initiatePathToFishingHole();
+      }
+
+      initiatePathToFishingHole() {
+        const slotData = claimAvailableSlot(this.uid);
+        if (slotData) {
+          this.claimedTarget = slotData;
+          this.state = 'NAVIGATE_TO_HOLE';
+          this.isSliding = (this.species.id === 'gentoo' || Math.random() < 0.35);
+
+          if (this.isSliding) {
+            dailyManager.track('slides', 1);
+            state.totalSlides = (state.totalSlides || 0) + 1;
+          }
+
+          const target = getSlotWorldPos(slotData.hole, slotData.slot);
+          const midX = (this.x + target.x) * 0.5 + (Math.random() - 0.5) * 30;
+          const midY = (this.y + target.y) * 0.5;
+
+          this.pathWaypoints = [
+            { x: midX, y: midY },
+            { x: target.x, y: target.y }
+          ];
+          this.currentWaypointIdx = 0;
+        } else {
+          this.state = 'WAITING_NEARBY';
+          this.isSliding = false;
+          this.waitingTargetX = (width * WAITING_AREA.x) + (Math.random() - 0.5) * WAITING_AREA.spreadX;
+          this.waitingTargetY = (height * WAITING_AREA.y) + (Math.random() - 0.5) * WAITING_AREA.spreadY;
+
+          this.pathWaypoints = [
+            { x: this.waitingTargetX, y: this.waitingTargetY }
+          ];
+          this.currentWaypointIdx = 0;
+        }
+      }
+
+      initiatePathToDepot() {
+        this.state = 'NAVIGATE_TO_DEPOT';
+        this.isSliding = (this.species.id === 'gentoo' || Math.random() < 0.35);
+
+        if (this.isSliding) {
+          dailyManager.track('slides', 1);
+          state.totalSlides = (state.totalSlides || 0) + 1;
+        }
+
+        const depotDoorX = width * DEPOT.x + (Math.random() - 0.5) * 20;
+        const depotDoorY = height * DEPOT.y + DEPOT.doorOffset.y;
+
+        const midX = (this.x + depotDoorX) * 0.5 + (Math.random() - 0.5) * 30;
+        const midY = (this.y + depotDoorY) * 0.5;
+
+        this.pathWaypoints = [
+          { x: midX, y: midY },
+          { x: depotDoorX, y: depotDoorY }
+        ];
+        this.currentWaypointIdx = 0;
+      }
+
+      update(dt) {
+        this.stepPhase += dt * 6;
+
+        let speed = this.species.baseSpeed * 40 * state.perkWalkSpeedMult * (1 + state.tech.thermal_parkas * 0.15);
+        if (state.slushDebuffTimer > 0) speed *= 0.92;
+        if (state.supernovaTimer > 0) speed *= 2.5;
+
+        if (this.isSliding) {
+          speed *= 1.8 * state.perkSlideSpeedMult * (1 + state.tech.smooth_ice * 0.3);
+          this.slideEffectTimer += dt;
+          if (this.slideEffectTimer > 0.15 && tapParticles.length < 30) {
+            this.slideEffectTimer = 0;
+            tapParticles.push({
+              x: this.x + (Math.random() - 0.5) * 8,
+              y: this.y + 6,
+              text: '❄️',
+              color: 'rgba(255, 255, 255, 0.7)',
+              size: 10,
+              life: 0.4,
+              vy: -0.8,
+              vx: -this.facing * (1 + Math.random())
+            });
+          }
+        }
+
+        switch (this.state) {
+          case 'NAVIGATE_TO_HOLE': {
+            if (this.currentWaypointIdx < this.pathWaypoints.length) {
+              const wp = this.pathWaypoints[this.currentWaypointIdx];
+              const dx = wp.x - this.x;
+              const dy = wp.y - this.y;
+              const dist = Math.hypot(dx, dy);
+              const step = speed * dt;
+
+              if (Math.abs(dx) > 2) {
+                this.facing = dx > 0 ? 1 : -1;
+              }
+
+              if (dist <= step || dist < 6) {
+                this.x = wp.x;
+                this.y = wp.y;
+                this.currentWaypointIdx++;
+              } else {
+                this.x += (dx / dist) * step;
+                this.y += (dy / dist) * step;
+              }
+            } else {
+              this.state = 'PREPARE_DIVE';
+              this.diveTimer = 0.5;
+              this.isSliding = false;
+            }
+            break;
+          }
+
+          case 'WAITING_NEARBY': {
+            if (this.currentWaypointIdx < this.pathWaypoints.length) {
+              const wp = this.pathWaypoints[this.currentWaypointIdx];
+              const dx = wp.x - this.x;
+              const dy = wp.y - this.y;
+              const dist = Math.hypot(dx, dy);
+              const step = speed * dt;
+
+              if (Math.abs(dx) > 2) {
+                this.facing = dx > 0 ? 1 : -1;
+              }
+
+              if (dist <= step || dist < 6) {
+                this.x = wp.x;
+                this.y = wp.y;
+                this.currentWaypointIdx++;
+              } else {
+                this.x += (dx / dist) * step;
+                this.y += (dy / dist) * step;
+              }
+            } else {
+              this.waitingTimer += dt;
+              if (this.waitingTimer > 0.4) {
+                this.waitingTimer = 0;
+                const slotData = claimAvailableSlot(this.uid);
+                if (slotData) {
+                  this.claimedTarget = slotData;
+                  this.state = 'NAVIGATE_TO_HOLE';
+                  this.isSliding = (this.species.id === 'gentoo' || Math.random() < 0.4);
+                  if (this.isSliding) {
+                    dailyManager.track('slides', 1);
+                    state.totalSlides = (state.totalSlides || 0) + 1;
+                  }
+
+                  const target = getSlotWorldPos(slotData.hole, slotData.slot);
+                  this.pathWaypoints = [{ x: target.x, y: target.y }];
+                  this.currentWaypointIdx = 0;
+                }
+              }
+            }
+            break;
+          }
+
+          case 'PREPARE_DIVE': {
+            this.diveTimer -= dt;
+            if (this.diveTimer <= 0) {
+              this.state = 'FISHING';
+              const diveRate = state.diveSpeedMult * (1 + (this.species.diveTime > 1 ? 0.2 : 0));
+              this.diveTimer = Math.max(0.6, this.species.diveTime / diveRate);
+              sound.playSplash();
+              if (this.claimedTarget) {
+                this.claimedTarget.hole.rippleTimer = 1.0;
+              }
+            }
+            break;
+          }
+
+          case 'FISHING': {
+            this.diveTimer -= dt;
+            if (this.diveTimer <= 0) {
+              dailyManager.track('dives', 1);
+              state.totalDives = (state.totalDives || 0) + 1;
+
+              this.state = 'SURFACE_CATCH';
+              this.diveTimer = 0.6;
+              sound.playSplash();
+              if (this.claimedTarget) {
+                this.claimedTarget.hole.rippleTimer = 1.0;
+              }
+
+              const lineBonus = 1 + (state.tech.reinforced_line * 0.25);
+              const pData = state.penguins[this.species.id] || { level: 1 };
+              const catchVal = Math.round(this.species.baseYield * (1 + (pData.level - 1) * 0.25) * state.perkCatchMult * lineBonus);
+              this.carriedFish = Math.max(1, catchVal);
+
+              releaseSlot(this.uid);
+              this.claimedTarget = null;
+            }
+            break;
+          }
+
+          case 'SURFACE_CATCH': {
+            this.diveTimer -= dt;
+            if (this.diveTimer <= 0) {
+              this.initiatePathToDepot();
+            }
+            break;
+          }
+
+          case 'NAVIGATE_TO_DEPOT': {
+            if (this.currentWaypointIdx < this.pathWaypoints.length) {
+              const wp = this.pathWaypoints[this.currentWaypointIdx];
+              const dx = wp.x - this.x;
+              const dy = wp.y - this.y;
+              const dist = Math.hypot(dx, dy);
+              const step = speed * dt;
+
+              if (Math.abs(dx) > 2) {
+                this.facing = dx > 0 ? 1 : -1;
+              }
+
+              if (dist <= step || dist < 8) {
+                this.x = wp.x;
+                this.y = wp.y;
+                this.currentWaypointIdx++;
+              } else {
+                this.x += (dx / dist) * step;
+                this.y += (dy / dist) * step;
+              }
+            } else {
+              const cryoBonus = 1 + (state.tech.cryo_storage * 0.2);
+              const frenzy = state.frenzyTimer > 0 ? 3 : 1;
+              const supernova = state.supernovaTimer > 0 ? 4 : 1;
+              const totalBanked = Math.floor(this.carriedFish * cryoBonus * state.getPrestigeMultiplier() * frenzy * supernova);
+
+              state.addFish(totalBanked);
+              sound.playPlink();
+              addTapParticle(this.x, this.y - 12, `+${totalBanked} 🐟`, '#fbbf24', 16);
+
+              this.carriedFish = 0;
+              this.initiatePathToFishingHole();
+            }
+            break;
+          }
+        }
+      }
+
+      draw(ctx) {
+        if (this.state === 'FISHING') {
+          ctx.save();
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
+          ctx.beginPath();
+          ctx.arc(this.x, this.y - 4, 7, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          return;
+        }
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.scale(this.facing, 1);
+
+        const isSliding = this.isSliding && (this.state === 'NAVIGATE_TO_HOLE' || this.state === 'NAVIGATE_TO_DEPOT');
+        let waddleAngle = isSliding ? 0.35 : Math.sin(this.stepPhase) * 0.15;
+        let footWaddle = Math.sin(this.stepPhase) * 4;
+
+        if (this.state === 'PREPARE_DIVE') {
+          waddleAngle = 0.45;
+        } else if (this.state === 'SURFACE_CATCH') {
+          waddleAngle = -0.2;
+        }
+
+        if (this.species.id === 'emperor') {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.38)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.ellipse(0, 4, 40, 18, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        ctx.rotate(waddleAngle);
+
+        if (!isSliding) {
+          ctx.fillStyle = 'rgba(10, 30, 60, 0.25)';
+          ctx.beginPath();
+          ctx.ellipse(0, 10, 14, 5, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#f97316';
+          ctx.beginPath();
+          ctx.ellipse(-6, 9 + footWaddle * 0.5, 4, 2.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(6, 9 - footWaddle * 0.5, 4, 2.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = this.species.id === 'cyber' ? '#334155' : '#0f172a';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 12, 16, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.ellipse(2, 2, 7, 12, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (this.species.id === 'emperor') {
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.ellipse(4, -6, 4, 3, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.moveTo(-5, -17);
+            ctx.lineTo(-2, -22);
+            ctx.lineTo(0, -18);
+            ctx.lineTo(2, -22);
+            ctx.lineTo(5, -17);
+            ctx.closePath();
+            ctx.fill();
+          } else if (this.species.id === 'gentoo') {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, -12, 4, 0, Math.PI);
+            ctx.fill();
+          } else if (this.species.id === 'chinstrap') {
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(1, -7, 6, 0.2, Math.PI - 0.2);
+            ctx.stroke();
+          } else if (this.species.id === 'cyber') {
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.fillRect(0, -12, 9, 5);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(1, -11, 7, 3);
+            ctx.fillStyle = '#e0f2fe';
+            ctx.fillRect(2, -10, 4, 1.5);
+          }
+
+          if (this.species.id !== 'cyber') {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(4, -10, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(5, -10, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.fillStyle = this.species.id === 'gentoo' ? '#ea580c' : '#f59e0b';
+          ctx.beginPath();
+          ctx.moveTo(9, -9);
+          ctx.lineTo(16, -7);
+          ctx.lineTo(9, -5);
+          ctx.closePath();
+          ctx.fill();
+
+          const flipperAngle = Math.sin(this.stepPhase) * 0.4;
+          ctx.save();
+          ctx.translate(-4, -1);
+          ctx.rotate(-flipperAngle);
+          ctx.fillStyle = this.species.id === 'cyber' ? '#0ea5e9' : '#0f172a';
+          ctx.beginPath();
+          ctx.ellipse(-2, 4, 3, 8, -0.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          if (this.carriedFish > 0) {
+            ctx.save();
+            ctx.translate(14, -6);
+            ctx.rotate(0.2);
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 7, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(-6, 0);
+            ctx.lineTo(-10, -4);
+            ctx.lineTo(-10, 4);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+
+        } else {
+          ctx.fillStyle = 'rgba(10, 30, 60, 0.3)';
+          ctx.beginPath();
+          ctx.ellipse(0, 7, 18, 5, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = this.species.id === 'cyber' ? '#334155' : '#0f172a';
+          ctx.beginPath();
+          ctx.ellipse(0, 3, 16, 7, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.ellipse(2, 6, 12, 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#f97316';
+          const kick = Math.sin(this.stepPhase * 2) * 2;
+          ctx.beginPath();
+          ctx.ellipse(-14, 2 + kick, 3, 2, 0.4, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = this.species.id === 'cyber' ? '#334155' : '#0f172a';
+          ctx.beginPath();
+          ctx.arc(14, -2, 6, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#f59e0b';
+          ctx.beginPath();
+          ctx.moveTo(18, -2);
+          ctx.lineTo(24, 0);
+          ctx.lineTo(18, 2);
+          ctx.closePath();
+          ctx.fill();
+
+          if (this.species.id === 'cyber') {
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+            ctx.beginPath();
+            ctx.moveTo(-15, 1);
+            ctx.lineTo(-26 - Math.random() * 8, 3);
+            ctx.lineTo(-15, 5);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.moveTo(-16, 2);
+            ctx.lineTo(-22 - Math.random() * 6, 3);
+            ctx.lineTo(-16, 4);
+            ctx.closePath();
+            ctx.fill();
+          }
+
+          if (this.carriedFish > 0) {
+            ctx.save();
+            ctx.translate(22, 1);
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 6, 2.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+
+        ctx.restore();
+      }
+    }
+
+    const activePenguins = [];
+
+    function syncActivePenguins() {
+      let totalCount = 0;
+      Object.keys(state.penguins).forEach(id => {
+        totalCount += state.penguins[id].count;
+      });
+
+      const visualCount = Math.min(14, Math.max(1, totalCount));
+
+      while (activePenguins.length < visualCount) {
+        const unlocked = PENGUIN_SPECIES.filter(s => state.penguins[s.id].count > 0);
+        const species = unlocked[Math.floor(Math.random() * unlocked.length)] || PENGUIN_SPECIES[0];
+        activePenguins.push(new ActivePenguin(species.id));
+      }
+      while (activePenguins.length > visualCount) {
+        const p = activePenguins.pop();
+        if (p) releaseSlot(p.uid);
+      }
+    }
+
+    // --- MAIN GAME LOOP (60FPS requestAnimationFrame) ---
+
+    let lastTime = performance.now();
+    let auroraWavePhase = 0;
+    let achievementCheckTimer = 0;
+
+    function gameLoop(now) {
+      const dt = Math.min(0.1, (now - lastTime) / 1000);
+      lastTime = now;
+
+      auroraWavePhase += dt * 0.8;
+      achievementCheckTimer += dt;
+      if (achievementCheckTimer >= 1.0) {
+        achievementCheckTimer = 0;
+        checkAchievements();
+      }
+
+      if (state.frenzyTimer > 0) state.frenzyTimer = Math.max(0, state.frenzyTimer - dt);
+      if (state.supernovaTimer > 0) state.supernovaTimer = Math.max(0, state.supernovaTimer - dt);
+      if (state.slushDebuffTimer > 0) state.slushDebuffTimer = Math.max(0, state.slushDebuffTimer - dt);
+      if (state.goldenFishTimer > 0) state.goldenFishTimer = Math.max(0, state.goldenFishTimer - dt);
+
+      if (!state.isAuroraModalOpen) {
+        const coilsReduction = state.tech.aurora_coils * 4;
+        const targetInterval = Math.max(15, state.auroraEventInterval - coilsReduction);
+        state.auroraEventTimer -= dt;
+
+        const pillText = Math.ceil(Math.max(0, state.auroraEventTimer)) + 's';
+        document.getElementById('aurora-countdown').textContent = pillText;
+
+        if (state.auroraEventTimer <= 0) {
+          triggerAuroraBlessingEvent();
+          state.auroraEventTimer = targetInterval;
+        }
+      }
+
+      if (now - state.lastSaveTime > 3000) {
+        state.lastSaveTime = now;
+        state.save();
+      }
+
+      drawScene(ctx, dt);
+
+      activePenguins.forEach(p => p.update(dt));
+      activePenguins.sort((a, b) => a.y - b.y);
+      activePenguins.forEach(p => p.draw(ctx));
+
+      updateParticles(ctx, dt);
+      updateHUD();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function drawScene(ctx, dt) {
+      ctx.clearRect(0, 0, width, height);
+
+      const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.55);
+      skyGradient.addColorStop(0, '#030a17');
+      skyGradient.addColorStop(0.6, '#081c3b');
+      skyGradient.addColorStop(1, '#11335b');
+      ctx.fillStyle = skyGradient;
+      ctx.fillRect(0, 0, width, height * 0.6);
+
+      drawAuroraWaves(ctx, auroraWavePhase);
+      drawDistantMountains(ctx);
+
+      const iceGradient = ctx.createLinearGradient(0, height * 0.38, 0, height);
+      iceGradient.addColorStop(0, '#1c426e');
+      iceGradient.addColorStop(0.15, '#2e6399');
+      iceGradient.addColorStop(0.5, '#68a0d0');
+      iceGradient.addColorStop(1, '#aae0f8');
+      ctx.fillStyle = iceGradient;
+      ctx.fillRect(0, height * 0.38, width, height * 0.62);
+
+      drawIceDetails(ctx);
+
+      FISHING_HOLES.forEach(hole => {
+        hole.rippleTimer += dt * 1.5;
+        drawIceHole(ctx, hole);
+      });
+
+      drawIglooDepot(ctx);
+      drawSnow(ctx, dt);
+    }
+
+    function drawAuroraWaves(ctx, phase) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+
+      const colors = [
+        'rgba(56, 189, 248, 0.25)',
+        'rgba(52, 211, 153, 0.28)',
+        'rgba(168, 85, 247, 0.22)'
+      ];
+
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = colors[i];
+        ctx.beginPath();
+        ctx.moveTo(0, height * 0.1);
+
+        for (let x = 0; x <= width; x += 30) {
+          const y = height * 0.12 +
+            Math.sin(x * 0.005 + phase + i * 1.5) * 35 +
+            Math.cos(x * 0.012 - phase * 0.6) * 20;
+          ctx.lineTo(x, y);
+        }
+
+        ctx.lineTo(width, 0);
+        ctx.lineTo(0, 0);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function drawDistantMountains(ctx) {
+      ctx.save();
+      ctx.fillStyle = '#0f2648';
+      ctx.beginPath();
+      ctx.moveTo(0, height * 0.42);
+
+      const peaks = [
+        { x: 0.15, h: 0.32 },
+        { x: 0.35, h: 0.28 },
+        { x: 0.58, h: 0.34 },
+        { x: 0.82, h: 0.29 },
+        { x: 1.05, h: 0.35 }
+      ];
+
+      peaks.forEach(p => {
+        ctx.lineTo(width * (p.x - 0.1), height * 0.42);
+        ctx.lineTo(width * p.x, height * p.h);
+        ctx.lineTo(width * (p.x + 0.1), height * 0.42);
+      });
+
+      ctx.lineTo(width, height * 0.42);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawIceDetails(ctx) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1.5;
+
+      ctx.beginPath();
+      ctx.moveTo(width * 0.1, height * 0.55);
+      ctx.lineTo(width * 0.28, height * 0.58);
+      ctx.lineTo(width * 0.35, height * 0.54);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(width * 0.65, height * 0.62);
+      ctx.lineTo(width * 0.78, height * 0.66);
+      ctx.lineTo(width * 0.88, height * 0.61);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawIceHole(ctx, hole) {
+      const cx = width * hole.xRatio;
+      const cy = height * hole.yRatio;
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(240, 250, 255, 0.7)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, hole.radiusX + 4, hole.radiusY + 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const waterGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, hole.radiusX);
+      waterGrad.addColorStop(0, '#02182b');
+      waterGrad.addColorStop(0.7, '#083457');
+      waterGrad.addColorStop(1, '#0e4a7b');
+      ctx.fillStyle = waterGrad;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, hole.radiusX, hole.radiusY, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const ripple = (hole.rippleTimer % 2.0) / 2.0;
+      ctx.strokeStyle = `rgba(160, 240, 255, ${0.7 * (1 - ripple)})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, hole.radiusX * ripple, hole.radiusY * ripple, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawIglooDepot(ctx) {
+      const cx = width * DEPOT.x;
+      const cy = height * DEPOT.y;
+      const r = DEPOT.radius;
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(10, 30, 60, 0.35)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + r * 0.45, r * 1.3, r * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const domeGrad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.4, 5, cx, cy, r);
+      domeGrad.addColorStop(0, '#ffffff');
+      domeGrad.addColorStop(0.5, '#cce6f7');
+      domeGrad.addColorStop(1, '#82b6db');
+      ctx.fillStyle = domeGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, Math.PI, 0, false);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(120, 180, 220, 0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.65, Math.PI, 0, false);
+      ctx.stroke();
+
+      ctx.fillStyle = '#061a33';
+      ctx.beginPath();
+      ctx.arc(cx, cy + 2, r * 0.35, Math.PI, 0, false);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.45)';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 2, r * 0.22, Math.PI, 0, false);
+      ctx.fill();
+
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - r);
+      ctx.lineTo(cx, cy - r - 16);
+      ctx.stroke();
+
+      const wave = Math.sin(auroraWavePhase * 3) * 3;
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - r - 16);
+      ctx.lineTo(cx + 14, cy - r - 11 + wave);
+      ctx.lineTo(cx, cy - r - 6);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawSnow(ctx, dt) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(240, 250, 255, 0.8)';
+      snowParticles.forEach(p => {
+        p.y += p.speedY;
+        p.x += p.speedX;
+        if (p.y > height) {
+          p.y = -5;
+          p.x = Math.random() * width;
+        }
+        if (p.x < 0) p.x = width;
+        if (p.x > width) p.x = 0;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+
+    function updateParticles(ctx, dt) {
+      for (let i = tapParticles.length - 1; i >= 0; i--) {
+        const p = tapParticles[i];
+        p.life -= dt * 1.4;
+        p.y += p.vy;
+        p.x += p.vx;
+
+        if (p.life <= 0) {
+          tapParticles.splice(i, 1);
+        } else {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          ctx.font = `bold ${p.size}px var(--font-family)`;
+          ctx.textAlign = 'center';
+          ctx.fillText(p.text, p.x, p.y);
+          ctx.restore();
+        }
+      }
+
+      for (let i = fireworks.length - 1; i >= 0; i--) {
+        const fw = fireworks[i];
+        fw.life -= dt * 1.2;
+        fw.x += fw.vx;
+        fw.y += fw.vy;
+        fw.vy += dt * 3.5;
+
+        if (fw.life <= 0) {
+          fireworks.splice(i, 1);
+        } else {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, fw.life);
+          ctx.fillStyle = fw.color;
+          ctx.beginPath();
+          ctx.arc(fw.x, fw.y, fw.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    }
+
+    // --- USER INTERACTIONS & TAPPING ---
+
+    function handleScreenTap(x, y) {
+      sound.init();
+      dailyManager.track('taps', 1);
+      state.totalManualClicks = (state.totalManualClicks || 0) + 1;
+
+      let tappedPenguin = false;
+      for (let p of activePenguins) {
+        if (Math.hypot(p.x - x, p.y - y) < 32) {
+          tappedPenguin = true;
+          sound.playChirp();
+          p.stepPhase += 3;
+          addTapParticle(p.x, p.y - 15, '♥', '#f43f5e', 22);
+
+          const clickFish = state.getFishPerClick() * 2;
+          state.addFish(clickFish);
+          addTapParticle(p.x, p.y - 30, `+${clickFish} 🐟`, '#fbbf24', 16);
+          break;
+        }
+      }
+
+      if (!tappedPenguin) {
+        sound.playPlink();
+        const clickFish = state.getFishPerClick();
+        state.addFish(clickFish);
+        addTapParticle(x, y - 10, `+${clickFish} 🐟`, '#38bdf8', 16);
+      }
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      handleScreenTap(x, y);
+    });
+
+    // --- AURORA BLESSING RNG EVENT & FORCED TIMEOUT WORST-CHOICE PENALTY ---
+
+    function triggerAuroraBlessingEvent() {
+      if (state.isAuroraModalOpen) return;
+      sound.init();
+      sound.playAuroraChord();
+
+      state.isAuroraModalOpen = true;
+      state.auroraTimeoutSeconds = 10.0;
+
+      const rolledCards = [];
+      const poolCopy = [...AURORA_PERKS_POOL];
+
+      for (let i = 0; i < 3; i++) {
+        const totalWeight = poolCopy.reduce((sum, item) => {
+          let w = 40;
+          if (item.rarity === 'common') w = 30;
+          else if (item.rarity === 'rare') w = 18;
+          else if (item.rarity === 'legendary') w = 9;
+          else if (item.rarity === 'mythic') w = 3;
+          return sum + w;
+        }, 0);
+
+        let rand = Math.random() * totalWeight;
+        let chosenIdx = 0;
+        for (let j = 0; j < poolCopy.length; j++) {
+          let w = 40;
+          if (poolCopy[j].rarity === 'common') w = 30;
+          else if (poolCopy[j].rarity === 'rare') w = 18;
+          else if (poolCopy[j].rarity === 'legendary') w = 9;
+          else if (poolCopy[j].rarity === 'mythic') w = 3;
+
+          rand -= w;
+          if (rand <= 0) {
+            chosenIdx = j;
+            break;
+          }
+        }
+        rolledCards.push(poolCopy[chosenIdx]);
+        poolCopy.splice(chosenIdx, 1);
+      }
+
+      state.currentAuroraCards = rolledCards;
+      renderAuroraModal();
+
+      const modalEl = document.getElementById('aurora-modal');
+      modalEl.classList.add('open');
+
+      if (state.auroraTimerInterval) clearInterval(state.auroraTimerInterval);
+
+      const fgCircle = document.getElementById('timer-fg-circle');
+      const timerNum = document.getElementById('timer-num');
+      const circumference = 2 * Math.PI * 31;
+      fgCircle.style.strokeDasharray = circumference;
+
+      state.auroraTimerInterval = setInterval(() => {
+        state.auroraTimeoutSeconds -= 0.1;
+
+        if (state.auroraTimeoutSeconds <= 0) {
+          clearInterval(state.auroraTimerInterval);
+          state.auroraTimerInterval = null;
+          executeWorstChoicePenalty();
+        } else {
+          const progress = Math.max(0, state.auroraTimeoutSeconds / 10.0);
+          fgCircle.style.strokeDashoffset = circumference * (1 - progress);
+          timerNum.textContent = state.auroraTimeoutSeconds.toFixed(1) + 's';
+
+          if (state.auroraTimeoutSeconds < 3.0) {
+            fgCircle.style.stroke = '#ef4444';
+            timerNum.style.color = '#ef4444';
+          } else if (state.auroraTimeoutSeconds < 6.0) {
+            fgCircle.style.stroke = '#f59e0b';
+            timerNum.style.color = '#fbbf24';
+          } else {
+            fgCircle.style.stroke = '#38bdf8';
+            timerNum.style.color = '#ffffff';
+          }
+        }
+      }, 100);
+    }
+
+    function renderAuroraModal() {
+      const container = document.getElementById('perks-grid');
+      container.innerHTML = '';
+
+      state.currentAuroraCards.forEach((perk, index) => {
+        const card = document.createElement('div');
+        card.className = `perk-card rarity-${perk.rarity}`;
+        card.innerHTML = `
+          <div class="perk-badge badge-${perk.rarity}">${perk.rarity}</div>
+          <div class="perk-icon">${perk.icon}</div>
+          <div class="perk-title">${perk.name}</div>
+          <div class="perk-desc">${perk.desc}</div>
+          <button class="perk-select-btn">CLAIM BLESSING</button>
+        `;
+
+        card.addEventListener('click', () => {
+          selectAuroraPerk(index, false);
+        });
+
+        container.appendChild(card);
+      });
+    }
+
+    function selectAuroraPerk(cardIndex, isPenalty = false) {
+      if (!state.isAuroraModalOpen) return;
+      if (state.auroraTimerInterval) {
+        clearInterval(state.auroraTimerInterval);
+        state.auroraTimerInterval = null;
+      }
+
+      const chosenPerk = state.currentAuroraCards[cardIndex];
+      if (chosenPerk) {
+        state.addCollectedPerk(chosenPerk);
+        chosenPerk.grant(state);
+        dailyManager.track('aurora', 1);
+        state.totalAuroraBlessingsClaimed = (state.totalAuroraBlessingsClaimed || 0) + 1;
+        checkAchievements();
+        state.save();
+      }
+
+      state.isAuroraModalOpen = false;
+      document.getElementById('aurora-modal').classList.remove('open');
+
+      if (isPenalty) {
+        sound.playBuzzer();
+        showToast(`🚨 TIMEOUT PENALTY! Lowest tier chosen: "${chosenPerk.name}"`);
+      } else {
+        sound.playLevelUp();
+        showToast(`✨ Aurora Boon Granted: "${chosenPerk.name}"!`);
+      }
+
+      updateSheetContent();
+    }
+
+    function executeWorstChoicePenalty() {
+      if (!state.isAuroraModalOpen) return;
+
+      let lowestTier = 999;
+      let worstIndex = 0;
+
+      state.currentAuroraCards.forEach((card, idx) => {
+        if (card.tier < lowestTier) {
+          lowestTier = card.tier;
+          worstIndex = idx;
+        }
+      });
+
+      selectAuroraPerk(worstIndex, true);
+    }
+
+    // --- TOAST NOTIFICATION ---
+    let toastTimeout = null;
+    function showToast(text, icon = '✨') {
+      const banner = document.getElementById('toast-banner');
+      document.getElementById('toast-icon').textContent = icon;
+      document.getElementById('toast-text').textContent = text;
+      banner.classList.add('show');
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        banner.classList.remove('show');
+      }, 2800);
+    }
+
+    // --- OFFLINE PROGRESS MODAL ---
+    function showOfflineModal(amount) {
+      const modal = document.getElementById('offline-modal');
+      document.getElementById('offline-fish-val').textContent = `+${formatNumber(amount)} 🐟`;
+      modal.style.display = 'flex';
+
+      document.getElementById('offline-claim-btn').onclick = () => {
+        state.addFish(amount);
+        sound.playLevelUp();
+        modal.style.display = 'none';
+      };
+    }
+
+    // --- BOTTOM SHEET & UI TABS ---
+
+    function setupUIEvents() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.currentTab = btn.getAttribute('data-tab');
+          updateSheetContent();
+        });
+      });
+
+      const multBtn = document.getElementById('buy-mult-toggle');
+      multBtn.addEventListener('click', () => {
+        if (state.buyMultiplier === 1) state.buyMultiplier = 10;
+        else if (state.buyMultiplier === 10) state.buyMultiplier = 'MAX';
+        else state.buyMultiplier = 1;
+        multBtn.textContent = state.buyMultiplier === 'MAX' ? 'MAX' : `${state.buyMultiplier}x`;
+        updateSheetContent();
+      });
+
+      const sheet = document.getElementById('bottom-sheet');
+      const pill = document.getElementById('collapsed-pill');
+      const collapseBtn = document.getElementById('collapse-drawer-btn');
+
+      collapseBtn.addEventListener('click', () => {
+        sheet.classList.add('collapsed');
+        pill.classList.remove('hidden');
+      });
+
+      pill.addEventListener('click', () => {
+        sheet.classList.remove('collapsed');
+        pill.classList.add('hidden');
+        updateSheetContent();
+      });
+
+      const audioBtn = document.getElementById('audio-toggle-btn');
+      audioBtn.addEventListener('click', () => {
+        sound.init();
+        sound.muted = !sound.muted;
+        updateAudioButton();
+        showToast(sound.muted ? '🔇 Sound Muted' : '🔊 Sound Enabled');
+      });
+
+      document.getElementById('info-btn').addEventListener('click', () => {
+        showToast('🐧 Tap penguins & ice to gather fish! Complete daily tasks & review stats.');
+      });
+    }
+
+    function updateAudioButton() {
+      document.getElementById('audio-toggle-btn').textContent = sound.muted ? '🔇' : '🔊';
+    }
+
+    function updateSheetContent() {
+      const container = document.getElementById('sheet-content-container');
+      container.innerHTML = '';
+
+      if (state.currentTab === 'penguins') {
+        PENGUIN_SPECIES.forEach(sp => {
+          const pData = state.penguins[sp.id] || { count: 0, level: 1 };
+          const card = document.createElement('div');
+          
+          let qty = typeof state.buyMultiplier === 'number' ? state.buyMultiplier : 1;
+          let cost = 0;
+          let affordableQty = 0;
+
+          if (state.buyMultiplier === 'MAX') {
+            let tempFish = state.fish;
+            let tempCount = pData.count;
+            while (true) {
+              let nextCost = state.getPenguinCost(sp.id, tempCount);
+              if (tempFish >= nextCost && affordableQty < 100) {
+                tempFish -= nextCost;
+                cost += nextCost;
+                tempCount++;
+                affordableQty++;
+              } else {
+                break;
+              }
+            }
+            if (affordableQty === 0) {
+              cost = state.getPenguinCost(sp.id, pData.count);
+              qty = 1;
+            } else {
+              qty = affordableQty;
+            }
+          } else {
+            for (let i = 0; i < qty; i++) {
+              cost += state.getPenguinCost(sp.id, pData.count + i);
+            }
+          }
+
+          const canAfford = state.fish >= cost;
+          card.className = `roster-card ${canAfford ? 'can-afford' : ''}`;
+
+          card.innerHTML = `
+            <div class="penguin-avatar">
+              ${sp.avatar}
+              <span class="penguin-count-badge">${pData.count}</span>
+            </div>
+            <div class="roster-info">
+              <div class="roster-name-row">
+                <span class="roster-name">${sp.name}</span>
+                <span class="roster-level">Lvl ${pData.level}</span>
+              </div>
+              <div class="roster-stat">+${sp.baseYield * pData.level} fish / dive</div>
+              <div class="roster-desc">${sp.desc}</div>
+            </div>
+            <button class="buy-btn" ${canAfford ? '' : 'disabled'}>
+              <span class="buy-btn-label">RECRUIT +${qty}</span>
+              <span class="buy-btn-cost">🐟 ${formatNumber(cost)}</span>
+            </button>
+          `;
+
+          const btn = card.querySelector('.buy-btn');
+          btn.addEventListener('click', () => {
+            if (state.fish >= cost) {
+              state.fish -= cost;
+              pData.count += qty;
+              pData.level = Math.floor(1 + pData.count / 5);
+              sound.playChirp();
+              checkAchievements();
+              state.save();
+              syncActivePenguins();
+              updateSheetContent();
+            }
+          });
+
+          container.appendChild(card);
+        });
+
+      } else if (state.currentTab === 'tech') {
+        GLACIER_TECH.forEach(tech => {
+          const currentLvl = state.tech[tech.id] || 0;
+          const cost = state.getTechCost(tech.id, currentLvl);
+          const canAfford = state.fish >= cost;
+
+          const card = document.createElement('div');
+          card.className = `roster-card ${canAfford ? 'can-afford' : ''}`;
+
+          card.innerHTML = `
+            <div class="penguin-avatar">${tech.icon}</div>
+            <div class="roster-info">
+              <div class="roster-name-row">
+                <span class="roster-name">${tech.name}</span>
+                <span class="roster-level">Tier ${currentLvl}</span>
+              </div>
+              <div class="roster-desc">${tech.desc}</div>
+            </div>
+            <button class="buy-btn" ${canAfford ? '' : 'disabled'}>
+              <span class="buy-btn-label">RESEARCH</span>
+              <span class="buy-btn-cost">🐟 ${formatNumber(cost)}</span>
+            </button>
+          `;
+
+          const btn = card.querySelector('.buy-btn');
+          btn.addEventListener('click', () => {
+            if (state.fish >= cost) {
+              state.fish -= cost;
+              state.tech[tech.id] = currentLvl + 1;
+              sound.playLevelUp();
+              showToast(`🔬 Researched ${tech.name} Tier ${currentLvl + 1}!`);
+              checkAchievements();
+              state.save();
+              updateSheetContent();
+            }
+          });
+
+          container.appendChild(card);
+        });
+
+      } else if (state.currentTab === 'daily') {
+        dailyManager.checkDailyReset();
+
+        const completedCount = dailyManager.objectives.filter(o => o.claimed).length;
+        const totalCount = dailyManager.objectives.length;
+
+        const banner = document.createElement('div');
+        banner.className = 'daily-summary-banner';
+        banner.innerHTML = `
+          <div class="daily-title-box">
+            <div class="daily-title-text">Colony Daily Tasks</div>
+            <div class="daily-reset-time">Refreshes daily with fresh Antarctic rewards!</div>
+          </div>
+          <div class="daily-completion-badge">${completedCount} / ${totalCount} Done</div>
+        `;
+        container.appendChild(banner);
+
+        dailyManager.objectives.forEach(obj => {
+          const card = document.createElement('div');
+          const isDone = obj.claimed;
+          const isReady = !obj.claimed && obj.progress >= obj.target;
+          card.className = `roster-card ${isReady ? 'completed-objective' : ''}`;
+
+          const progressPct = Math.min(100, (obj.progress / obj.target) * 100);
+
+          let buttonHtml = '';
+          if (isDone) {
+            buttonHtml = `<button class="btn-claimed" disabled>Claimed ✓</button>`;
+          } else if (isReady) {
+            buttonHtml = `<button class="claim-action-btn">CLAIM 🎁</button>`;
+          } else {
+            buttonHtml = `<button class="btn-in-progress" disabled>In Progress</button>`;
+          }
+
+          card.innerHTML = `
+            <div class="penguin-avatar">${obj.icon}</div>
+            <div class="roster-info">
+              <div class="roster-name-row">
+                <span class="roster-name">${obj.title}</span>
+                <span class="roster-level">${obj.rewardLabel}</span>
+              </div>
+              <div class="roster-desc">${obj.desc}</div>
+              <div class="objective-progress-box">
+                <div class="objective-progress-labels">
+                  <span>Progress</span>
+                  <span>${formatNumber(obj.progress)} / ${formatNumber(obj.target)}</span>
+                </div>
+                <div class="progress-bar-bg" style="height: 5px;">
+                  <div class="progress-bar-fill" style="width: ${progressPct}%; background: ${isReady ? '#34d399' : 'linear-gradient(90deg, #38bdf8, #818cf8)'}"></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              ${buttonHtml}
+            </div>
+          `;
+
+          if (isReady) {
+            const claimBtn = card.querySelector('.claim-action-btn');
+            claimBtn.addEventListener('click', () => {
+              dailyManager.claim(obj.id);
+            });
+          }
+
+          container.appendChild(card);
+        });
+
+      } else if (state.currentTab === 'prestige') {
+        const pendingShards = Math.floor(Math.cbrt(state.lifetimeFish / 50000));
+        const currentMultiplierPct = Math.round(state.prestigeShards * 5);
+        const nextMultiplierPct = Math.round(pendingShards * 5);
+        const preservedCount = (state.collectedPerks || []).filter(p => p.rarity === 'legendary').length;
+
+        const prestigeBox = document.createElement('div');
+        prestigeBox.className = 'prestige-box';
+        prestigeBox.innerHTML = `
+          <div class="prestige-shard-icon">💎</div>
+          <div class="prestige-title">Glacial Rebirth</div>
+          <p style="font-size: 12px; color: #cbd5e1; line-height: 1.4;">
+            Shatter the current ice shelf into celestial Frost Essence. Reset your fish, colony recruits, and research to gain permanent cosmic production multipliers!
+          </p>
+          <div style="background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.35); border-radius: 12px; padding: 10px; text-align: left; font-size: 11px; line-height: 1.4; color: #fde68a;">
+            🛡️ <strong>Perk Preservation Rule:</strong>
+            All perks reset upon Rebirth <strong>except Legendary perks</strong>! Legendary perks remain active and retained across all prestige cycles.
+            <div style="margin-top: 4px; font-weight: 700; color: #ffffff;">
+              Currently Preserved: ${preservedCount} Legendary Perk${preservedCount === 1 ? '' : 's'}
+            </div>
+          </div>
+          <div style="background: rgba(0,0,0,0.25); border-radius: 12px; padding: 10px;">
+            <div style="font-size: 11px; color: #94a3b8;">Current Frost Essence</div>
+            <div class="prestige-stat-val">${state.prestigeShards} 💎 (+${currentMultiplierPct}% DPS)</div>
+          </div>
+          <div style="background: rgba(0,0,0,0.25); border-radius: 12px; padding: 10px;">
+            <div style="font-size: 11px; color: #94a3b8;">New Essence Gained on Rebirth</div>
+            <div style="font-size: 20px; font-weight: 800; color: #a855f7;">+${pendingShards} 💎 (+${nextMultiplierPct}% Boost)</div>
+          </div>
+          <button class="prestige-btn" ${pendingShards > 0 ? '' : 'disabled'} id="rebirth-action-btn">
+            ${pendingShards > 0 ? 'REBIRTH WITH ESSENCE' : 'EARN MORE LIFETIME FISH'}
+          </button>
+        `;
+
+        const btn = prestigeBox.querySelector('#rebirth-action-btn');
+        if (pendingShards > 0) {
+          btn.addEventListener('click', () => {
+            const preservedCount = (state.collectedPerks || []).filter(p => p.rarity === 'legendary').length;
+            const promptMsg = preservedCount > 0
+              ? `Are you sure you want to perform Glacial Rebirth and claim ${pendingShards} Frost Essence?\n\n${preservedCount} Legendary perk(s) will be permanently preserved. All other perks will reset.`
+              : `Are you sure you want to perform Glacial Rebirth and claim ${pendingShards} Frost Essence?\n\n(All non-legendary perks will reset.)`;
+
+            if (confirm(promptMsg)) {
+              state.prestigeShards += pendingShards;
+              state.totalRebirths = (state.totalRebirths || 0) + 1;
+              state.fish = 0;
+              state.glacierLevel = 1;
+              state.levelFish = 0;
+              state.penguins = {
+                adelie: { count: 1, level: 1 },
+                gentoo: { count: 0, level: 1 },
+                chinstrap: { count: 0, level: 1 },
+                emperor: { count: 0, level: 1 },
+                cyber: { count: 0, level: 1 }
+              };
+              Object.keys(state.tech).forEach(k => state.tech[k] = 0);
+
+              // PRESTIGE RULE: Reset all perks EXCEPT legendary perks!
+              const prevPerksCount = (state.collectedPerks || []).length;
+              state.collectedPerks = (state.collectedPerks || []).filter(p => p.rarity === 'legendary');
+              const keptLegendaryCount = state.collectedPerks.length;
+              const resetPerksCount = prevPerksCount - keptLegendaryCount;
+
+              // Re-calculate multipliers so only surviving legendary perks apply!
+              state.recalculatePerkMultipliers();
+
+              // Clear transient/temporary timers
+              state.frenzyTimer = 0;
+              state.supernovaTimer = 0;
+              state.slushDebuffTimer = 0;
+              state.goldenFishTimer = 0;
+              state.tempSpeedBoost = 0;
+
+              sound.playLevelUp();
+              if (keptLegendaryCount > 0) {
+                showToast(`🌟 Glacial Rebirth! ${keptLegendaryCount} Legendary perk${keptLegendaryCount > 1 ? 's' : ''} preserved; ${resetPerksCount} non-legendary perks reset.`);
+              } else {
+                showToast(`🌟 Glacial Rebirth complete! Non-legendary perks reset. Bonus multiplier now +${state.prestigeShards * 5}%!`);
+              }
+              checkAchievements();
+              state.save();
+              syncActivePenguins();
+              updateSheetContent();
+            }
+          });
+        }
+
+        container.appendChild(prestigeBox);
+
+      } else if (state.currentTab === 'stats') {
+        // STATISTICS TAB
+        const statsContainer = document.createElement('div');
+        statsContainer.className = 'stats-container';
+
+        const playtimeStr = formatPlaytime(Date.now() - state.gameStartTime);
+        const rankTitle = getColonyRank(state.lifetimeFish);
+
+        let totalPenguins = 0;
+        Object.keys(state.penguins).forEach(id => {
+          totalPenguins += state.penguins[id].count;
+        });
+
+        let totalTechLevels = 0;
+        Object.keys(state.tech).forEach(id => {
+          totalTechLevels += state.tech[id];
+        });
+
+        statsContainer.innerHTML = `
+          <!-- Hero Overview -->
+          <div class="stats-hero-card">
+            <div>
+              <div class="stats-hero-title">🏆 Empire Dossier</div>
+              <div class="stats-hero-rank">${rankTitle}</div>
+            </div>
+            <div class="stats-playtime-badge">
+              <div class="stats-playtime-label">Expedition Time</div>
+              <div class="stats-playtime-val">${playtimeStr}</div>
+            </div>
+          </div>
+
+          <!-- Highlight Progression Stats -->
+          <div class="stat-section-title">Core Progression</div>
+          <div class="stats-grid">
+            <div class="stat-card highlight">
+              <div class="stat-card-header">🐟 Lifetime Fish</div>
+              <div class="stat-card-val">${formatNumber(state.lifetimeFish)}</div>
+            </div>
+            <div class="stat-card purple-highlight">
+              <div class="stat-card-header">💎 Glacial Rebirths</div>
+              <div class="stat-card-val">${state.totalRebirths || 0}</div>
+            </div>
+            <div class="stat-card gold-highlight">
+              <div class="stat-card-header">✨ Aurora Blessings</div>
+              <div class="stat-card-val">${state.totalAuroraBlessingsClaimed || 0}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">⚡ Peak DPS</div>
+              <div class="stat-card-val">+${formatNumber(state.highestDPS || state.dps)}/s</div>
+            </div>
+          </div>
+
+          <!-- Colony Activity Stats -->
+          <div class="stat-section-title">Colony Activity</div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card-header">🐧 Total Colony Size</div>
+              <div class="stat-card-val">${totalPenguins}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">🧊 Glacier Shelf</div>
+              <div class="stat-card-val">Level ${state.glacierLevel}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">🤿 Dives Completed</div>
+              <div class="stat-card-val">${formatNumber(state.totalDives || 0)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">🛷 Belly Slides</div>
+              <div class="stat-card-val">${formatNumber(state.totalSlides || 0)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">👆 Manual Tap Cheers</div>
+              <div class="stat-card-val">${formatNumber(state.totalManualClicks || 0)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">🔬 Researched Tech</div>
+              <div class="stat-card-val">${totalTechLevels}</div>
+            </div>
+          </div>
+
+          <!-- Multiplier Breakdown -->
+          <div class="stat-section-title">Active Multipliers</div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card-header">💎 Frost Bonus</div>
+              <div class="stat-card-val" style="color: #c084fc;">+${Math.round(state.prestigeShards * 5)}%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">🧊 Glacier Level Bonus</div>
+              <div class="stat-card-val" style="color: #38bdf8;">+${(state.glacierLevel - 1) * 10}%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">🎣 Catch Multiplier</div>
+              <div class="stat-card-val" style="color: #34d399;">+${Math.round((state.perkCatchMult - 1) * 100)}%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">⚡ Waddle Speed</div>
+              <div class="stat-card-val" style="color: #fbbf24;">+${Math.round((state.perkWalkSpeedMult - 1) * 100)}%</div>
+            </div>
+          </div>
+        `;
+
+        // Collected Aurora Perks Section
+        const perksSection = document.createElement('div');
+        perksSection.style.display = 'flex';
+        perksSection.style.flexDirection = 'column';
+        perksSection.style.gap = '8px';
+
+        const collectedPerksList = state.collectedPerks || [];
+        const legendaryPerksCount = collectedPerksList.filter(p => p.rarity === 'legendary').reduce((acc, p) => acc + (p.count || 1), 0);
+
+        let perksHtml = `
+          <div class="stat-section-header-row">
+            <div>
+              <div class="stat-section-title" style="margin: 0;">✨ Aurora Perks (${collectedPerksList.length})</div>
+              <div class="stat-section-subtitle">🛡️ Legendary perks survive Rebirth; all others reset.</div>
+            </div>
+            <div class="achievements-pct-pill" style="color: ${legendaryPerksCount > 0 ? '#fbbf24' : '#38bdf8'}; border-color: ${legendaryPerksCount > 0 ? 'rgba(251,191,36,0.4)' : 'rgba(56,189,248,0.4)'}; background: ${legendaryPerksCount > 0 ? 'rgba(251,191,36,0.15)' : 'rgba(56,189,248,0.15)'};">
+              ${legendaryPerksCount} Legendary Preserved
+            </div>
+          </div>
+        `;
+
+        if (collectedPerksList.length === 0) {
+          perksHtml += `
+            <div class="empty-stats-card">
+              <div style="font-size: 26px; margin-bottom: 4px;">🌌</div>
+              <div style="font-size: 13px; font-weight: 700; color: #f1f5f9;">No Aurora Perks in Current Cycle</div>
+              <div style="font-size: 11px; color: #94a3b8; margin-top: 3px; max-width: 320px; line-height: 1.4;">
+                Aurora blessings appear every 45s. Claim perks to unlock powerful boosts! Legendary perks will be preserved upon Rebirth.
+              </div>
+            </div>
+          `;
+        } else {
+          perksHtml += `<div class="perks-stat-list">`;
+          collectedPerksList.forEach(perk => {
+            const isLeg = (perk.rarity === 'legendary');
+            perksHtml += `
+              <div class="perk-stat-item rarity-${perk.rarity}">
+                <div class="perk-stat-icon">${perk.icon}</div>
+                <div class="perk-stat-info">
+                  <div class="perk-stat-title-row">
+                    <span class="perk-stat-name">${perk.name}</span>
+                    <span class="perk-badge badge-${perk.rarity}">${perk.rarity}</span>
+                    ${perk.count > 1 ? `<span class="perk-stat-count">x${perk.count}</span>` : ''}
+                  </div>
+                  <div class="perk-stat-desc">${perk.desc}</div>
+                </div>
+                <div>
+                  ${isLeg 
+                    ? `<span class="perk-preservation-tag legendary-tag">🛡️ Preserved</span>` 
+                    : `<span class="perk-preservation-tag reset-tag">🔄 Resets</span>`
+                  }
+                </div>
+              </div>
+            `;
+          });
+          perksHtml += `</div>`;
+        }
+        perksSection.innerHTML = perksHtml;
+        statsContainer.appendChild(perksSection);
+
+        // Achievements Section
+        const achievementsSection = document.createElement('div');
+        achievementsSection.style.display = 'flex';
+        achievementsSection.style.flexDirection = 'column';
+        achievementsSection.style.gap = '8px';
+
+        const unlockedIds = state.unlockedAchievements || {};
+        const unlockedCount = ACHIEVEMENTS_LIST.filter(a => unlockedIds[a.id]).length;
+        const totalAchievements = ACHIEVEMENTS_LIST.length;
+        const completionPct = Math.round((unlockedCount / totalAchievements) * 100);
+
+        let achHtml = `
+          <div class="stat-section-header-row" style="margin-top: 8px;">
+            <div>
+              <div class="stat-section-title" style="margin: 0;">🏆 Colony Achievements (${unlockedCount} / ${totalAchievements})</div>
+              <div class="stat-section-subtitle">Unlock badges by expanding your glacial empire.</div>
+            </div>
+            <div class="achievements-pct-pill">${completionPct}% Complete</div>
+          </div>
+          <div class="progress-bar-bg" style="height: 6px; margin-bottom: 2px;">
+            <div class="progress-bar-fill" style="width: ${completionPct}%; background: linear-gradient(90deg, #fbbf24, #f59e0b);"></div>
+          </div>
+          <div class="achievements-list">
+        `;
+
+        ACHIEVEMENTS_LIST.forEach(ach => {
+          const isUnlocked = Boolean(unlockedIds[ach.id]);
+          const prog = ach.progress(state);
+          const progPct = Math.min(100, Math.round((prog.cur / prog.max) * 100));
+
+          if (isUnlocked) {
+            achHtml += `
+              <div class="achievement-card unlocked">
+                <div class="achievement-icon unlocked-icon">${ach.icon}</div>
+                <div class="achievement-info">
+                  <div class="achievement-title-row">
+                    <span class="achievement-name">${ach.title}</span>
+                    <span class="achievement-status-badge unlocked">UNLOCKED ✓</span>
+                  </div>
+                  <div class="achievement-desc">${ach.desc}</div>
+                </div>
+              </div>
+            `;
+          } else {
+            achHtml += `
+              <div class="achievement-card locked">
+                <div class="achievement-icon locked-icon">${ach.icon}</div>
+                <div class="achievement-info">
+                  <div class="achievement-title-row">
+                    <span class="achievement-name">${ach.title}</span>
+                    <span class="achievement-status-badge locked">🔒 LOCKED</span>
+                  </div>
+                  <div class="achievement-desc">${ach.desc}</div>
+                  <div class="achievement-progress-row">
+                    <div class="progress-bar-bg" style="height: 4px; flex: 1;">
+                      <div class="progress-bar-fill" style="width: ${progPct}%; background: #64748b;"></div>
+                    </div>
+                    <span class="achievement-prog-text">${formatNumber(prog.cur)} / ${formatNumber(prog.max)}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+        });
+
+        achHtml += `</div>`;
+        achievementsSection.innerHTML = achHtml;
+        statsContainer.appendChild(achievementsSection);
+
+        // Glacial Lore Chronicles Archive Section
+        const loreSection = document.createElement('div');
+        loreSection.style.display = 'flex';
+        loreSection.style.flexDirection = 'column';
+        loreSection.style.gap = '8px';
+
+        const unlockedLoreCount = GLACIAL_LORE_CHRONICLES.filter(entry => entry.check(state)).length;
+        const totalLoreCount = GLACIAL_LORE_CHRONICLES.length;
+
+        let loreHtml = `
+          <div class="stat-section-header-row" style="margin-top: 10px;">
+            <div>
+              <div class="stat-section-title" style="margin: 0;">📜 Glacial Lore Archive (${unlockedLoreCount} / ${totalLoreCount})</div>
+              <div class="stat-section-subtitle">Official records & chronicles of the Antarctic Expedition.</div>
+            </div>
+            <div class="achievements-pct-pill" style="color: #38bdf8; border-color: rgba(56,189,248,0.4); background: rgba(56,189,248,0.15);">
+              ${unlockedLoreCount === totalLoreCount ? 'All Chapters Unlocked' : `${unlockedLoreCount} Chapters Discovered`}
+            </div>
+          </div>
+          <div class="lore-stat-list">
+        `;
+
+        GLACIAL_LORE_CHRONICLES.forEach(entry => {
+          const isUnlocked = entry.check(state);
+          if (isUnlocked) {
+            loreHtml += `
+              <div class="lore-card unlocked">
+                <div class="lore-card-header">
+                  <div class="lore-icon-box">${entry.icon}</div>
+                  <div class="lore-meta">
+                    <div class="lore-title-row">
+                      <span class="lore-chapter-tag">${entry.chapter}</span>
+                      <span class="lore-lock-status unlocked">DISCOVERED ✓</span>
+                    </div>
+                    <div class="lore-title">${entry.title}</div>
+                    <div class="lore-date">${entry.date}</div>
+                  </div>
+                </div>
+                <div class="lore-excerpt">"${entry.text}"</div>
+              </div>
+            `;
+          } else {
+            loreHtml += `
+              <div class="lore-card locked">
+                <div class="lore-card-header">
+                  <div class="lore-icon-box">🔒</div>
+                  <div class="lore-meta">
+                    <div class="lore-title-row">
+                      <span class="lore-chapter-tag" style="color: #94a3b8;">${entry.chapter}</span>
+                      <span class="lore-lock-status locked">🔒 ENCRYPTED</span>
+                    </div>
+                    <div class="lore-title" style="color: #94a3b8;">${entry.title}</div>
+                    <div class="lore-req-hint">Requirement: ${entry.reqText}</div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+        });
+
+        loreHtml += `</div>`;
+        loreSection.innerHTML = loreHtml;
+        statsContainer.appendChild(loreSection);
+
+        container.appendChild(statsContainer);
+      }
+    }
+
+    function updateHUD() {
+      state.calculateDPS();
+
+      document.getElementById('fish-count').textContent = formatNumber(state.fish);
+      document.getElementById('dps-count').textContent = `+${formatNumber(state.dps)}/s`;
+
+      const req = state.getLevelReq();
+      const pct = Math.min(100, (state.levelFish / req) * 100);
+      document.getElementById('glacier-level').textContent = state.glacierLevel;
+      document.getElementById('level-req-text').textContent = `${formatNumber(state.levelFish)} / ${formatNumber(req)}`;
+      document.getElementById('glacier-level-fill').style.width = `${pct}%`;
+
+      document.getElementById('pill-dps').textContent = `${formatNumber(state.dps)}/s`;
+
+      let affordableCount = 0;
+      PENGUIN_SPECIES.forEach(sp => {
+        const cost = state.getPenguinCost(sp.id, state.penguins[sp.id].count);
+        if (state.fish >= cost) affordableCount++;
+      });
+      GLACIER_TECH.forEach(tech => {
+        const cost = state.getTechCost(tech.id, state.tech[tech.id]);
+        if (state.fish >= cost) affordableCount++;
+      });
+
+      const claimableCount = dailyManager.getClaimableCount();
+      const totalAlerts = affordableCount + claimableCount;
+
+      const badge = document.getElementById('pill-badge');
+      badge.textContent = totalAlerts;
+      badge.style.display = totalAlerts > 0 ? 'inline-block' : 'none';
+
+      const dailyDot = document.getElementById('daily-tab-dot');
+      if (dailyDot) {
+        dailyDot.style.display = claimableCount > 0 ? 'inline-block' : 'none';
+      }
+    }
+
+    let gameInitialized = false;
+    function init() {
+      if (gameInitialized) return;
+      gameInitialized = true;
+      resizeCanvas();
+      setupUIEvents();
+      try {
+        state.load();
+      } catch (e) {
+        console.warn('Init load fallback:', e);
+      }
+      syncActivePenguins();
+      checkAchievements();
+      updateSheetContent();
+      requestAnimationFrame(gameLoop);
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+    window.addEventListener('visibilitychange', () => {
+      if (document.hidden && typeof state !== 'undefined' && state.save) {
+        state.save();
+      }
+    });
+
+    window.addEventListener('pagehide', () => {
+      if (typeof state !== 'undefined' && state.save) {
+        state.save();
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (typeof state !== 'undefined' && state.save) {
+        state.save();
+      }
+    });
+
+    // Unlock Web Audio API on first iOS/Android touch interaction
+    window.addEventListener('touchstart', () => {
+      if (typeof sound !== 'undefined' && sound.init) {
+        sound.init();
+      }
+    }, { passive: true, once: true });
+
+    // Register Offline Service Worker when hosted over HTTPS or localhost (skipped on Android file:// WebView)
+    if (
+      'serviceWorker' in navigator &&
+      (window.location.protocol === 'https:' ||
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1')
+    ) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => {
+          console.warn('Service worker registration skipped:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

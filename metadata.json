@@ -1,0 +1,6 @@
+{
+  "name": "Penguin Glacial Empire",
+  "description": "At the southern end of the Earth lies the Eternal Ice Shelf, where ancient legends speak of a colony that harnessed the celestial Aurora Borealis. In Penguin Glacial Empire, lead a bustling expedition of polar birds: recruit nimble Adélie Scouts, speed-skating Gentoo racers, brave Chinstrap Abyssal Divers, regal Emperor Monarchs, and futuristic Cyber-Mecha Penguins. Build ice depots, harvest bountiful fish, unlock ancient Glacier Tech, claim celestial Aurora Blessings, and shatter the frozen frontier in Glacial Rebirth to harvest cosmic Frost Essence. Can you forge the greatest penguin civilization the polar ice has ever known?",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

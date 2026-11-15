@@ -67,6 +67,17 @@
       z-index: 1;
     }
 
+    #canvas-haptic-label {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: block;
+      cursor: pointer;
+      background: transparent;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
     canvas {
       width: 100%;
       height: 100%;
@@ -541,7 +552,8 @@
       transform: scale(0.95);
     }
 
-    .buy-btn:disabled {
+    .buy-btn:disabled,
+    .buy-btn.is-disabled {
       opacity: 0.45;
       filter: grayscale(0.8);
       cursor: not-allowed;
@@ -630,6 +642,10 @@
       border-radius: 12px;
       cursor: pointer;
       min-width: 82px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
       box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
       animation: pulseGlowGreen 2s infinite;
       transition: transform 0.15s;
@@ -1091,11 +1107,16 @@
       padding: 12px 20px;
       border-radius: 14px;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
       box-shadow: 0 4px 15px rgba(147, 51, 234, 0.4);
       transition: transform 0.15s;
     }
 
-    .prestige-btn:disabled {
+    .prestige-btn:disabled,
+    .prestige-btn.is-disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
@@ -1422,6 +1443,7 @@
     }
 
     .perk-select-btn {
+      display: block;
       width: 100%;
       background: rgba(255, 255, 255, 0.12);
       border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1430,6 +1452,7 @@
       font-weight: 700;
       padding: 6px 0;
       border-radius: 10px;
+      text-align: center;
     }
 
     /* TOAST BANNER */
@@ -1899,6 +1922,10 @@
       font-size: 11px;
       font-weight: 800;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
       transition: transform 0.12s, background 0.15s;
     }
 
@@ -1921,6 +1948,10 @@
       font-size: 11px;
       font-weight: 800;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
       align-self: flex-start;
     }
 
@@ -1934,6 +1965,7 @@
   <!-- Game Canvas Container -->
   <div id="canvas-container">
     <canvas id="gameCanvas"></canvas>
+    <label id="canvas-haptic-label" for="ios-haptic-switch" data-ios-haptic-label="1" aria-label="Tap glacier ice to catch fish"></label>
   </div>
 
   <!-- Top Status Bar (HUD) -->
@@ -1968,15 +2000,15 @@
     </div>
     <div class="sheet-header">
       <div class="sheet-tabs">
-        <button class="tab-btn active" data-tab="penguins">🐧 Penguins</button>
-        <button class="tab-btn" data-tab="tech">🔬 Tech</button>
-        <button class="tab-btn" data-tab="daily">🎯 Daily <span id="daily-tab-dot" class="tab-badge-dot" style="display:none;"></span></button>
-        <button class="tab-btn" data-tab="prestige">✨ Prestige</button>
-        <button class="tab-btn" data-tab="stats">📊 Stats</button>
-        <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
+        <label class="tab-btn active" role="button" tabindex="0" data-tab="penguins" data-ios-haptic-label="1">🐧 Penguins</label>
+        <label class="tab-btn" role="button" tabindex="0" data-tab="tech" data-ios-haptic-label="1">🔬 Tech</label>
+        <label class="tab-btn" role="button" tabindex="0" data-tab="daily" data-ios-haptic-label="1">🎯 Daily <span id="daily-tab-dot" class="tab-badge-dot" style="display:none;"></span></label>
+        <label class="tab-btn" role="button" tabindex="0" data-tab="prestige" data-ios-haptic-label="1">✨ Prestige</label>
+        <label class="tab-btn" role="button" tabindex="0" data-tab="stats" data-ios-haptic-label="1">📊 Stats</label>
+        <label class="tab-btn" role="button" tabindex="0" data-tab="settings" data-ios-haptic-label="1">⚙️ Settings</label>
       </div>
       <div class="header-actions" id="header-actions-box">
-        <button class="buy-mult-btn" id="buy-mult-toggle">1x</button>
+        <label class="buy-mult-btn" id="buy-mult-toggle" role="button" tabindex="0" data-ios-haptic-label="1">1x</label>
       </div>
     </div>
 
@@ -1987,14 +2019,14 @@
   </div>
 
   <!-- Floating Action Pill (Shown when Sheet is Collapsed) -->
-  <div id="collapsed-pill" class="hidden">
+  <label id="collapsed-pill" class="hidden" role="button" tabindex="0" data-ios-haptic-label="1">
     <div class="pill-dps-badge">
       <span>🐟</span>
       <span id="pill-dps">0/s</span>
     </div>
     <span class="pill-affordable-count" id="pill-badge">0</span>
     <span class="pill-expand-icon">▲ Open Menu</span>
-  </div>
+  </label>
 
   <!-- 1-Second Aurora Incoming Alert Overlay -->
   <div id="aurora-alert-overlay" aria-live="polite">
@@ -2057,14 +2089,14 @@
         <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Fish Banked (1/3 Idle Reduction)</div>
         <div style="font-size: 22px; font-weight: 900; color: var(--accent-gold);" id="offline-fish-val">+0 🐟</div>
       </div>
-      <button class="prestige-btn" id="offline-claim-btn" style="width: 100%;">Claim Catch</button>
+      <label class="prestige-btn" id="offline-claim-btn" role="button" tabindex="0" data-ios-haptic-label="1" style="width: 100%;">Claim Catch</label>
     </div>
   </div>
 
-  <!-- Hidden iOS Taptic Engine Switch Trigger (iOS 17.4+ Safari / PWA / WebKit) -->
-  <div id="ios-haptic-container" aria-hidden="true" style="position:fixed;top:0;left:-200px;width:1px;height:1px;opacity:0.001;overflow:hidden;pointer-events:none;margin:0;padding:0;">
-    <input type="checkbox" id="ios-haptic-switch" switch tabindex="-1" aria-hidden="true" style="width:1px;height:1px;margin:0;padding:0;" />
-    <label id="ios-haptic-label" for="ios-haptic-switch" aria-hidden="true" style="display:block;width:1px;height:1px;"></label>
+  <!-- In-Viewport iOS Taptic Engine Switch Trigger (iOS 17.4+ / 18.4+ / 26 Safari, PWA & WebKit) -->
+  <div id="ios-haptic-container" style="position:fixed;bottom:2px;right:2px;opacity:0.015;pointer-events:none;z-index:1;margin:0;padding:0;">
+    <input type="checkbox" id="ios-haptic-switch" switch tabindex="-1" style="margin:0;pointer-events:none;" />
+    <label id="ios-haptic-label" for="ios-haptic-switch" style="display:inline-block;min-width:2px;min-height:2px;"></label>
   </div>
 
   <script>
@@ -2083,6 +2115,8 @@
         this.hapticsEnabled = true;
         this.lastHapticAt = 0;
         this._inCanvasPointerDown = false;
+        this._nativeLabelTapActive = false;
+        this._nativeLabelTapResetTimer = null;
         this._pendingIosHaptic = null;
         this._lastUserGestureAt = 0;
         this.ambientReady = false;
@@ -2292,12 +2326,36 @@
         return !this.muted && this.masterVolume > 0 && Boolean(this.ctx) && this.ctx.state !== 'closed';
       }
 
+      isEnabledForGesture() {
+        return !this.muted && this.masterVolume > 0 && (!this.ctx || this.ctx.state !== 'closed');
+      }
+
       isIOSDevice() {
         if (typeof navigator === 'undefined') return false;
         const ua = navigator.userAgent || '';
         const platform = navigator.platform || '';
         const maxTouch = navigator.maxTouchPoints || 0;
         return /iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && maxTouch > 1);
+      }
+
+      syncIosHapticDomState() {
+        if (typeof document === 'undefined') return;
+        const shouldWire = this.isIOSDevice() && this.hapticsEnabled && this.isEnabledForGesture();
+        const switchEl = document.getElementById('ios-haptic-switch');
+        if (switchEl) {
+          switchEl.disabled = !shouldWire;
+        }
+        const labels = document.querySelectorAll('[data-ios-haptic-label]');
+        labels.forEach((el) => {
+          const wantsHaptic = shouldWire && el.getAttribute('data-ios-haptic-label') !== '0';
+          if (wantsHaptic) {
+            if (el.getAttribute('for') !== 'ios-haptic-switch') {
+              el.setAttribute('for', 'ios-haptic-switch');
+            }
+          } else if (el.hasAttribute('for')) {
+            el.removeAttribute('for');
+          }
+        });
       }
 
       markUserGesture() {
@@ -2311,9 +2369,8 @@
         return (performance.now() - this._lastUserGestureAt) < 350;
       }
 
-      fireIOSHaptic(kind = 'tap', allowNonGesture = false) {
+      postWKWebViewHaptic(kind = 'tap') {
         try {
-          // 1. Native iOS WKWebView message handlers if wrapped in an iOS shell
           const handlers = window.webkit && window.webkit.messageHandlers;
           if (handlers) {
             if (handlers.triggerHaptic && typeof handlers.triggerHaptic.postMessage === 'function') {
@@ -2329,8 +2386,26 @@
               return true;
             }
           }
+        } catch (e) {
+          // Ignore WKWebView haptic bridge errors
+        }
+        return false;
+      }
 
-          // 2. iOS Safari / PWA / Chrome-on-iOS WebKit Taptic Engine via <input type="checkbox" switch>
+      fireIOSHaptic(kind = 'tap', allowNonGesture = false) {
+        try {
+          // 1. Native iOS WKWebView message handlers if wrapped in an iOS shell
+          if (this.postWKWebViewHaptic(kind)) {
+            return true;
+          }
+
+          // 2. If physical finger tap landed directly on a wired <label for="ios-haptic-switch">,
+          // iOS WebKit natively toggles #ios-haptic-switch & triggers Taptic Engine on click (iOS 17.4–26+).
+          if (this._nativeLabelTapActive) {
+            return true;
+          }
+
+          // 3. Fallback for iOS 17.4–18.3 programmatic label click when triggered from non-label controls
           if (!allowNonGesture && !this.hasRecentUserGesture()) {
             return false;
           }
@@ -2373,8 +2448,15 @@
 
           // 2. iOS (Safari, iOS PWA, WebKit browsers, WKWebView)
           if (this.isIOSDevice()) {
+            if (this.postWKWebViewHaptic(kind)) {
+              return true;
+            }
+            if (this._nativeLabelTapActive) {
+              // Handled natively by WebKit on <label for="ios-haptic-switch"> click (works on iOS 18.4+ / 26+)
+              return true;
+            }
             if (this._inCanvasPointerDown) {
-              // On iOS WebKit, <label for="switch">.click() is guaranteed on touchend/pointerup/click
+              // Fallback if canvas was tapped directly without a wired label target
               this._pendingIosHaptic = kind;
               return true;
             }
@@ -3749,6 +3831,7 @@
             if (typeof data.ambientVolume === 'number') sound.ambientVolume = Math.max(0, Math.min(1, data.ambientVolume));
             if (typeof data.hapticsEnabled === 'boolean') sound.hapticsEnabled = data.hapticsEnabled;
             sound.syncWeatherAmbience(true);
+            sound.syncIosHapticDomState();
 
             this.totalRebirths = data.totalRebirths || 0;
             this.totalEssenceEarned = (typeof data.totalEssenceEarned === 'number')
@@ -6133,14 +6216,70 @@
     }
 
     ['touchstart', 'pointerdown', 'touchend', 'pointerup', 'click'].forEach(evtName => {
-      window.addEventListener(evtName, () => {
-        if (typeof sound !== 'undefined' && sound.markUserGesture) {
-          sound.markUserGesture();
+      window.addEventListener(evtName, (e) => {
+        if (typeof sound !== 'undefined') {
+          if (sound.markUserGesture) {
+            sound.markUserGesture();
+          }
+          if (evtName === 'touchstart' || evtName === 'pointerdown') {
+            const labelTarget = e.target && typeof e.target.closest === 'function'
+              ? e.target.closest('label[for="ios-haptic-switch"]')
+              : null;
+            sound._nativeLabelTapActive = Boolean(labelTarget);
+            if (sound._nativeLabelTapResetTimer) {
+              clearTimeout(sound._nativeLabelTapResetTimer);
+              sound._nativeLabelTapResetTimer = null;
+            }
+            if (sound._nativeLabelTapActive) {
+              sound._nativeLabelTapResetTimer = setTimeout(() => {
+                sound._nativeLabelTapActive = false;
+                sound._nativeLabelTapResetTimer = null;
+              }, 600);
+            }
+          }
         }
       }, { capture: true, passive: true });
     });
 
-    canvas.addEventListener('pointerdown', (e) => {
+    window.addEventListener('click', () => {
+      if (typeof sound !== 'undefined') {
+        setTimeout(() => {
+          sound._nativeLabelTapActive = false;
+          if (sound._nativeLabelTapResetTimer) {
+            clearTimeout(sound._nativeLabelTapResetTimer);
+            sound._nativeLabelTapResetTimer = null;
+          }
+        }, 0);
+      }
+    }, { passive: true });
+
+    window.addEventListener('pointercancel', () => {
+      if (typeof sound !== 'undefined') {
+        sound._nativeLabelTapActive = false;
+        sound._pendingIosHaptic = null;
+        if (sound._nativeLabelTapResetTimer) {
+          clearTimeout(sound._nativeLabelTapResetTimer);
+          sound._nativeLabelTapResetTimer = null;
+        }
+      }
+    }, { passive: true });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const target = e.target;
+      if (target && target.tagName === 'LABEL' && target.getAttribute('role') === 'button') {
+        if (target.getAttribute('aria-disabled') === 'true') return;
+        e.preventDefault();
+        target.click();
+      }
+    });
+
+    const canvasContainer = document.getElementById('canvas-container');
+    const canvasHapticLabel = document.getElementById('canvas-haptic-label');
+    const tapSurface = canvasContainer || canvas;
+
+    tapSurface.addEventListener('pointerdown', (e) => {
+      if (canvasContainer && e.target !== canvas && e.target !== canvasHapticLabel) return;
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -6151,15 +6290,16 @@
       } finally {
         sound._inCanvasPointerDown = false;
       }
-    });
+    }, { passive: true });
 
     ['touchend', 'pointerup', 'click'].forEach(evtName => {
-      canvas.addEventListener(evtName, () => {
+      tapSurface.addEventListener(evtName, () => {
         sound.flushPendingIosHaptic();
       }, { passive: true });
     });
-    canvas.addEventListener('pointercancel', () => {
+    tapSurface.addEventListener('pointercancel', () => {
       sound._pendingIosHaptic = null;
+      sound._nativeLabelTapActive = false;
     }, { passive: true });
 
     // --- AURORA BLESSING RNG EVENT & FORCED TIMEOUT WORST-CHOICE PENALTY ---
@@ -6465,14 +6605,17 @@
       container.innerHTML = '';
 
       state.currentAuroraCards.forEach((perk, index) => {
-        const card = document.createElement('div');
+        const card = document.createElement('label');
         card.className = `perk-card rarity-${perk.rarity}`;
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('data-ios-haptic-label', '1');
         card.innerHTML = `
           <div class="perk-badge badge-${perk.rarity}">${perk.rarity}</div>
           <div class="perk-icon">${perk.icon}</div>
           <div class="perk-title">${perk.name}</div>
           <div class="perk-desc">${perk.desc}</div>
-          <button class="perk-select-btn">CLAIM BLESSING</button>
+          <span class="perk-select-btn">CLAIM BLESSING</span>
         `;
 
         card.addEventListener('click', () => {
@@ -6481,6 +6624,7 @@
 
         container.appendChild(card);
       });
+      sound.syncIosHapticDomState();
     }
 
     function selectAuroraPerk(cardIndex, isPenalty = false) {
@@ -6553,6 +6697,7 @@
       const modal = document.getElementById('offline-modal');
       document.getElementById('offline-fish-val').textContent = `+${formatNumber(pendingOfflineFish)} 🐟`;
       modal.style.display = 'flex';
+      sound.syncIosHapticDomState();
 
       document.getElementById('offline-claim-btn').onclick = () => {
         sound.init();
@@ -6762,10 +6907,10 @@
                 ${squadTraitsHtml ? `<span class="trait-squad-summary">Squad: ${squadTraitsHtml}</span>` : ''}
               </div>
             </div>
-            <button class="buy-btn" ${canAfford ? '' : 'disabled'}>
+            <label class="buy-btn ${canAfford ? '' : 'is-disabled'}" role="button" tabindex="${canAfford ? '0' : '-1'}" aria-disabled="${canAfford ? 'false' : 'true'}" data-ios-haptic-label="${canAfford ? '1' : '0'}">
               <span class="buy-btn-label">RECRUIT +${qty}</span>
               <span class="buy-btn-cost">🐟 ${formatNumber(cost)}</span>
-            </button>
+            </label>
           `;
 
           const btn = card.querySelector('.buy-btn');
@@ -6820,10 +6965,10 @@
               </div>
               <div class="roster-desc">${tech.desc}</div>
             </div>
-            <button class="buy-btn" ${canAfford ? '' : 'disabled'}>
+            <label class="buy-btn ${canAfford ? '' : 'is-disabled'}" role="button" tabindex="${canAfford ? '0' : '-1'}" aria-disabled="${canAfford ? 'false' : 'true'}" data-ios-haptic-label="${canAfford ? '1' : '0'}">
               <span class="buy-btn-label">RESEARCH</span>
               <span class="buy-btn-cost">🐟 ${formatNumber(cost)}</span>
-            </button>
+            </label>
           `;
 
           const btn = card.querySelector('.buy-btn');
@@ -6873,7 +7018,7 @@
           if (isDone) {
             buttonHtml = `<button class="btn-claimed" disabled>Claimed ✓</button>`;
           } else if (isReady) {
-            buttonHtml = `<button class="claim-action-btn">CLAIM 🎁</button>`;
+            buttonHtml = `<label class="claim-action-btn" role="button" tabindex="0" data-ios-haptic-label="1">CLAIM 🎁</label>`;
           } else {
             buttonHtml = `<button class="btn-in-progress" disabled>In Progress</button>`;
           }
@@ -6943,9 +7088,9 @@
             <div style="font-size: 20px; font-weight: 800; color: #a855f7;">+${pendingShards} 💎 (+${nextMultiplierPct}% Boost)</div>
             <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;">Run Fish: ${formatNumber(state.runFish || 0)} • Next +1 💎 at ${formatNumber(nextShardThreshold)}</div>
           </div>
-          <button class="prestige-btn" ${pendingShards > 0 ? '' : 'disabled'} id="rebirth-action-btn">
+          <label class="prestige-btn ${pendingShards > 0 ? '' : 'is-disabled'}" role="button" tabindex="${pendingShards > 0 ? '0' : '-1'}" aria-disabled="${pendingShards > 0 ? 'false' : 'true'}" data-ios-haptic-label="${pendingShards > 0 ? '1' : '0'}" id="rebirth-action-btn">
             ${pendingShards > 0 ? 'REBIRTH WITH ESSENCE' : 'EARN MORE RUN FISH'}
-          </button>
+          </label>
         `;
 
         const btn = prestigeBox.querySelector('#rebirth-action-btn');
@@ -7423,9 +7568,9 @@
                 <div class="settings-label">Sound Engine</div>
                 <div class="settings-desc">Enable or mute all game audio and weather ambience</div>
               </div>
-              <button id="settings-mute-btn" class="toggle-pill-btn ${sound.muted ? 'off' : ''}">
+              <label id="settings-mute-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="toggle-pill-btn ${sound.muted ? 'off' : ''}">
                 ${sound.muted ? '🔇 Muted' : '🔊 Active'}
-              </button>
+              </label>
             </div>
 
             <div class="settings-slider-group">
@@ -7461,14 +7606,14 @@
                 <div class="settings-label">Vibration Feedback</div>
                 <div class="settings-desc">Tactile haptics on iOS &amp; Android taps &amp; catches (requires active Sound Engine)</div>
               </div>
-              <button id="settings-haptics-btn" class="toggle-pill-btn ${sound.hapticsEnabled ? '' : 'off'}">
+              <label id="settings-haptics-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="toggle-pill-btn ${sound.hapticsEnabled ? '' : 'off'}">
                 ${sound.hapticsEnabled ? '📳 On' : '📴 Off'}
-              </button>
+              </label>
             </div>
 
-            <button id="settings-test-haptic-btn" class="settings-test-btn">
+            <label id="settings-test-haptic-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="settings-test-btn">
               ✨ Test Sound &amp; Haptic Pulse
-            </button>
+            </label>
           </div>
         `;
 
@@ -7479,6 +7624,7 @@
             sound.muted = !sound.muted;
             updateAudioButton();
             sound.syncWeatherAmbience(true);
+            sound.syncIosHapticDomState();
             state.save();
             showToast(sound.muted ? '🔇 Sound Muted' : '🔊 Sound Enabled');
             updateSheetContent();
@@ -7496,6 +7642,7 @@
             if (valEl) valEl.textContent = `${pct}%`;
             if (syncAmb) sound.syncWeatherAmbience(true);
             else sound.applyVolumes(false);
+            if (prop === 'masterVolume') sound.syncIosHapticDomState();
           });
           slider.addEventListener('change', () => {
             state.save();
@@ -7511,6 +7658,7 @@
           hapticsBtn.addEventListener('click', () => {
             sound.init();
             sound.hapticsEnabled = !sound.hapticsEnabled;
+            sound.syncIosHapticDomState();
             state.save();
             if (sound.hapticsEnabled) {
               sound.triggerHaptic('penguin_tap');
@@ -7538,6 +7686,8 @@
 
         container.appendChild(settingsWrap);
       }
+
+      sound.syncIosHapticDomState();
     }
 
     function updateHUD() {

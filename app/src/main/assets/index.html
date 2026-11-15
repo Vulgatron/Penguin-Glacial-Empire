@@ -2049,6 +2049,12 @@
     </div>
   </div>
 
+  <!-- Hidden iOS Taptic Engine Switch Trigger (iOS 17.4+ Safari / PWA / WebKit) -->
+  <div id="ios-haptic-container" aria-hidden="true" style="position:fixed;top:0;left:-200px;width:1px;height:1px;opacity:0.001;overflow:hidden;pointer-events:none;margin:0;padding:0;">
+    <input type="checkbox" id="ios-haptic-switch" switch tabindex="-1" aria-hidden="true" style="width:1px;height:1px;margin:0;padding:0;" />
+    <label id="ios-haptic-label" for="ios-haptic-switch" aria-hidden="true" style="display:block;width:1px;height:1px;"></label>
+  </div>
+
   <script>
     /* ==========================================================================
        PENGUIN GLACIAL EMPIRE - ENGINE & GAME LOGIC
@@ -2064,6 +2070,9 @@
         this.ambientVolume = 1.0;
         this.hapticsEnabled = true;
         this.lastHapticAt = 0;
+        this._inCanvasPointerDown = false;
+        this._pendingIosHaptic = null;
+        this._lastUserGestureAt = 0;
         this.ambientReady = false;
         this.ambientWeatherId = 'clear';
         this.isBackgrounded = false;
@@ -2271,15 +2280,97 @@
         return !this.muted && this.masterVolume > 0 && Boolean(this.ctx) && this.ctx.state !== 'closed';
       }
 
+      isIOSDevice() {
+        if (typeof navigator === 'undefined') return false;
+        const ua = navigator.userAgent || '';
+        const platform = navigator.platform || '';
+        const maxTouch = navigator.maxTouchPoints || 0;
+        return /iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && maxTouch > 1);
+      }
+
+      markUserGesture() {
+        this._lastUserGestureAt = performance.now();
+      }
+
+      hasRecentUserGesture() {
+        if (typeof navigator !== 'undefined' && navigator.userActivation && navigator.userActivation.isActive) {
+          return true;
+        }
+        return (performance.now() - this._lastUserGestureAt) < 350;
+      }
+
+      fireIOSHaptic(kind = 'tap', allowNonGesture = false) {
+        try {
+          // 1. Native iOS WKWebView message handlers if wrapped in an iOS shell
+          const handlers = window.webkit && window.webkit.messageHandlers;
+          if (handlers) {
+            if (handlers.triggerHaptic && typeof handlers.triggerHaptic.postMessage === 'function') {
+              handlers.triggerHaptic.postMessage(kind);
+              return true;
+            }
+            if (handlers.hapticFeedback && typeof handlers.hapticFeedback.postMessage === 'function') {
+              handlers.hapticFeedback.postMessage({ type: kind });
+              return true;
+            }
+            if (handlers.haptic && typeof handlers.haptic.postMessage === 'function') {
+              handlers.haptic.postMessage(kind);
+              return true;
+            }
+          }
+
+          // 2. iOS Safari / PWA / Chrome-on-iOS WebKit Taptic Engine via <input type="checkbox" switch>
+          if (!allowNonGesture && !this.hasRecentUserGesture()) {
+            return false;
+          }
+          const labelEl = document.getElementById('ios-haptic-label');
+          if (labelEl && typeof labelEl.click === 'function') {
+            labelEl.click();
+            return true;
+          }
+          const switchEl = document.getElementById('ios-haptic-switch');
+          if (switchEl && typeof switchEl.click === 'function') {
+            switchEl.click();
+            return true;
+          }
+        } catch (e) {
+          // Ignore iOS haptic bridge errors
+        }
+        return false;
+      }
+
+      flushPendingIosHaptic() {
+        const kind = this._pendingIosHaptic;
+        if (!kind) return false;
+        this._pendingIosHaptic = null;
+        if (!this.hapticsEnabled || !this.isActive()) return false;
+        this.markUserGesture();
+        return this.fireIOSHaptic(kind, true);
+      }
+
       triggerHaptic(kind = 'tap', minGapMs = 0) {
         if (!this.hapticsEnabled || !this.isActive()) return false;
         const now = performance.now();
         if (minGapMs > 0 && (now - this.lastHapticAt) < minGapMs) return false;
         this.lastHapticAt = now;
+
         try {
+          // 1. Native Android APK WebView Vibrator API
           if (window.AndroidBridge && typeof window.AndroidBridge.triggerHaptic === 'function') {
             return Boolean(window.AndroidBridge.triggerHaptic(kind));
-          } else if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          }
+
+          // 2. iOS (Safari, iOS PWA, WebKit browsers, WKWebView)
+          if (this.isIOSDevice()) {
+            if (this._inCanvasPointerDown) {
+              // On iOS WebKit, <label for="switch">.click() is guaranteed on touchend/pointerup/click
+              this._pendingIosHaptic = kind;
+              return true;
+            }
+            return this.fireIOSHaptic(kind, false);
+          }
+
+          // 3. Standard Web Vibration API (Android Chrome / Firefox / Edge)
+          if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
             const ms = kind === 'collect' ? 26 : kind === 'penguin_tap' ? 20 : 14;
             return Boolean(navigator.vibrate(ms));
           }
@@ -2842,6 +2933,7 @@
         } else if (obj.rewardType === 'shards') {
           state.prestigeShards += obj.rewardAmount;
           state.totalEssenceEarned = (state.totalEssenceEarned || 0) + obj.rewardAmount;
+          sound.triggerHaptic('collect');
         }
 
         showToast(`🎁 Claimed ${obj.rewardLabel}!`);
@@ -4798,12 +4890,35 @@
       }
     }
 
+    ['touchstart', 'pointerdown', 'touchend', 'pointerup', 'click'].forEach(evtName => {
+      window.addEventListener(evtName, () => {
+        if (typeof sound !== 'undefined' && sound.markUserGesture) {
+          sound.markUserGesture();
+        }
+      }, { capture: true, passive: true });
+    });
+
     canvas.addEventListener('pointerdown', (e) => {
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      handleScreenTap(x, y);
+      sound.markUserGesture();
+      sound._inCanvasPointerDown = true;
+      try {
+        handleScreenTap(x, y);
+      } finally {
+        sound._inCanvasPointerDown = false;
+      }
     });
+
+    ['touchend', 'pointerup', 'click'].forEach(evtName => {
+      canvas.addEventListener(evtName, () => {
+        sound.flushPendingIosHaptic();
+      }, { passive: true });
+    });
+    canvas.addEventListener('pointercancel', () => {
+      sound._pendingIosHaptic = null;
+    }, { passive: true });
 
     // --- AURORA BLESSING RNG EVENT & FORCED TIMEOUT WORST-CHOICE PENALTY ---
 
@@ -5152,6 +5267,7 @@
         showToast(`🚨 TIMEOUT PENALTY! Lowest tier chosen: "${chosenPerk.name}"`);
       } else {
         sound.playLevelUp();
+        sound.triggerHaptic('collect');
         showToast(`✨ Aurora Boon Granted: "${chosenPerk.name}"!`);
       }
 
@@ -6096,7 +6212,7 @@
             <div class="settings-row">
               <div class="settings-row-info">
                 <div class="settings-label">Vibration Feedback</div>
-                <div class="settings-desc">Native vibration on taps &amp; fish catches (requires active Sound Engine)</div>
+                <div class="settings-desc">Tactile haptics on iOS &amp; Android taps &amp; catches (requires active Sound Engine)</div>
               </div>
               <button id="settings-haptics-btn" class="toggle-pill-btn ${sound.hapticsEnabled ? '' : 'off'}">
                 ${sound.hapticsEnabled ? '📳 On' : '📴 Off'}

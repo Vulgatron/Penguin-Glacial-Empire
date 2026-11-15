@@ -2255,87 +2255,131 @@
     // =========================================================================
     class DailyObjectivesManager {
       constructor() {
-        this.dateKey = new Date().toISOString().slice(0, 10);
-        this.objectives = this.getDefaultObjectives();
+        this.dateKey = this.getCycleDateKey();
+        this.objectives = this.getDefaultObjectives(this.dateKey);
       }
 
-      getDefaultObjectives() {
-        return [
-          {
-            id: 'obj_slides',
-            type: 'slides',
-            title: 'Glacial Sledder',
-            desc: 'Perform 5 belly slides across ice sheets',
-            icon: '🛷',
-            target: 5,
-            progress: 0,
-            rewardType: 'fish',
-            rewardAmount: 250,
-            rewardLabel: '+250 🐟 Fish',
-            claimed: false
-          },
-          {
-            id: 'obj_collect_fish',
-            type: 'collect_fish',
-            title: 'Tundra Catch',
-            desc: 'Collect 500 fish from diving or tapping',
-            icon: '🐟',
-            target: 500,
-            progress: 0,
-            rewardType: 'fish',
-            rewardAmount: 500,
-            rewardLabel: '+500 🐟 Fish',
-            claimed: false
-          },
-          {
-            id: 'obj_taps',
-            type: 'taps',
-            title: 'Cheering Flipper',
-            desc: 'Tap the screen or cheer penguins 20 times',
-            icon: '👆',
-            target: 20,
-            progress: 0,
-            rewardType: 'fish',
-            rewardAmount: 300,
-            rewardLabel: '+300 🐟 Fish',
-            claimed: false
-          },
-          {
-            id: 'obj_dives',
-            type: 'dives',
-            title: 'Ice Hole Diver',
-            desc: 'Complete 8 dives at fishing holes',
-            icon: '🤿',
-            target: 8,
-            progress: 0,
-            rewardType: 'fish',
-            rewardAmount: 600,
-            rewardLabel: '+600 🐟 Fish',
-            claimed: false
-          },
-          {
-            id: 'obj_aurora',
-            type: 'aurora',
-            title: 'Aurora Seeker',
-            desc: 'Claim 1 Aurora Blessing event',
-            icon: '✨',
-            target: 1,
-            progress: 0,
-            rewardType: 'shards',
-            rewardAmount: 1,
-            rewardLabel: '+1 💎 Frost Essence',
-            claimed: false
-          }
-        ];
+      // Daily reset occurs every day at 3:00 AM local time.
+      getCycleDateKey(nowMs = Date.now()) {
+        const shifted = new Date(nowMs - 3 * 3600 * 1000);
+        const y = shifted.getFullYear();
+        const m = String(shifted.getMonth() + 1).padStart(2, '0');
+        const d = String(shifted.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
       }
 
-      checkDailyReset() {
-        const today = new Date().toISOString().slice(0, 10);
-        if (this.dateKey !== today) {
-          this.dateKey = today;
-          this.objectives = this.getDefaultObjectives();
-          showToast('📅 New Daily Objectives are available!');
+      getTimeUntilNextResetText(nowMs = Date.now()) {
+        const now = new Date(nowMs);
+        const nextReset = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 3, 0, 0, 0);
+        if (now.getTime() >= nextReset.getTime()) {
+          nextReset.setDate(nextReset.getDate() + 1);
         }
+        const diffMs = Math.max(0, nextReset.getTime() - nowMs);
+        const hrs = Math.floor(diffMs / 3600000);
+        const mins = Math.floor((diffMs % 3600000) / 60000);
+        return `${hrs}h ${mins}m`;
+      }
+
+      hashDateKey(dateKey) {
+        let h = 2166136261 >>> 0;
+        const str = String(dateKey || 'default');
+        for (let i = 0; i < str.length; i++) {
+          h ^= str.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return h >>> 0;
+      }
+
+      createSeededRng(seedNum) {
+        let s = (seedNum || 1) >>> 0;
+        return () => {
+          s = (Math.imul(1664525, s) + 1013904223) >>> 0;
+          return s / 4294967296;
+        };
+      }
+
+      getDefaultObjectives(dateKey = this.dateKey) {
+        const templatesByCategory = [
+          [
+            { id: 'obj_slides_5', type: 'slides', title: 'Glacial Sledder', desc: 'Perform 5 belly slides across ice sheets', icon: '🛷', target: 5, rewardType: 'fish', rewardAmount: 300, rewardLabel: '+300 🐟 Fish' },
+            { id: 'obj_slides_14', type: 'slides', title: 'Belly-Slide Blitz', desc: 'Perform 14 belly slides across ice sheets', icon: '🛷', target: 14, rewardType: 'fish', rewardAmount: 850, rewardLabel: '+850 🐟 Fish' }
+          ],
+          [
+            { id: 'obj_fish_500', type: 'collect_fish', title: 'Tundra Catch', desc: 'Collect 500 fish from diving or tapping', icon: '🐟', target: 500, rewardType: 'fish', rewardAmount: 500, rewardLabel: '+500 🐟 Fish' },
+            { id: 'obj_fish_2500', type: 'collect_fish', title: 'Bountiful Ice Haul', desc: 'Collect 2,500 fish from diving or tapping', icon: '🐟', target: 2500, rewardType: 'fish', rewardAmount: 1800, rewardLabel: '+1.8K 🐟 Fish' },
+            { id: 'obj_fish_10k', type: 'collect_fish', title: 'Glacier Feast', desc: 'Collect 10,000 fish for the colony depot', icon: '🐠', target: 10000, rewardType: 'shards', rewardAmount: 1, rewardLabel: '+1 💎 Frost Essence' }
+          ],
+          [
+            { id: 'obj_taps_20', type: 'taps', title: 'Cheering Flipper', desc: 'Tap the screen or cheer penguins 20 times', icon: '👆', target: 20, rewardType: 'fish', rewardAmount: 350, rewardLabel: '+350 🐟 Fish' },
+            { id: 'obj_taps_50', type: 'taps', title: 'Rhythmic Chime', desc: 'Tap the ice shelf or penguins 50 times', icon: '👆', target: 50, rewardType: 'fish', rewardAmount: 900, rewardLabel: '+900 🐟 Fish' }
+          ],
+          [
+            { id: 'obj_ptap_8', type: 'penguin_taps', title: 'Penguin Whisperer', desc: 'Cheer directly on 8 penguins on the ice', icon: '🐧', target: 8, rewardType: 'fish', rewardAmount: 550, rewardLabel: '+550 🐟 Fish' },
+            { id: 'obj_ptap_18', type: 'penguin_taps', title: 'Morale Captain', desc: 'Cheer directly on 18 penguins on the ice', icon: '💖', target: 18, rewardType: 'fish', rewardAmount: 1200, rewardLabel: '+1.2K 🐟 Fish' }
+          ],
+          [
+            { id: 'obj_dives_8', type: 'dives', title: 'Ice Hole Diver', desc: 'Complete 8 dives at fishing holes', icon: '🤿', target: 8, rewardType: 'fish', rewardAmount: 600, rewardLabel: '+600 🐟 Fish' },
+            { id: 'obj_dives_22', type: 'dives', title: 'Abyssal Plunger', desc: 'Complete 22 dives at fishing holes', icon: '🤿', target: 22, rewardType: 'fish', rewardAmount: 1600, rewardLabel: '+1.6K 🐟 Fish' }
+          ],
+          [
+            { id: 'obj_aurora_1', type: 'aurora', title: 'Aurora Seeker', desc: 'Claim 1 Aurora Blessing event', icon: '✨', target: 1, rewardType: 'shards', rewardAmount: 1, rewardLabel: '+1 💎 Frost Essence' },
+            { id: 'obj_aurora_2', type: 'aurora', title: 'Cosmic Watcher', desc: 'Claim 2 Aurora Blessing events', icon: '🌌', target: 2, rewardType: 'shards', rewardAmount: 2, rewardLabel: '+2 💎 Frost Essence' }
+          ],
+          [
+            { id: 'obj_recruits_2', type: 'recruits', title: 'Colony Expansion', desc: 'Recruit 2 new penguins to the squad', icon: '🧭', target: 2, rewardType: 'fish', rewardAmount: 700, rewardLabel: '+700 🐟 Fish' },
+            { id: 'obj_recruits_5', type: 'recruits', title: 'Squad Marshal', desc: 'Recruit 5 new penguins to the squad', icon: '🏅', target: 5, rewardType: 'shards', rewardAmount: 1, rewardLabel: '+1 💎 Frost Essence' }
+          ],
+          [
+            { id: 'obj_tech_1', type: 'tech_upgrades', title: 'Polar Researcher', desc: 'Research 1 Glacier Tech upgrade', icon: '🔬', target: 1, rewardType: 'fish', rewardAmount: 750, rewardLabel: '+750 🐟 Fish' },
+            { id: 'obj_tech_3', type: 'tech_upgrades', title: 'Cryo Innovator', desc: 'Research 3 Glacier Tech upgrades', icon: '🔬', target: 3, rewardType: 'shards', rewardAmount: 1, rewardLabel: '+1 💎 Frost Essence' }
+          ],
+          [
+            { id: 'obj_blizzard_300', type: 'blizzard_fish', title: 'Storm Harvester', desc: 'Gather 300 fish during a Blizzard storm', icon: '🌨️', target: 300, rewardType: 'fish', rewardAmount: 950, rewardLabel: '+950 🐟 Fish' }
+          ]
+        ];
+
+        const rng = this.createSeededRng(this.hashDateKey(dateKey));
+        // Pick one variant per category, then deterministically shuffle and select 5 distinct daily goals.
+        const candidates = templatesByCategory.map(variants => {
+          const picked = variants[Math.floor(rng() * variants.length)];
+          return { ...picked, progress: 0, claimed: false };
+        });
+
+        for (let i = candidates.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          const tmp = candidates[i];
+          candidates[i] = candidates[j];
+          candidates[j] = tmp;
+        }
+
+        const selected = candidates.slice(0, 5);
+        // Ensure at least one Frost Essence daily reward each cycle
+        if (!selected.some(o => o.rewardType === 'shards')) {
+          const shardFallback = candidates.find(o => o.rewardType === 'shards');
+          if (shardFallback) {
+            selected[selected.length - 1] = shardFallback;
+          }
+        }
+        return selected;
+      }
+
+      checkDailyReset(nowMs = Date.now()) {
+        const currentKey = this.getCycleDateKey(nowMs);
+        if (this.dateKey !== currentKey) {
+          this.dateKey = currentKey;
+          this.objectives = this.getDefaultObjectives(currentKey);
+          if (typeof state !== 'undefined' && state && typeof state.save === 'function') {
+            state.save();
+            if (state.currentTab === 'daily' && typeof updateSheetContent === 'function') {
+              updateSheetContent();
+            }
+          }
+          if (typeof showToast === 'function') {
+            showToast('📅 Daily Goals refreshed for the new day!');
+          }
+          return true;
+        }
+        return false;
       }
 
       track(type, amount = 1) {
@@ -2548,6 +2592,54 @@
         desc: 'Perform Glacial Rebirth and collect Frost Essence',
         check: (s) => (s.totalRebirths || 0) >= 1,
         progress: (s) => ({ cur: Math.min(1, s.totalRebirths || 0), max: 1 })
+      },
+      {
+        id: 'ach_prestige_3',
+        title: 'Cycle of Frost',
+        icon: '❄️',
+        desc: 'Perform 3 Glacial Rebirths',
+        check: (s) => (s.totalRebirths || 0) >= 3,
+        progress: (s) => ({ cur: Math.min(3, s.totalRebirths || 0), max: 3 })
+      },
+      {
+        id: 'ach_prestige_5',
+        title: 'Eternal Penguin',
+        icon: '🌌',
+        desc: 'Perform 5 Glacial Rebirths',
+        check: (s) => (s.totalRebirths || 0) >= 5,
+        progress: (s) => ({ cur: Math.min(5, s.totalRebirths || 0), max: 5 })
+      },
+      {
+        id: 'ach_prestige_10',
+        title: 'Timeless Sovereign',
+        icon: '👑',
+        desc: 'Perform 10 Glacial Rebirths',
+        check: (s) => (s.totalRebirths || 0) >= 10,
+        progress: (s) => ({ cur: Math.min(10, s.totalRebirths || 0), max: 10 })
+      },
+      {
+        id: 'ach_essence_10',
+        title: 'Essence Collector',
+        icon: '🔮',
+        desc: 'Accumulate 10 or more Frost Essence',
+        check: (s) => (s.prestigeShards || 0) >= 10,
+        progress: (s) => ({ cur: Math.min(10, Math.floor(s.prestigeShards || 0)), max: 10 })
+      },
+      {
+        id: 'ach_essence_50',
+        title: 'Astral Reactor',
+        icon: '🌠',
+        desc: 'Accumulate 50 or more Frost Essence',
+        check: (s) => (s.prestigeShards || 0) >= 50,
+        progress: (s) => ({ cur: Math.min(50, Math.floor(s.prestigeShards || 0)), max: 50 })
+      },
+      {
+        id: 'ach_essence_250',
+        title: 'Celestial Singularity',
+        icon: '✨',
+        desc: 'Accumulate 250 or more Frost Essence',
+        check: (s) => (s.prestigeShards || 0) >= 250,
+        progress: (s) => ({ cur: Math.min(250, Math.floor(s.prestigeShards || 0)), max: 250 })
       }
     ];
 
@@ -2646,6 +2738,7 @@
       constructor() {
         this.fish = 0;
         this.lifetimeFish = 0;
+        this.runFish = 0;
         this.glacierLevel = 1;
         this.levelFish = 0;
         this.prestigeShards = 0;
@@ -2784,6 +2877,10 @@
         return Math.floor(150 * Math.pow(1.32, this.glacierLevel));
       }
 
+      getPendingPrestigeShards() {
+        return Math.floor(Math.cbrt((this.runFish || 0) / 150000));
+      }
+
       getPrestigeMultiplier() {
         return 1 + (this.prestigeShards * 0.05);
       }
@@ -2905,9 +3002,13 @@
       addFish(amount) {
         this.fish += amount;
         this.lifetimeFish += amount;
+        this.runFish += amount;
         this.levelFish += amount;
 
         dailyManager.track('collect_fish', amount);
+        if (this.getCurrentWeather().id === 'blizzard') {
+          dailyManager.track('blizzard_fish', amount);
+        }
 
         let levelsGained = 0;
         let req = this.getLevelReq();
@@ -2930,6 +3031,7 @@
         const saveObj = {
           fish: this.fish,
           lifetimeFish: this.lifetimeFish,
+          runFish: this.runFish,
           glacierLevel: this.glacierLevel,
           levelFish: this.levelFish,
           prestigeShards: this.prestigeShards,
@@ -3036,11 +3138,23 @@
               sound.syncWeatherAmbience(true);
             }
 
-            if (data.dailyObjectives && data.dailyObjectives.dateKey === dailyManager.dateKey) {
-              dailyManager.objectives = data.dailyObjectives.objectives;
+            this.totalRebirths = data.totalRebirths || 0;
+            if (typeof data.runFish === 'number') {
+              this.runFish = Math.max(0, data.runFish);
+            } else {
+              // Migration for saves created before runFish existed
+              this.runFish = this.totalRebirths > 0 ? Math.max(this.fish, this.levelFish) : this.lifetimeFish;
             }
 
-            this.totalRebirths = data.totalRebirths || 0;
+            const currentDailyKey = dailyManager.getCycleDateKey();
+            if (data.dailyObjectives && data.dailyObjectives.dateKey === currentDailyKey && Array.isArray(data.dailyObjectives.objectives)) {
+              dailyManager.dateKey = currentDailyKey;
+              dailyManager.objectives = data.dailyObjectives.objectives;
+            } else {
+              dailyManager.dateKey = currentDailyKey;
+              dailyManager.objectives = dailyManager.getDefaultObjectives(currentDailyKey);
+            }
+
             this.totalAuroraBlessingsClaimed = data.totalAuroraBlessingsClaimed || 0;
             this.totalManualClicks = data.totalManualClicks || 0;
             this.totalDives = data.totalDives || 0;
@@ -3775,6 +3889,7 @@
       achievementCheckTimer += dt;
       if (achievementCheckTimer >= 1.0) {
         achievementCheckTimer = 0;
+        dailyManager.checkDailyReset();
         checkAchievements();
       }
 
@@ -4149,6 +4264,7 @@
       for (let p of activePenguins) {
         if (Math.hypot(p.x - x, p.y - y) < 32) {
           tappedPenguin = true;
+          dailyManager.track('penguin_taps', 1);
           sound.playChirp();
           sound.triggerHaptic('penguin_tap');
           p.stepPhase += 3;
@@ -4718,6 +4834,7 @@
 
               sound.playChirp();
               showToast(`Recruited ${nextTrait.icon} ${nextTrait.name} ${sp.name}${qty > 1 ? ` (+${qty - 1} more)` : ''}!`);
+              dailyManager.track('recruits', qty);
               checkAchievements();
               state.save();
               if (activePenguins.length >= 14) {
@@ -4764,6 +4881,7 @@
               state.tech[tech.id] = currentLvl + 1;
               sound.playLevelUp();
               showToast(`🔬 Researched ${tech.name} Tier ${currentLvl + 1}!`);
+              dailyManager.track('tech_upgrades', 1);
               checkAchievements();
               state.save();
               updateSheetContent();
@@ -4779,12 +4897,13 @@
         const completedCount = dailyManager.objectives.filter(o => o.claimed).length;
         const totalCount = dailyManager.objectives.length;
 
+        const resetCountdownText = dailyManager.getTimeUntilNextResetText();
         const banner = document.createElement('div');
         banner.className = 'daily-summary-banner';
         banner.innerHTML = `
           <div class="daily-title-box">
             <div class="daily-title-text">Colony Daily Tasks</div>
-            <div class="daily-reset-time">Refreshes daily with fresh Antarctic rewards!</div>
+            <div class="daily-reset-time">Refreshes daily at 3:00 AM • Next refresh in ${resetCountdownText}</div>
           </div>
           <div class="daily-completion-badge">${completedCount} / ${totalCount} Done</div>
         `;
@@ -4841,7 +4960,8 @@
         });
 
       } else if (state.currentTab === 'prestige') {
-        const pendingShards = Math.floor(Math.cbrt(state.lifetimeFish / 150000));
+        const pendingShards = state.getPendingPrestigeShards();
+        const nextShardThreshold = Math.pow(pendingShards + 1, 3) * 150000;
         const currentMultiplierPct = Math.round(state.prestigeShards * 5);
         const nextMultiplierPct = Math.round(pendingShards * 5);
         const preservedCount = (state.collectedPerks || []).filter(p => p.rarity === 'legendary').length;
@@ -4868,9 +4988,10 @@
           <div style="background: rgba(0,0,0,0.25); border-radius: 12px; padding: 10px;">
             <div style="font-size: 11px; color: #94a3b8;">New Essence Gained on Rebirth</div>
             <div style="font-size: 20px; font-weight: 800; color: #a855f7;">+${pendingShards} 💎 (+${nextMultiplierPct}% Boost)</div>
+            <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;">Run Fish: ${formatNumber(state.runFish || 0)} • Next +1 💎 at ${formatNumber(nextShardThreshold)}</div>
           </div>
           <button class="prestige-btn" ${pendingShards > 0 ? '' : 'disabled'} id="rebirth-action-btn">
-            ${pendingShards > 0 ? 'REBIRTH WITH ESSENCE' : 'EARN MORE LIFETIME FISH'}
+            ${pendingShards > 0 ? 'REBIRTH WITH ESSENCE' : 'EARN MORE RUN FISH'}
           </button>
         `;
 
@@ -4886,6 +5007,7 @@
               state.prestigeShards += pendingShards;
               state.totalRebirths = (state.totalRebirths || 0) + 1;
               state.fish = 0;
+              state.runFish = 0;
               state.glacierLevel = 1;
               state.levelFish = 0;
               const starterTrait = rollRandomTraitId();
@@ -5292,6 +5414,7 @@
       } catch (e) {
         console.warn('Init load fallback:', e);
       }
+      dailyManager.checkDailyReset();
       syncActivePenguins();
       checkAchievements();
       updateSheetContent();
@@ -5318,6 +5441,9 @@
         lastTime = performance.now();
         if (typeof sound !== 'undefined' && sound.setBackgrounded) {
           sound.setBackgrounded(false);
+        }
+        if (typeof dailyManager !== 'undefined' && dailyManager.checkDailyReset) {
+          dailyManager.checkDailyReset();
         }
         if (backgroundedAt && typeof state !== 'undefined') {
           const elapsedSec = (Date.now() - backgroundedAt) / 1000;

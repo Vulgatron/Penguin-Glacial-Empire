@@ -423,16 +423,27 @@
     }
 
     .penguin-avatar {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.06);
+      width: 50px;
+      height: 50px;
+      border-radius: 14px;
+      background: radial-gradient(circle at 30% 25%, rgba(125, 211, 252, 0.22), rgba(10, 28, 56, 0.72));
+      border: 1px solid rgba(160, 240, 255, 0.22);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 26px;
       flex-shrink: 0;
       position: relative;
+      box-shadow: inset 0 1px 4px rgba(255, 255, 255, 0.16), 0 3px 10px rgba(0, 0, 0, 0.25);
+    }
+
+    .penguin-sprite-img {
+      width: 46px;
+      height: 46px;
+      object-fit: contain;
+      display: block;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+      pointer-events: none;
     }
 
     .penguin-count-badge {
@@ -445,6 +456,7 @@
       font-weight: 800;
       border-radius: 8px;
       padding: 1px 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
     }
 
     .roster-info {
@@ -2579,6 +2591,7 @@
         id: 'adelie',
         name: 'Adélie Scout',
         avatar: '🐧',
+        accentColor: '#34d399',
         desc: 'Lightweight & swift waddler',
         baseCost: 15,
         costMult: 1.15,
@@ -2591,6 +2604,7 @@
         id: 'gentoo',
         name: 'Gentoo Skater',
         avatar: '🛷',
+        accentColor: '#fb923c',
         desc: 'Belly-slides across ice at high velocity',
         baseCost: 100,
         costMult: 1.16,
@@ -2603,6 +2617,7 @@
         id: 'chinstrap',
         name: 'Chinstrap Diver',
         avatar: '🤿',
+        accentColor: '#38bdf8',
         desc: 'Deep marine specialist with large catch capacity',
         baseCost: 800,
         costMult: 1.17,
@@ -2615,6 +2630,7 @@
         id: 'emperor',
         name: 'Emperor Monarch',
         avatar: '👑',
+        accentColor: '#fbbf24',
         desc: 'Regal majesty with aura speeding up nearby penguins',
         baseCost: 5000,
         costMult: 1.18,
@@ -2627,6 +2643,7 @@
         id: 'cyber',
         name: 'Cyber/Mecha Penguin',
         avatar: '🤖',
+        accentColor: '#22d3ee',
         desc: 'Equipped with rocket thrusters & sub-zero lasers',
         baseCost: 35000,
         costMult: 1.20,
@@ -3973,6 +3990,1077 @@
 
     let penguinUniqueCounter = 0;
 
+    // =========================================================================
+    // HIGH-DETAIL PENGUIN SPRITE ENGINE (Canvas + Roster Portraits)
+    // =========================================================================
+    const PENGUIN_SPRITE_CACHE = {};
+
+    const PenguinSpriteRenderer = {
+      getSpeciesScale(speciesId) {
+        if (speciesId === 'emperor') return 1.32;
+        if (speciesId === 'cyber') return 1.18;
+        if (speciesId === 'chinstrap') return 1.14;
+        if (speciesId === 'gentoo') return 1.12;
+        return 1.06;
+      },
+
+      drawDetailedFish(ctx, x, y, angle = 0, scale = 1) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.scale(scale, scale);
+
+        const fishGrad = ctx.createLinearGradient(0, -4, 0, 4);
+        fishGrad.addColorStop(0, '#0284c7');
+        fishGrad.addColorStop(0.5, '#38bdf8');
+        fishGrad.addColorStop(1, '#e0f2fe');
+
+        // Tail fin
+        ctx.fillStyle = '#0ea5e9';
+        ctx.beginPath();
+        ctx.moveTo(-6, 0);
+        ctx.lineTo(-12, -4.5);
+        ctx.lineTo(-10, 0);
+        ctx.lineTo(-12, 4.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Dorsal fin
+        ctx.fillStyle = '#0369a1';
+        ctx.beginPath();
+        ctx.moveTo(-2, -3);
+        ctx.lineTo(1, -6);
+        ctx.lineTo(3, -2.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Fish body
+        ctx.fillStyle = fishGrad;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 7.5, 3.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(6, 24, 52, 0.55)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        // Gill & Eye
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.arc(2.5, 0, 2.2, Math.PI * 0.65, Math.PI * 1.35);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(4.8, -0.8, 1.1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(5.1, -0.8, 0.55, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      },
+
+      drawEye(ctx, x, y, speciesId, blink, happy) {
+        if (speciesId === 'cyber') {
+          // Sleek holographic curved visor
+          ctx.save();
+          const visorGrad = ctx.createLinearGradient(x - 5, y - 3, x + 6, y + 3);
+          visorGrad.addColorStop(0, '#0284c7');
+          visorGrad.addColorStop(0.55, '#38bdf8');
+          visorGrad.addColorStop(1, '#e0f2fe');
+
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+          ctx.beginPath();
+          ctx.roundRect(x - 5.2, y - 3.6, 11.4, 6.8, 3);
+          ctx.fill();
+
+          ctx.fillStyle = visorGrad;
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(x - 4.4, y - 2.8, 10.2, 5.2, 2.5);
+          ctx.fill();
+          ctx.stroke();
+
+          // Glossy scan reflection
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.beginPath();
+          ctx.roundRect(x - 2.6, y - 1.8, 5.4, 1.4, 0.7);
+          ctx.fill();
+
+          if (happy) {
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.arc(x + 2.5, y - 0.1, 1.1, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+          return;
+        }
+
+        ctx.save();
+        if (speciesId === 'adelie') {
+          // Signature crisp white Adélie eye ring
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(x, y, 3.6, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (speciesId === 'emperor') {
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.arc(x, y, 3.0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        if (happy) {
+          // Cheerful curved happy eye
+          ctx.strokeStyle = speciesId === 'chinstrap' ? '#0f172a' : '#ffffff';
+          ctx.lineWidth = 1.6;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.arc(x, y + 0.8, 2.2, Math.PI * 1.15, Math.PI * 1.85);
+          ctx.stroke();
+        } else if (blink) {
+          ctx.strokeStyle = speciesId === 'chinstrap' ? '#0f172a' : '#cbd5e1';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(x - 2.2, y);
+          ctx.lineTo(x + 2.2, y);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#090d16';
+          ctx.beginPath();
+          ctx.arc(x + 0.6, y, 1.55, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Glossy catchlights
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(x + 1.1, y - 0.65, 0.65, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(x - 0.1, y + 0.7, 0.35, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        if (speciesId === 'chinstrap') {
+          // Translucent turquoise diver goggles over eyes
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.32)';
+          ctx.strokeStyle = '#0369a1';
+          ctx.lineWidth = 1.15;
+          ctx.beginPath();
+          ctx.roundRect(x - 3.6, y - 3.1, 7.6, 6.0, 2.5);
+          ctx.fill();
+          ctx.stroke();
+
+          // Goggle strap
+          ctx.strokeStyle = '#075985';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(x - 3.6, y - 0.2);
+          ctx.lineTo(x - 10.5, y - 0.6);
+          ctx.stroke();
+
+          // Lens shine
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.moveTo(x - 1.5, y - 1.9);
+          ctx.lineTo(x + 1.4, y - 1.9);
+          ctx.stroke();
+        }
+        ctx.restore();
+      },
+
+      drawBeak(ctx, x, y, speciesId, angle = 0) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+
+        let topColor = '#fbbf24';
+        let botColor = '#d97706';
+        if (speciesId === 'gentoo') {
+          topColor = '#fb923c';
+          botColor = '#dc2626';
+        } else if (speciesId === 'emperor') {
+          topColor = '#1e293b';
+          botColor = '#f43f5e';
+        } else if (speciesId === 'cyber') {
+          topColor = '#94a3b8';
+          botColor = '#475569';
+        } else if (speciesId === 'chinstrap') {
+          topColor = '#334155';
+          botColor = '#0f172a';
+        }
+
+        // Upper mandible
+        ctx.fillStyle = topColor;
+        ctx.beginPath();
+        ctx.moveTo(-1, -2.5);
+        ctx.quadraticCurveTo(5, -2.2, 8.2, -0.2);
+        ctx.lineTo(-1, 0.3);
+        ctx.closePath();
+        ctx.fill();
+
+        // Lower mandible
+        ctx.fillStyle = botColor;
+        ctx.beginPath();
+        ctx.moveTo(-1, 0.2);
+        ctx.lineTo(7.4, 0.1);
+        ctx.quadraticCurveTo(4.2, 2.3, -1, 2.1);
+        ctx.closePath();
+        ctx.fill();
+
+        // Crisp dark tip & highlight
+        ctx.strokeStyle = 'rgba(6, 17, 33, 0.6)';
+        ctx.lineWidth = 0.75;
+        ctx.beginPath();
+        ctx.moveTo(-1, -2.5);
+        ctx.quadraticCurveTo(5, -2.2, 8.2, -0.2);
+        ctx.quadraticCurveTo(4.5, 2.3, -1, 2.1);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(2.2, -1.2, 2.2, 0.55, 0.15, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      },
+
+      drawFootGear(ctx, x, y, speciesId, tilt = 0) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(tilt);
+
+        if (speciesId === 'cyber') {
+          // Articulated titanium mecha foot
+          ctx.fillStyle = '#475569';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.roundRect(-4.5, -2.2, 9.5, 4.4, 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(1.8, -1, 2.5, 1.8);
+          ctx.restore();
+          return;
+        }
+
+        if (speciesId === 'chinstrap') {
+          // Wide diving swim-fin
+          ctx.fillStyle = '#0284c7';
+          ctx.beginPath();
+          ctx.ellipse(-1.5, 0, 3.6, 2.3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#facc15';
+          ctx.strokeStyle = '#854d0e';
+          ctx.lineWidth = 0.75;
+          ctx.beginPath();
+          ctx.moveTo(-1, -1.8);
+          ctx.lineTo(7.5, -3.0);
+          ctx.quadraticCurveTo(8.5, 0, 7.5, 3.0);
+          ctx.lineTo(-1, 1.8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+          return;
+        }
+
+        // Webbed foot
+        const footGrad = ctx.createLinearGradient(0, -3, 0, 3);
+        footGrad.addColorStop(0, '#fb923c');
+        footGrad.addColorStop(1, '#c2410c');
+        ctx.fillStyle = footGrad;
+        ctx.strokeStyle = 'rgba(124, 45, 18, 0.7)';
+        ctx.lineWidth = 0.75;
+        ctx.beginPath();
+        ctx.ellipse(1, 0, 5.2, 2.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        if (speciesId === 'gentoo') {
+          // Gleaming steel ice-skate blade beneath boot!
+          ctx.strokeStyle = '#475569';
+          ctx.lineWidth = 1.1;
+          ctx.beginPath();
+          ctx.moveTo(-2, 2.2);
+          ctx.lineTo(-2, 4.3);
+          ctx.moveTo(3, 2.2);
+          ctx.lineTo(3, 4.3);
+          ctx.stroke();
+
+          ctx.strokeStyle = '#f8fafc';
+          ctx.lineWidth = 1.7;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(-4.8, 4.5);
+          ctx.lineTo(6.2, 4.5);
+          ctx.quadraticCurveTo(8.2, 4.3, 8.6, 2.7);
+          ctx.stroke();
+        }
+        ctx.restore();
+      },
+
+      drawBodyAndGearStanding(ctx, opts) {
+        const {
+          speciesId = 'adelie',
+          stepPhase = 0,
+          blink = false,
+          happy = false,
+          carryingFish = false,
+          time = 0,
+          isPortrait = false
+        } = opts;
+
+        const waddleAmp = isPortrait ? 0 : Math.sin(stepPhase) * 0.11;
+        const footSwing = isPortrait ? 0 : Math.sin(stepPhase) * 3.8;
+        const breathe = Math.sin(time * 3.2 + stepPhase * 0.3) * 0.45;
+        const flutter = Math.sin(time * 6.5 + stepPhase) * 2.2;
+
+        // Emperor Royal Aura on ground
+        if (speciesId === 'emperor' && !isPortrait) {
+          ctx.save();
+          const auraPulse = 0.85 + Math.sin(time * 3.5) * 0.15;
+          ctx.strokeStyle = `rgba(251, 191, 36, ${0.42 * auraPulse})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.ellipse(0, 14.5, 29 * auraPulse, 11 * auraPulse, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.strokeStyle = `rgba(253, 230, 138, ${0.28 * auraPulse})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(0, 14.5, 22 * auraPulse, 8 * auraPulse, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Cyber hover ring on ground
+        if (speciesId === 'cyber' && !isPortrait) {
+          ctx.save();
+          const pulse = 0.85 + Math.sin(time * 5) * 0.15;
+          ctx.strokeStyle = `rgba(56, 189, 248, ${0.45 * pulse})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(0, 14.5, 19 * pulse, 6.5 * pulse, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        ctx.save();
+        ctx.rotate(waddleAmp);
+
+        // Contact shadow (omitted in clean card portrait)
+        if (!isPortrait) {
+          ctx.fillStyle = 'rgba(6, 20, 44, 0.34)';
+          ctx.beginPath();
+          ctx.ellipse(0, 14.5, 13.5, 4.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Back gear layer
+        if (speciesId === 'emperor') {
+          // Royal velvet cape billowing behind
+          ctx.save();
+          const capeGrad = ctx.createLinearGradient(-15, -4, -18, 15);
+          capeGrad.addColorStop(0, '#9333ea');
+          capeGrad.addColorStop(1, '#581c87');
+          ctx.fillStyle = capeGrad;
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 1.1;
+          ctx.beginPath();
+          ctx.moveTo(-4, -5);
+          ctx.quadraticCurveTo(-18 - flutter * 0.4, 3, -17 - flutter * 0.6, 14);
+          ctx.quadraticCurveTo(-8, 15, -3, 12);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        } else if (speciesId === 'chinstrap') {
+          // Twin deep-dive silver & cyan scuba tank on back
+          ctx.save();
+          const tankGrad = ctx.createLinearGradient(-14, -7, -6, 9);
+          tankGrad.addColorStop(0, '#e2e8f0');
+          tankGrad.addColorStop(0.55, '#94a3b8');
+          tankGrad.addColorStop(1, '#475569');
+          ctx.fillStyle = tankGrad;
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(-14.5, -5.5, 6.8, 13.5, 3.2);
+          ctx.fill();
+          ctx.stroke();
+          // Cyan tank band & brass valve
+          ctx.fillStyle = '#0ea5e9';
+          ctx.fillRect(-14.2, -1.5, 6.2, 2.8);
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(-12.2, -7.8, 2.4, 2.4);
+          // Regulator hose arching over shoulder
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(-11, -7.5);
+          ctx.quadraticCurveTo(-7, -11, -2, -7.5);
+          ctx.stroke();
+          ctx.restore();
+        } else if (speciesId === 'cyber') {
+          // Twin cryo-jetpack & plasma plume
+          ctx.save();
+          ctx.fillStyle = '#334155';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(-14.5, -5, 6.5, 11.5, 2.5);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(-13.2, -2, 3.8, 3);
+          const flameLen = isPortrait ? 5.5 : (6 + Math.sin(time * 28) * 2.5);
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.55)';
+          ctx.beginPath();
+          ctx.moveTo(-14, 6.5);
+          ctx.lineTo(-11.2, 6.5 + flameLen + 2);
+          ctx.lineTo(-8.5, 6.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#e0f2fe';
+          ctx.beginPath();
+          ctx.moveTo(-13, 6.5);
+          ctx.lineTo(-11.2, 6.5 + flameLen * 0.65);
+          ctx.lineTo(-9.5, 6.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        } else if (speciesId === 'adelie') {
+          // Scout pack & fluttering scout scarf tail
+          ctx.save();
+          ctx.fillStyle = '#0f766e';
+          ctx.beginPath();
+          ctx.moveTo(-5, -5.5);
+          ctx.quadraticCurveTo(-15, -4 - flutter * 0.45, -16.5, -0.5 - flutter * 0.6);
+          ctx.lineTo(-11, 2.5 - flutter * 0.3);
+          ctx.quadraticCurveTo(-7, -1, -4, -3);
+          ctx.closePath();
+          ctx.fill();
+          // Explorer roll pack
+          ctx.fillStyle = '#b45309';
+          ctx.strokeStyle = '#451a03';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.roundRect(-13.2, -2, 5.2, 9.5, 2.2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        } else if (speciesId === 'gentoo') {
+          // Fluttering winter racing scarf tail
+          ctx.save();
+          ctx.fillStyle = '#ea580c';
+          ctx.beginPath();
+          ctx.moveTo(-5, -5.5);
+          ctx.quadraticCurveTo(-16, -5 + flutter * 0.5, -18, -1.5 + flutter * 0.7);
+          ctx.lineTo(-12, 1.5 + flutter * 0.4);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(-15, -3 + flutter * 0.4, 3.2, 2.2);
+          ctx.restore();
+        }
+
+        // Far foot
+        this.drawFootGear(ctx, -4.5, 11.8 + footSwing * 0.45, speciesId, -0.06);
+        // Near foot
+        this.drawFootGear(ctx, 5.0, 12.2 - footSwing * 0.45, speciesId, 0.04);
+
+        // Tail tuft
+        ctx.fillStyle = speciesId === 'cyber' ? '#475569' : '#0b1528';
+        ctx.beginPath();
+        ctx.moveTo(-7, 7);
+        ctx.lineTo(-14.5, 10.5);
+        ctx.lineTo(-9, 12);
+        ctx.closePath();
+        ctx.fill();
+
+        // Far flipper (subtle)
+        ctx.save();
+        ctx.translate(6.5, -2.5);
+        ctx.rotate(isPortrait ? -0.15 : Math.sin(stepPhase) * 0.35);
+        ctx.fillStyle = speciesId === 'cyber' ? '#1e293b' : '#091120';
+        ctx.beginPath();
+        ctx.ellipse(2.5, 4.5, 2.6, 6.8, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Main Plumage Body (organic pear silhouette)
+        const bodyGrad = ctx.createLinearGradient(-11, -16, 11, 13);
+        if (speciesId === 'cyber') {
+          bodyGrad.addColorStop(0, '#64748b');
+          bodyGrad.addColorStop(0.55, '#334155');
+          bodyGrad.addColorStop(1, '#0f172a');
+        } else if (speciesId === 'emperor') {
+          bodyGrad.addColorStop(0, '#1e293b');
+          bodyGrad.addColorStop(0.55, '#0f172a');
+          bodyGrad.addColorStop(1, '#060c1a');
+        } else {
+          bodyGrad.addColorStop(0, '#1e293b');
+          bodyGrad.addColorStop(0.6, '#0f172a');
+          bodyGrad.addColorStop(1, '#050a14');
+        }
+
+        ctx.fillStyle = bodyGrad;
+        ctx.strokeStyle = 'rgba(2, 10, 24, 0.72)';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(0, -17.5 - breathe * 0.4);
+        ctx.bezierCurveTo(9.5, -17.5, 11.8, -8, 12.2, 1.5);
+        ctx.bezierCurveTo(12.6, 10.5, 6.8, 13.5, 0, 13.5);
+        ctx.bezierCurveTo(-8.2, 13.5, -12.6, 9.8, -12.2, 1.2);
+        ctx.bezierCurveTo(-11.8, -8, -9.2, -17.5, 0, -17.5 - breathe * 0.4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Subtle Aurora dorsal rim highlight
+        ctx.strokeStyle = speciesId === 'cyber' ? 'rgba(56, 189, 248, 0.55)' : 'rgba(125, 211, 252, 0.25)';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(-6.5, -13);
+        ctx.quadraticCurveTo(-11.2, -4, -10.5, 7);
+        ctx.stroke();
+
+        // Snowy White / Ivory / Armored Belly
+        if (speciesId === 'cyber') {
+          // Titanium chest armor plate + glowing cryo arc-reactor
+          const armorGrad = ctx.createLinearGradient(-3, -6, 10, 11);
+          armorGrad.addColorStop(0, '#cbd5e1');
+          armorGrad.addColorStop(0.6, '#94a3b8');
+          armorGrad.addColorStop(1, '#475569');
+          ctx.fillStyle = armorGrad;
+          ctx.beginPath();
+          ctx.ellipse(2.4, 3.2, 7.6, 9.4, 0.04, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 0.85;
+          ctx.stroke();
+
+          // Chest armor seam line
+          ctx.strokeStyle = 'rgba(15, 23, 42, 0.45)';
+          ctx.beginPath();
+          ctx.moveTo(-3.5, 4);
+          ctx.lineTo(8.5, 4);
+          ctx.stroke();
+
+          // Glowing Cyan Arc Core
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.32)';
+          ctx.beginPath();
+          ctx.arc(3.5, 0.2, 4.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.arc(3.5, 0.2, 2.7, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#e0f2fe';
+          ctx.beginPath();
+          ctx.arc(3.5, 0.2, 1.3, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          const bellyGrad = ctx.createRadialGradient(2.5, 0, 1, 2.2, 3, 12);
+          if (speciesId === 'emperor') {
+            bellyGrad.addColorStop(0, '#fffbeb');
+            bellyGrad.addColorStop(0.65, '#fef3c7');
+            bellyGrad.addColorStop(1, '#dbeafe');
+          } else {
+            bellyGrad.addColorStop(0, '#ffffff');
+            bellyGrad.addColorStop(0.7, '#f1f5f9');
+            bellyGrad.addColorStop(1, '#cbd5e1');
+          }
+          ctx.fillStyle = bellyGrad;
+          ctx.beginPath();
+          ctx.ellipse(2.3, 3.0, 7.6, 9.6, 0.05, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Species Head Markings & Neck Gear
+        if (speciesId === 'emperor') {
+          // Luminous golden-amber Emperor auricular neck patches
+          const auricGrad = ctx.createLinearGradient(0, -12, 6, -2);
+          auricGrad.addColorStop(0, '#f59e0b');
+          auricGrad.addColorStop(0.55, '#fbbf24');
+          auricGrad.addColorStop(1, '#fef08a');
+          ctx.fillStyle = auricGrad;
+          ctx.beginPath();
+          ctx.moveTo(0.5, -11.5);
+          ctx.bezierCurveTo(6.8, -11.5, 8.8, -7, 8.2, -3);
+          ctx.bezierCurveTo(5.8, -1.5, 1.2, -3.5, 0.5, -7.5);
+          ctx.closePath();
+          ctx.fill();
+
+          // Ornate Jeweled Gold Crown
+          ctx.save();
+          const crownGrad = ctx.createLinearGradient(-6, -24, 6, -15);
+          crownGrad.addColorStop(0, '#fde047');
+          crownGrad.addColorStop(0.55, '#f59e0b');
+          crownGrad.addColorStop(1, '#b45309');
+          ctx.fillStyle = crownGrad;
+          ctx.strokeStyle = '#78350f';
+          ctx.lineWidth = 0.85;
+          ctx.beginPath();
+          ctx.moveTo(-5.8, -15.5);
+          ctx.lineTo(-6.8, -22.2);
+          ctx.lineTo(-2.6, -18.8);
+          ctx.lineTo(0.2, -23.8);
+          ctx.lineTo(3.2, -18.8);
+          ctx.lineTo(7.0, -22.0);
+          ctx.lineTo(6.0, -15.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Crown aurora gems
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.arc(0.2, -18.2, 1.35, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#f43f5e';
+          ctx.beginPath();
+          ctx.arc(-4.2, -17.5, 0.95, 0, Math.PI * 2);
+          ctx.arc(4.5, -17.5, 0.95, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        } else if (speciesId === 'chinstrap') {
+          // White face cheeks/throat mask
+          ctx.fillStyle = '#f8fafc';
+          ctx.beginPath();
+          ctx.ellipse(3.6, -9.2, 6.2, 4.8, 0.1, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Signature jet-black chinstrap line curving ear-to-cheek-to-chin
+          ctx.strokeStyle = '#090d16';
+          ctx.lineWidth = 1.65;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(-1.2, -11.4);
+          ctx.quadraticCurveTo(2.4, -4.6, 8.2, -6.2);
+          ctx.stroke();
+        } else if (speciesId === 'gentoo') {
+          // Signature white Gentoo crown headband patch over head
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.ellipse(1.2, -13.2, 5.6, 2.3, -0.15, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Cozy racing winter scarf collar
+          ctx.fillStyle = '#ea580c';
+          ctx.beginPath();
+          ctx.roundRect(-7.5, -6.6, 15.8, 3.2, 1.6);
+          ctx.fill();
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(1.5, -6.4, 3.5, 2.8);
+        } else if (speciesId === 'adelie') {
+          // Crossbody leather scout satchel strap
+          ctx.strokeStyle = '#b45309';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(-6, -4.5);
+          ctx.lineTo(7, 6.5);
+          ctx.stroke();
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(0.2, 0.5, 2.2, 2.2);
+
+          // Explorer knotted scout neckerchief
+          ctx.fillStyle = '#0d9488';
+          ctx.beginPath();
+          ctx.roundRect(-7.2, -6.6, 15.2, 3.0, 1.5);
+          ctx.fill();
+
+          // Scout explorer cap with brim & star badge
+          ctx.save();
+          ctx.fillStyle = '#0f766e';
+          ctx.strokeStyle = '#042f2e';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.arc(0, -14.8, 7.2, Math.PI, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          // Brim
+          ctx.fillStyle = '#d97706';
+          ctx.beginPath();
+          ctx.ellipse(3.5, -14.8, 8.5, 2.0, -0.06, 0, Math.PI * 2);
+          ctx.fill();
+          // Gold compass star pin
+          ctx.fillStyle = '#fde047';
+          ctx.beginPath();
+          ctx.arc(2.4, -17.5, 1.45, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        } else if (speciesId === 'cyber') {
+          // Cyber head beacon antenna
+          ctx.save();
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(-1, -17.2);
+          ctx.lineTo(-2.5, -23.5);
+          ctx.stroke();
+          const beaconAlpha = 0.65 + Math.sin(time * 7) * 0.35;
+          ctx.fillStyle = `rgba(56, 189, 248, ${0.35 * beaconAlpha})`;
+          ctx.beginPath();
+          ctx.arc(-2.5, -24, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.arc(-2.5, -24, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Cheek blush (subtle warmth on cute biological species)
+        if (speciesId !== 'cyber') {
+          ctx.fillStyle = happy ? 'rgba(244, 63, 94, 0.42)' : 'rgba(251, 113, 133, 0.24)';
+          ctx.beginPath();
+          ctx.ellipse(2.0, -7.8, 2.1, 1.2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Beak & Eye
+        this.drawBeak(ctx, 8.8, -9.2, speciesId, 0.04);
+        this.drawEye(ctx, 4.6, -10.8, speciesId, blink, happy);
+
+        // Carried Fish in Beak
+        if (carryingFish) {
+          this.drawDetailedFish(ctx, 18.5, -7.5, 0.18, 0.95);
+        }
+
+        // Near Flipper (animated swing)
+        const flipperSwing = isPortrait ? 0.12 : Math.sin(stepPhase) * 0.42;
+        ctx.save();
+        ctx.translate(-3.6, -2.5);
+        ctx.rotate(-flipperSwing);
+        if (speciesId === 'cyber') {
+          const wingGrad = ctx.createLinearGradient(-4, 0, 2, 12);
+          wingGrad.addColorStop(0, '#64748b');
+          wingGrad.addColorStop(1, '#1e293b');
+          ctx.fillStyle = wingGrad;
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.ellipse(-1.2, 5.2, 3.1, 7.8, -0.22, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          const flipGrad = ctx.createLinearGradient(-3, 0, 2, 12);
+          flipGrad.addColorStop(0, '#1e293b');
+          flipGrad.addColorStop(1, '#050a14');
+          ctx.fillStyle = flipGrad;
+          ctx.strokeStyle = 'rgba(2, 10, 24, 0.65)';
+          ctx.lineWidth = 0.85;
+          ctx.beginPath();
+          ctx.ellipse(-1.2, 5.2, 3.2, 8.0, -0.24, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          // White trailing edge highlight on flipper
+          ctx.strokeStyle = 'rgba(226, 232, 240, 0.35)';
+          ctx.lineWidth = 0.7;
+          ctx.beginPath();
+          ctx.arc(-1.2, 5.2, 7.2, Math.PI * 0.7, Math.PI * 1.15);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.restore();
+      },
+
+      drawBodyAndGearSliding(ctx, opts) {
+        const {
+          speciesId = 'adelie',
+          stepPhase = 0,
+          blink = false,
+          happy = false,
+          carryingFish = false,
+          time = 0
+        } = opts;
+
+        const flutter = Math.sin(time * 9 + stepPhase) * 2.5;
+        const kick = Math.sin(stepPhase * 2) * 1.8;
+
+        if (speciesId === 'emperor') {
+          ctx.save();
+          const auraPulse = 0.85 + Math.sin(time * 3.5) * 0.15;
+          ctx.strokeStyle = `rgba(251, 191, 36, ${0.38 * auraPulse})`;
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.ellipse(0, 6, 32 * auraPulse, 11 * auraPulse, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Ice contact shadow
+        ctx.fillStyle = 'rgba(6, 20, 44, 0.32)';
+        ctx.beginPath();
+        ctx.ellipse(0, 7.5, 20, 5.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Gentoo ice-skate carving gleam on snow
+        if (speciesId === 'gentoo') {
+          ctx.strokeStyle = 'rgba(186, 230, 253, 0.7)';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(-26, 7);
+          ctx.lineTo(-10, 7);
+          ctx.stroke();
+        }
+
+        // Kicking Feet / Skates / Fins behind
+        this.drawFootGear(ctx, -16, 2.2 + kick * 0.6, speciesId, 0.35);
+
+        // Jetpack flame / Cape / Scarf streaming behind
+        if (speciesId === 'cyber') {
+          const flameLen = 11 + Math.sin(time * 30) * 4;
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.5)';
+          ctx.beginPath();
+          ctx.moveTo(-16, -2);
+          ctx.lineTo(-18 - flameLen - 4, 1);
+          ctx.lineTo(-16, 4.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#e0f2fe';
+          ctx.beginPath();
+          ctx.moveTo(-16, -0.5);
+          ctx.lineTo(-17 - flameLen * 0.65, 1.2);
+          ctx.lineTo(-16, 3);
+          ctx.closePath();
+          ctx.fill();
+        } else if (speciesId === 'emperor') {
+          ctx.fillStyle = '#7e22ce';
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(4, -5);
+          ctx.quadraticCurveTo(-10, -8 - flutter * 0.5, -22, -2 - flutter * 0.7);
+          ctx.lineTo(-15, 2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        } else if (speciesId === 'adelie') {
+          ctx.fillStyle = '#0f766e';
+          ctx.beginPath();
+          ctx.moveTo(8, -5);
+          ctx.quadraticCurveTo(-2, -9 + flutter * 0.4, -12, -5 + flutter * 0.6);
+          ctx.lineTo(-6, -1.5);
+          ctx.closePath();
+          ctx.fill();
+        } else if (speciesId === 'gentoo') {
+          ctx.fillStyle = '#ea580c';
+          ctx.beginPath();
+          ctx.moveTo(8, -5);
+          ctx.quadraticCurveTo(-3, -8 + flutter * 0.5, -13, -4 + flutter * 0.7);
+          ctx.lineTo(-7, -1);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // Sleek horizontal belly-sliding torso
+        const torsoGrad = ctx.createLinearGradient(0, -6, 0, 8);
+        if (speciesId === 'cyber') {
+          torsoGrad.addColorStop(0, '#64748b');
+          torsoGrad.addColorStop(1, '#1e293b');
+        } else {
+          torsoGrad.addColorStop(0, '#1e293b');
+          torsoGrad.addColorStop(1, '#091120');
+        }
+        ctx.fillStyle = torsoGrad;
+        ctx.strokeStyle = 'rgba(2, 10, 24, 0.7)';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.ellipse(-1, 1.5, 16.5, 6.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // White / Armored Belly underside
+        ctx.fillStyle = speciesId === 'cyber' ? '#94a3b8' : (speciesId === 'emperor' ? '#fef3c7' : '#ffffff');
+        ctx.beginPath();
+        ctx.ellipse(1, 5.2, 13, 3.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (speciesId === 'chinstrap') {
+          // Horizontal scuba tank strapped on top of back
+          ctx.fillStyle = '#cbd5e1';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.roundRect(-8, -8.5, 12.5, 5.2, 2.5);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#0ea5e9';
+          ctx.fillRect(-3, -8.3, 3, 4.8);
+        }
+
+        // Lifted Head
+        ctx.save();
+        ctx.translate(13.5, -3.5);
+
+        ctx.fillStyle = speciesId === 'cyber' ? '#475569' : '#0f172a';
+        ctx.strokeStyle = 'rgba(2, 10, 24, 0.7)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, 6.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        if (speciesId === 'emperor') {
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.ellipse(2.2, 1.5, 3.2, 2.5, 0.2, 0, Math.PI * 2);
+          ctx.fill();
+          // Crown
+          ctx.fillStyle = '#f59e0b';
+          ctx.strokeStyle = '#78350f';
+          ctx.lineWidth = 0.7;
+          ctx.beginPath();
+          ctx.moveTo(-4, -5.8);
+          ctx.lineTo(-4.5, -11);
+          ctx.lineTo(-1.5, -8);
+          ctx.lineTo(0.2, -12);
+          ctx.lineTo(2, -8);
+          ctx.lineTo(4.6, -10.8);
+          ctx.lineTo(4, -5.8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        } else if (speciesId === 'chinstrap') {
+          ctx.fillStyle = '#f8fafc';
+          ctx.beginPath();
+          ctx.ellipse(2.2, 1.5, 4.2, 3.2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#090d16';
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          ctx.moveTo(-1.5, -0.5);
+          ctx.quadraticCurveTo(1.2, 4.2, 5.2, 3.0);
+          ctx.stroke();
+        } else if (speciesId === 'gentoo') {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.ellipse(0.5, -3.8, 4.0, 1.6, -0.15, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (speciesId === 'adelie') {
+          ctx.fillStyle = '#0f766e';
+          ctx.beginPath();
+          ctx.arc(0, -4.2, 5.4, Math.PI, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#d97706';
+          ctx.beginPath();
+          ctx.ellipse(2.5, -4.2, 6.2, 1.4, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (speciesId === 'cyber') {
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(-1, -6.5);
+          ctx.lineTo(-2.5, -11.5);
+          ctx.stroke();
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.arc(-2.5, -12, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        this.drawBeak(ctx, 5.8, 0.2, speciesId, 0.06);
+        this.drawEye(ctx, 2.2, -1.6, speciesId, blink, happy);
+
+        if (carryingFish) {
+          this.drawDetailedFish(ctx, 13.5, 1.2, 0.1, 0.88);
+        }
+
+        ctx.restore();
+
+        // Swept back aerodynamic flipper
+        ctx.save();
+        ctx.translate(1.5, 1.8);
+        ctx.rotate(0.28 + Math.sin(stepPhase) * 0.12);
+        ctx.fillStyle = speciesId === 'cyber' ? '#38bdf8' : '#0f172a';
+        ctx.beginPath();
+        ctx.ellipse(-4.5, 0, 6.2, 2.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      },
+
+      draw(ctx, opts = {}) {
+        const speciesId = opts.speciesId || 'adelie';
+        const pose = opts.pose || 'waddle';
+        const scale = (opts.scale || 1) * this.getSpeciesScale(speciesId);
+
+        ctx.save();
+        ctx.scale(scale, scale);
+
+        if (pose === 'slide') {
+          this.drawBodyAndGearSliding(ctx, opts);
+        } else {
+          this.drawBodyAndGearStanding(ctx, { ...opts, isPortrait: pose === 'portrait' });
+        }
+
+        ctx.restore();
+      }
+    };
+
+    function getPenguinPortraitDataUrl(speciesId) {
+      if (PENGUIN_SPRITE_CACHE[speciesId]) {
+        return PENGUIN_SPRITE_CACHE[speciesId];
+      }
+      try {
+        const off = document.createElement('canvas');
+        off.width = 112;
+        off.height = 112;
+        const octx = off.getContext('2d');
+        if (!octx || typeof octx.createLinearGradient !== 'function') {
+          return '';
+        }
+        const sp = PENGUIN_SPECIES.find(s => s.id === speciesId);
+        const accent = sp ? sp.accentColor : '#38bdf8';
+
+        // Crisp subtle species aura halo in portrait background
+        if (typeof octx.createRadialGradient === 'function') {
+          const halo = octx.createRadialGradient(56, 62, 6, 56, 62, 48);
+          halo.addColorStop(0, accent + '55');
+          halo.addColorStop(1, 'rgba(6, 17, 33, 0)');
+          octx.fillStyle = halo;
+          octx.fillRect(0, 0, 112, 112);
+        }
+
+        octx.save();
+        octx.translate(54, 66);
+        const portraitScale = speciesId === 'emperor' ? 1.82 : 2.02;
+        PenguinSpriteRenderer.draw(octx, {
+          speciesId,
+          pose: 'portrait',
+          stepPhase: 0.4,
+          blink: false,
+          happy: false,
+          carryingFish: false,
+          time: 0.6,
+          scale: portraitScale
+        });
+        octx.restore();
+
+        const url = off.toDataURL('image/png');
+        PENGUIN_SPRITE_CACHE[speciesId] = url;
+        return url;
+      } catch (e) {
+        return '';
+      }
+    }
+
     class ActivePenguin {
       constructor(speciesId, forcedTrait = null) {
         this.uid = ++penguinUniqueCounter;
@@ -3995,6 +5083,9 @@
         this.diveTimer = 0;
         this.facing = 1;
         this.stepPhase = Math.random() * 10;
+        this.blinkTimer = 2.0 + Math.random() * 3.5;
+        this.isBlinking = false;
+        this.happyTimer = 0;
         this.carriedFish = 0;
         this.slideEffectTimer = 0;
 
@@ -4060,6 +5151,20 @@
       update(dt) {
         this.stepPhase += dt * 6;
 
+        if (this.happyTimer > 0) {
+          this.happyTimer = Math.max(0, this.happyTimer - dt);
+        }
+        this.blinkTimer -= dt;
+        if (this.isBlinking) {
+          if (this.blinkTimer <= 0) {
+            this.isBlinking = false;
+            this.blinkTimer = 2.4 + Math.random() * 4.0;
+          }
+        } else if (this.blinkTimer <= 0) {
+          this.isBlinking = true;
+          this.blinkTimer = 0.14;
+        }
+
         const traitSpeed = this.trait ? this.trait.speedMult : 1.0;
         let speed = this.species.baseSpeed * 40 * traitSpeed * state.perkWalkSpeedMult * (1 + state.tech.thermal_parkas * 0.15);
         if (state.slushDebuffTimer > 0) speed *= 0.92;
@@ -4073,8 +5178,8 @@
             tapParticles.push({
               x: this.x + (Math.random() - 0.5) * 8,
               y: this.y + 6,
-              text: '❄️',
-              color: 'rgba(255, 255, 255, 0.7)',
+              text: this.species.id === 'cyber' ? '✦' : '❄️',
+              color: this.species.id === 'cyber' ? 'rgba(56, 189, 248, 0.85)' : 'rgba(255, 255, 255, 0.75)',
               size: 10,
               life: 0.4,
               vy: -0.8,
@@ -4245,210 +5350,74 @@
       }
 
       draw(ctx) {
+        const animTime = typeof auroraWavePhase === 'number' ? auroraWavePhase : 0;
         if (this.state === 'FISHING') {
           ctx.save();
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
+          const pulse = (Math.sin(animTime * 6 + this.uid) + 1) * 0.5;
+          ctx.strokeStyle = `rgba(125, 211, 252, ${0.4 + pulse * 0.35})`;
+          ctx.lineWidth = 1.6;
           ctx.beginPath();
-          ctx.arc(this.x, this.y - 4, 7, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.ellipse(this.x, this.y - 2, 7 + pulse * 5, 3.5 + pulse * 2.5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Rising underwater scuba / dive bubbles
+          const bCount = this.species.id === 'chinstrap' ? 3 : 2;
+          for (let i = 0; i < bCount; i++) {
+            const bPhase = (animTime * 2.2 + i * 0.35 + this.uid * 0.2) % 1;
+            ctx.fillStyle = `rgba(224, 242, 254, ${(1 - bPhase) * 0.75})`;
+            ctx.beginPath();
+            ctx.arc(this.x + Math.sin(bPhase * 8 + i) * 4, this.y - 5 - bPhase * 18, 2.2 - bPhase * 0.9, 0, Math.PI * 2);
+            ctx.fill();
+          }
           ctx.restore();
           return;
         }
 
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.scale(this.facing, 1);
-
         const isSliding = this.isSliding && (this.state === 'NAVIGATE_TO_HOLE' || this.state === 'NAVIGATE_TO_DEPOT');
-        let waddleAngle = isSliding ? 0.35 : Math.sin(this.stepPhase) * 0.15;
-        let footWaddle = Math.sin(this.stepPhase) * 4;
-
+        let extraTilt = 0;
+        let bounceY = 0;
         if (this.state === 'PREPARE_DIVE') {
-          waddleAngle = 0.45;
+          extraTilt = 0.42;
         } else if (this.state === 'SURFACE_CATCH') {
-          waddleAngle = -0.2;
+          extraTilt = -0.18;
+          bounceY = -Math.abs(Math.sin(this.diveTimer * Math.PI * 2)) * 5;
+        } else if (this.happyTimer > 0) {
+          bounceY = -Math.abs(Math.sin(this.happyTimer * Math.PI * 5)) * 4;
         }
 
-        if (this.species.id === 'emperor') {
-          ctx.save();
-          ctx.strokeStyle = 'rgba(251, 191, 36, 0.38)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.ellipse(0, 4, 40, 18, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        }
+        // Soft ice reflection directly beneath penguin
+        ctx.save();
+        ctx.translate(this.x, this.y + 22);
+        ctx.scale(this.facing, -0.32);
+        ctx.globalAlpha = 0.12;
+        PenguinSpriteRenderer.draw(ctx, {
+          speciesId: this.species.id,
+          pose: isSliding ? 'slide' : 'waddle',
+          stepPhase: this.stepPhase,
+          blink: this.isBlinking,
+          happy: this.happyTimer > 0,
+          carryingFish: this.carriedFish > 0,
+          time: animTime,
+          scale: 1
+        });
+        ctx.restore();
 
-        ctx.rotate(waddleAngle);
+        // Main HD Species Sprite
+        ctx.save();
+        ctx.translate(this.x, this.y + bounceY);
+        ctx.scale(this.facing, 1);
+        if (extraTilt !== 0) ctx.rotate(extraTilt);
 
-        if (!isSliding) {
-          ctx.fillStyle = 'rgba(10, 30, 60, 0.25)';
-          ctx.beginPath();
-          ctx.ellipse(0, 10, 14, 5, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = '#f97316';
-          ctx.beginPath();
-          ctx.ellipse(-6, 9 + footWaddle * 0.5, 4, 2.5, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.ellipse(6, 9 - footWaddle * 0.5, 4, 2.5, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = this.species.id === 'cyber' ? '#334155' : '#0f172a';
-          ctx.beginPath();
-          ctx.ellipse(0, 0, 12, 16, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.ellipse(2, 2, 7, 12, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          if (this.species.id === 'emperor') {
-            ctx.fillStyle = '#f59e0b';
-            ctx.beginPath();
-            ctx.ellipse(4, -6, 4, 3, 0.3, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#fbbf24';
-            ctx.beginPath();
-            ctx.moveTo(-5, -17);
-            ctx.lineTo(-2, -22);
-            ctx.lineTo(0, -18);
-            ctx.lineTo(2, -22);
-            ctx.lineTo(5, -17);
-            ctx.closePath();
-            ctx.fill();
-          } else if (this.species.id === 'gentoo') {
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(0, -12, 4, 0, Math.PI);
-            ctx.fill();
-          } else if (this.species.id === 'chinstrap') {
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 1.2;
-            ctx.beginPath();
-            ctx.arc(1, -7, 6, 0.2, Math.PI - 0.2);
-            ctx.stroke();
-          } else if (this.species.id === 'cyber') {
-            ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
-            ctx.fillRect(0, -12, 9, 5);
-            ctx.fillStyle = '#38bdf8';
-            ctx.fillRect(1, -11, 7, 3);
-            ctx.fillStyle = '#e0f2fe';
-            ctx.fillRect(2, -10, 4, 1.5);
-          }
-
-          if (this.species.id !== 'cyber') {
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(4, -10, 2.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#0f172a';
-            ctx.beginPath();
-            ctx.arc(5, -10, 1.2, 0, Math.PI * 2);
-            ctx.fill();
-          }
-
-          ctx.fillStyle = this.species.id === 'gentoo' ? '#ea580c' : '#f59e0b';
-          ctx.beginPath();
-          ctx.moveTo(9, -9);
-          ctx.lineTo(16, -7);
-          ctx.lineTo(9, -5);
-          ctx.closePath();
-          ctx.fill();
-
-          const flipperAngle = Math.sin(this.stepPhase) * 0.4;
-          ctx.save();
-          ctx.translate(-4, -1);
-          ctx.rotate(-flipperAngle);
-          ctx.fillStyle = this.species.id === 'cyber' ? '#0ea5e9' : '#0f172a';
-          ctx.beginPath();
-          ctx.ellipse(-2, 4, 3, 8, -0.2, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-
-          if (this.carriedFish > 0) {
-            ctx.save();
-            ctx.translate(14, -6);
-            ctx.rotate(0.2);
-            ctx.fillStyle = '#38bdf8';
-            ctx.beginPath();
-            ctx.ellipse(0, 0, 7, 3, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(-6, 0);
-            ctx.lineTo(-10, -4);
-            ctx.lineTo(-10, 4);
-            ctx.closePath();
-            ctx.fill();
-            ctx.restore();
-          }
-
-        } else {
-          ctx.fillStyle = 'rgba(10, 30, 60, 0.3)';
-          ctx.beginPath();
-          ctx.ellipse(0, 7, 18, 5, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = this.species.id === 'cyber' ? '#334155' : '#0f172a';
-          ctx.beginPath();
-          ctx.ellipse(0, 3, 16, 7, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.ellipse(2, 6, 12, 4, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = '#f97316';
-          const kick = Math.sin(this.stepPhase * 2) * 2;
-          ctx.beginPath();
-          ctx.ellipse(-14, 2 + kick, 3, 2, 0.4, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = this.species.id === 'cyber' ? '#334155' : '#0f172a';
-          ctx.beginPath();
-          ctx.arc(14, -2, 6, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = '#f59e0b';
-          ctx.beginPath();
-          ctx.moveTo(18, -2);
-          ctx.lineTo(24, 0);
-          ctx.lineTo(18, 2);
-          ctx.closePath();
-          ctx.fill();
-
-          if (this.species.id === 'cyber') {
-            ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
-            ctx.beginPath();
-            ctx.moveTo(-15, 1);
-            ctx.lineTo(-26 - Math.random() * 8, 3);
-            ctx.lineTo(-15, 5);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.fillStyle = '#38bdf8';
-            ctx.beginPath();
-            ctx.moveTo(-16, 2);
-            ctx.lineTo(-22 - Math.random() * 6, 3);
-            ctx.lineTo(-16, 4);
-            ctx.closePath();
-            ctx.fill();
-          }
-
-          if (this.carriedFish > 0) {
-            ctx.save();
-            ctx.translate(22, 1);
-            ctx.fillStyle = '#38bdf8';
-            ctx.beginPath();
-            ctx.ellipse(0, 0, 6, 2.5, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-          }
-        }
+        PenguinSpriteRenderer.draw(ctx, {
+          speciesId: this.species.id,
+          pose: isSliding ? 'slide' : 'waddle',
+          stepPhase: this.stepPhase,
+          blink: this.isBlinking,
+          happy: this.happyTimer > 0,
+          carryingFish: this.carriedFish > 0,
+          time: animTime,
+          scale: 1
+        });
 
         ctx.restore();
       }
@@ -4463,9 +5432,29 @@
       });
 
       const visualCount = Math.min(14, Math.max(1, totalCount));
+      const unlocked = PENGUIN_SPECIES.filter(s => (state.penguins[s.id] && state.penguins[s.id].count > 0));
+
+      // Guarantee every unlocked penguin species has at least one matching sprite on the ice
+      unlocked.forEach(sp => {
+        const hasSpeciesOnIce = activePenguins.some(p => p.speciesId === sp.id);
+        if (!hasSpeciesOnIce) {
+          if (activePenguins.length >= visualCount) {
+            // Replace a duplicate of the most populated species on the ice
+            const countsOnIce = {};
+            activePenguins.forEach(p => { countsOnIce[p.speciesId] = (countsOnIce[p.speciesId] || 0) + 1; });
+            const dupIdx = activePenguins.findIndex(p => (countsOnIce[p.speciesId] || 0) > 1);
+            if (dupIdx >= 0) {
+              const removed = activePenguins.splice(dupIdx, 1)[0];
+              if (removed) releaseSlot(removed.uid);
+            }
+          }
+          if (activePenguins.length < visualCount) {
+            activePenguins.push(new ActivePenguin(sp.id));
+          }
+        }
+      });
 
       while (activePenguins.length < visualCount) {
-        const unlocked = PENGUIN_SPECIES.filter(s => state.penguins[s.id].count > 0);
         const species = unlocked[Math.floor(Math.random() * unlocked.length)] || PENGUIN_SPECIES[0];
         activePenguins.push(new ActivePenguin(species.id));
       }
@@ -4549,25 +5538,43 @@
       requestAnimationFrame(gameLoop);
     }
 
+    const SKY_STARS = Array.from({ length: 58 }, (_, idx) => ({
+      xFrac: ((idx * 173 + 37) % 997) / 997,
+      yFrac: 0.02 + (((idx * 311 + 19) % 340) / 1000),
+      size: (idx % 4 === 0) ? 1.8 : (idx % 2 === 0 ? 1.25 : 0.9),
+      phase: idx * 0.9,
+      speed: 1.4 + (idx % 5) * 0.45
+    }));
+
     function drawScene(ctx, dt) {
       ctx.clearRect(0, 0, width, height);
 
-      const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.55);
-      skyGradient.addColorStop(0, '#030a17');
-      skyGradient.addColorStop(0.6, '#081c3b');
-      skyGradient.addColorStop(1, '#11335b');
+      const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.56);
+      skyGradient.addColorStop(0, '#020814');
+      skyGradient.addColorStop(0.5, '#071936');
+      skyGradient.addColorStop(1, '#123866');
       ctx.fillStyle = skyGradient;
       ctx.fillRect(0, 0, width, height * 0.6);
 
+      drawPolarStarsAndMoon(ctx, auroraWavePhase);
       drawAuroraWaves(ctx, auroraWavePhase);
       drawDistantMountains(ctx);
 
       const iceGradient = ctx.createLinearGradient(0, height * 0.38, 0, height);
-      iceGradient.addColorStop(0, '#1c426e');
-      iceGradient.addColorStop(0.15, '#2e6399');
-      iceGradient.addColorStop(0.5, '#68a0d0');
-      iceGradient.addColorStop(1, '#aae0f8');
+      iceGradient.addColorStop(0, '#1e4878');
+      iceGradient.addColorStop(0.14, '#3671ab');
+      iceGradient.addColorStop(0.45, '#72addc');
+      iceGradient.addColorStop(0.8, '#9fd7f4');
+      iceGradient.addColorStop(1, '#c4ebfc');
       ctx.fillStyle = iceGradient;
+      ctx.fillRect(0, height * 0.38, width, height * 0.62);
+
+      // Subtle auroral sheen reflected onto the mid-shelf ice
+      const sheenGrad = ctx.createRadialGradient(width * 0.5, height * 0.56, 15, width * 0.5, height * 0.58, width * 0.55);
+      sheenGrad.addColorStop(0, 'rgba(186, 230, 253, 0.24)');
+      sheenGrad.addColorStop(0.6, 'rgba(56, 189, 248, 0.08)');
+      sheenGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      ctx.fillStyle = sheenGrad;
       ctx.fillRect(0, height * 0.38, width, height * 0.62);
 
       drawIceDetails(ctx);
@@ -4581,25 +5588,63 @@
       drawSnow(ctx, dt);
     }
 
+    function drawPolarStarsAndMoon(ctx, phase) {
+      ctx.save();
+      SKY_STARS.forEach(star => {
+        const twinkle = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(phase * star.speed + star.phase));
+        ctx.fillStyle = `rgba(224, 242, 254, ${twinkle.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(star.xFrac * width, star.yFrac * height, star.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Soft glowing Polar Moon
+      const mx = width * 0.16;
+      const my = height * 0.13;
+      const moonHalo = ctx.createRadialGradient(mx, my, 8, mx, my, 46);
+      moonHalo.addColorStop(0, 'rgba(224, 242, 254, 0.35)');
+      moonHalo.addColorStop(0.45, 'rgba(125, 211, 252, 0.14)');
+      moonHalo.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      ctx.fillStyle = moonHalo;
+      ctx.beginPath();
+      ctx.arc(mx, my, 46, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#f0f9ff';
+      ctx.beginPath();
+      ctx.arc(mx, my, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.25)';
+      ctx.beginPath();
+      ctx.arc(mx - 3, my - 2, 2.5, 0, Math.PI * 2);
+      ctx.arc(mx + 4, my + 3, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     function drawAuroraWaves(ctx, phase) {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
 
-      const colors = [
-        'rgba(56, 189, 248, 0.25)',
-        'rgba(52, 211, 153, 0.28)',
-        'rgba(168, 85, 247, 0.22)'
+      const ribbons = [
+        { cTop: 'rgba(56, 189, 248, 0.04)', cBot: 'rgba(56, 189, 248, 0.30)', baseY: 0.14, offset: 0 },
+        { cTop: 'rgba(52, 211, 153, 0.05)', cBot: 'rgba(52, 211, 153, 0.34)', baseY: 0.18, offset: 1.7 },
+        { cTop: 'rgba(168, 85, 247, 0.04)', cBot: 'rgba(192, 132, 252, 0.25)', baseY: 0.11, offset: 3.1 }
       ];
 
-      for (let i = 0; i < 3; i++) {
-        ctx.fillStyle = colors[i];
+      ribbons.forEach((rb, i) => {
+        const grad = ctx.createLinearGradient(0, 0, 0, height * (rb.baseY + 0.1));
+        grad.addColorStop(0, rb.cTop);
+        grad.addColorStop(1, rb.cBot);
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.moveTo(0, height * 0.1);
+        ctx.moveTo(0, height * rb.baseY);
 
-        for (let x = 0; x <= width; x += 30) {
-          const y = height * 0.12 +
-            Math.sin(x * 0.005 + phase + i * 1.5) * 35 +
-            Math.cos(x * 0.012 - phase * 0.6) * 20;
+        for (let x = 0; x <= width; x += 24) {
+          const y = height * rb.baseY +
+            Math.sin(x * 0.005 + phase + rb.offset) * 32 +
+            Math.cos(x * 0.013 - phase * 0.65 + i) * 18;
           ctx.lineTo(x, y);
         }
 
@@ -4607,6 +5652,18 @@
         ctx.lineTo(0, 0);
         ctx.closePath();
         ctx.fill();
+      });
+
+      // Vertical aurora curtain rays
+      for (let r = 0; r < 10; r++) {
+        const rx = width * (0.08 + r * 0.095) + Math.sin(phase * 0.7 + r) * 18;
+        const rayHeight = height * (0.16 + 0.05 * Math.sin(phase + r * 1.3));
+        const rayGrad = ctx.createLinearGradient(rx, height * 0.03, rx, rayHeight);
+        rayGrad.addColorStop(0, 'rgba(52, 211, 153, 0)');
+        rayGrad.addColorStop(0.6, 'rgba(52, 211, 153, 0.14)');
+        rayGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+        ctx.fillStyle = rayGrad;
+        ctx.fillRect(rx - 8, height * 0.02, 16, rayHeight);
       }
 
       ctx.restore();
@@ -4614,46 +5671,159 @@
 
     function drawDistantMountains(ctx) {
       ctx.save();
-      ctx.fillStyle = '#0f2648';
-      ctx.beginPath();
-      ctx.moveTo(0, height * 0.42);
+      const baseY = height * 0.415;
 
+      // Far misty range
+      ctx.fillStyle = '#0c2040';
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      const farPeaks = [
+        { x: 0.08, h: 0.31 },
+        { x: 0.25, h: 0.26 },
+        { x: 0.45, h: 0.30 },
+        { x: 0.68, h: 0.27 },
+        { x: 0.90, h: 0.31 }
+      ];
+      farPeaks.forEach(p => {
+        ctx.lineTo(width * (p.x - 0.12), baseY);
+        ctx.lineTo(width * p.x, height * p.h);
+        ctx.lineTo(width * (p.x + 0.12), baseY);
+      });
+      ctx.closePath();
+      ctx.fill();
+
+      // Foreground faceted glacial peaks with lit snow slopes & cool shadow faces
       const peaks = [
-        { x: 0.15, h: 0.32 },
-        { x: 0.35, h: 0.28 },
-        { x: 0.58, h: 0.34 },
-        { x: 0.82, h: 0.29 },
-        { x: 1.05, h: 0.35 }
+        { x: 0.14, w: 0.13, h: 0.30 },
+        { x: 0.36, w: 0.14, h: 0.255 },
+        { x: 0.60, w: 0.13, h: 0.315 },
+        { x: 0.84, w: 0.15, h: 0.27 }
       ];
 
       peaks.forEach(p => {
-        ctx.lineTo(width * (p.x - 0.1), height * 0.42);
-        ctx.lineTo(width * p.x, height * p.h);
-        ctx.lineTo(width * (p.x + 0.1), height * 0.42);
+        const px = width * p.x;
+        const py = height * p.h;
+        const leftX = width * (p.x - p.w);
+        const rightX = width * (p.x + p.w);
+
+        // Left lit slope
+        const litGrad = ctx.createLinearGradient(leftX, py, px, baseY);
+        litGrad.addColorStop(0, '#3b6ca1');
+        litGrad.addColorStop(1, '#183b66');
+        ctx.fillStyle = litGrad;
+        ctx.beginPath();
+        ctx.moveTo(leftX, baseY);
+        ctx.lineTo(px, py);
+        ctx.lineTo(px + width * 0.012, baseY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Right shadowed slope
+        ctx.fillStyle = '#0e284b';
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(rightX, baseY);
+        ctx.lineTo(px - width * 0.005, baseY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Crisp snowcap on summit
+        ctx.fillStyle = 'rgba(224, 242, 254, 0.55)';
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px - width * p.w * 0.28, py + (baseY - py) * 0.28);
+        ctx.lineTo(px - width * p.w * 0.06, py + (baseY - py) * 0.22);
+        ctx.lineTo(px + width * p.w * 0.16, py + (baseY - py) * 0.26);
+        ctx.closePath();
+        ctx.fill();
       });
 
-      ctx.lineTo(width, height * 0.42);
-      ctx.closePath();
-      ctx.fill();
+      // Soft horizon snowbank transition
+      const ridgeGrad = ctx.createLinearGradient(0, baseY - 10, 0, baseY + 14);
+      ridgeGrad.addColorStop(0, 'rgba(186, 230, 253, 0)');
+      ridgeGrad.addColorStop(0.55, 'rgba(186, 230, 253, 0.28)');
+      ridgeGrad.addColorStop(1, 'rgba(186, 230, 253, 0)');
+      ctx.fillStyle = ridgeGrad;
+      ctx.fillRect(0, baseY - 10, width, 24);
       ctx.restore();
     }
 
     function drawIceDetails(ctx) {
       ctx.save();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.lineWidth = 1.5;
 
-      ctx.beginPath();
-      ctx.moveTo(width * 0.1, height * 0.55);
-      ctx.lineTo(width * 0.28, height * 0.58);
-      ctx.lineTo(width * 0.35, height * 0.54);
-      ctx.stroke();
+      // Subtle snowdrifts across the ice shelf
+      ctx.fillStyle = 'rgba(240, 249, 255, 0.22)';
+      [
+        { x: 0.18, y: 0.49, rx: 64, ry: 12 },
+        { x: 0.80, y: 0.53, rx: 72, ry: 14 },
+        { x: 0.34, y: 0.88, rx: 90, ry: 15 },
+        { x: 0.72, y: 0.89, rx: 78, ry: 13 }
+      ].forEach(d => {
+        ctx.beginPath();
+        ctx.ellipse(width * d.x, height * d.y, d.rx, d.ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
 
-      ctx.beginPath();
-      ctx.moveTo(width * 0.65, height * 0.62);
-      ctx.lineTo(width * 0.78, height * 0.66);
-      ctx.lineTo(width * 0.88, height * 0.61);
-      ctx.stroke();
+      // Crystalline ice fissures with bright highlight edges
+      const cracks = [
+        [
+          { x: 0.09, y: 0.56 },
+          { x: 0.25, y: 0.59 },
+          { x: 0.33, y: 0.55 }
+        ],
+        [
+          { x: 0.66, y: 0.61 },
+          { x: 0.79, y: 0.65 },
+          { x: 0.90, y: 0.60 }
+        ],
+        [
+          { x: 0.35, y: 0.77 },
+          { x: 0.42, y: 0.80 },
+          { x: 0.39, y: 0.84 }
+        ]
+      ];
+      cracks.forEach(pts => {
+        ctx.strokeStyle = 'rgba(14, 116, 144, 0.22)';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        pts.forEach((p, idx) => idx === 0 ? ctx.moveTo(width * p.x, height * p.y + 1) : ctx.lineTo(width * p.x, height * p.y + 1));
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        pts.forEach((p, idx) => idx === 0 ? ctx.moveTo(width * p.x, height * p.y) : ctx.lineTo(width * p.x, height * p.y));
+        ctx.stroke();
+      });
+
+      // Decorative faceted ice crystals along shelf edges
+      [
+        { x: 0.08, y: 0.47, s: 1.0 },
+        { x: 0.91, y: 0.49, s: 1.15 },
+        { x: 0.11, y: 0.84, s: 0.85 },
+        { x: 0.90, y: 0.83, s: 0.9 }
+      ].forEach(c => {
+        const cx = width * c.x;
+        const cy = height * c.y;
+        const s = c.s;
+        ctx.fillStyle = 'rgba(186, 230, 253, 0.55)';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 16 * s);
+        ctx.lineTo(cx + 8 * s, cy + 2 * s);
+        ctx.lineTo(cx, cy + 6 * s);
+        ctx.lineTo(cx - 8 * s, cy + 2 * s);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 16 * s);
+        ctx.lineTo(cx, cy + 6 * s);
+        ctx.lineTo(cx - 8 * s, cy + 2 * s);
+        ctx.closePath();
+        ctx.fill();
+      });
+
       ctx.restore();
     }
 
@@ -4662,25 +5832,46 @@
       const cy = height * hole.yRatio;
 
       ctx.save();
-      ctx.fillStyle = 'rgba(240, 250, 255, 0.7)';
+      // Frosted snow lip
+      ctx.fillStyle = 'rgba(240, 250, 255, 0.85)';
       ctx.beginPath();
-      ctx.ellipse(cx, cy, hole.radiusX + 4, hole.radiusY + 3, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + 1, hole.radiusX + 5.5, hole.radiusY + 4, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      const waterGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, hole.radiusX);
-      waterGrad.addColorStop(0, '#02182b');
-      waterGrad.addColorStop(0.7, '#083457');
-      waterGrad.addColorStop(1, '#0e4a7b');
+      // Cut ice shelf inner bevel edge (shows shelf thickness)
+      ctx.fillStyle = '#7dd3fc';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 0.5, hole.radiusX + 2, hole.radiusY + 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Deep arctic ocean water radial fill
+      const waterGrad = ctx.createRadialGradient(cx, cy + 2, 3, cx, cy, hole.radiusX);
+      waterGrad.addColorStop(0, '#021526');
+      waterGrad.addColorStop(0.65, '#073153');
+      waterGrad.addColorStop(1, '#0e5288');
       ctx.fillStyle = waterGrad;
       ctx.beginPath();
-      ctx.ellipse(cx, cy, hole.radiusX, hole.radiusY, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + 1.5, hole.radiusX, hole.radiusY - 0.5, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      const ripple = (hole.rippleTimer % 2.0) / 2.0;
-      ctx.strokeStyle = `rgba(160, 240, 255, ${0.7 * (1 - ripple)})`;
-      ctx.lineWidth = 1.5;
+      // Subtle swimming underwater fish shadow glimpsed inside hole
+      ctx.save();
       ctx.beginPath();
-      ctx.ellipse(cx, cy, hole.radiusX * ripple, hole.radiusY * ripple, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + 1.5, hole.radiusX - 3, hole.radiusY - 2, 0, 0, Math.PI * 2);
+      ctx.clip();
+      const swimOffset = Math.sin(auroraWavePhase * 1.8 + hole.id * 2.1) * (hole.radiusX * 0.48);
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.beginPath();
+      ctx.ellipse(cx + swimOffset, cy + 2, 6.5, 2.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Expanding surface ripples
+      const ripple = (hole.rippleTimer % 2.0) / 2.0;
+      ctx.strokeStyle = `rgba(186, 230, 253, ${(0.72 * (1 - ripple)).toFixed(3)})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 1, hole.radiusX * ripple, hole.radiusY * ripple, 0, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.restore();
@@ -4692,50 +5883,100 @@
       const r = DEPOT.radius;
 
       ctx.save();
+      // Ambient ground shadow + snow threshold
       ctx.fillStyle = 'rgba(10, 30, 60, 0.35)';
       ctx.beginPath();
-      ctx.ellipse(cx, cy + r * 0.45, r * 1.3, r * 0.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + r * 0.42, r * 1.35, r * 0.48, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      const domeGrad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.4, 5, cx, cy, r);
+      // Main Igloo Dome
+      const domeGrad = ctx.createRadialGradient(cx - r * 0.28, cy - r * 0.42, 4, cx, cy, r * 1.05);
       domeGrad.addColorStop(0, '#ffffff');
-      domeGrad.addColorStop(0.5, '#cce6f7');
-      domeGrad.addColorStop(1, '#82b6db');
+      domeGrad.addColorStop(0.5, '#d4ecfc');
+      domeGrad.addColorStop(1, '#7ab3dc');
       ctx.fillStyle = domeGrad;
       ctx.beginPath();
       ctx.arc(cx, cy, r, Math.PI, 0, false);
       ctx.closePath();
       ctx.fill();
 
-      ctx.strokeStyle = 'rgba(120, 180, 220, 0.4)';
-      ctx.lineWidth = 1.5;
+      // Ice-block curved courses & vertical brick mortar lines
+      ctx.strokeStyle = 'rgba(100, 165, 215, 0.42)';
+      ctx.lineWidth = 1.3;
+      [0.36, 0.64, 0.86].forEach(frac => {
+        const yOff = cy - r * (1 - frac);
+        const halfW = Math.sqrt(Math.max(0, r * r - (cy - yOff) * (cy - yOff)));
+        ctx.beginPath();
+        ctx.moveTo(cx - halfW, yOff);
+        ctx.quadraticCurveTo(cx, yOff + 5, cx + halfW, yOff);
+        ctx.stroke();
+      });
+      // Vertical snow-brick staggered seams
+      [
+        { x: -0.52, y0: 0.0, y1: 0.36 },
+        { x: 0.45, y0: 0.0, y1: 0.36 },
+        { x: -0.22, y0: 0.36, y1: 0.64 },
+        { x: 0.25, y0: 0.36, y1: 0.64 },
+        { x: 0.0, y0: 0.64, y1: 0.86 }
+      ].forEach(b => {
+        ctx.beginPath();
+        ctx.moveTo(cx + r * b.x, cy - r * b.y0);
+        ctx.lineTo(cx + r * b.x * 0.88, cy - r * b.y1);
+        ctx.stroke();
+      });
+
+      // Outer dome rim outline
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.lineWidth = 1.4;
       ctx.beginPath();
-      ctx.arc(cx, cy, r * 0.65, Math.PI, 0, false);
+      ctx.arc(cx, cy, r, Math.PI, 0, false);
       ctx.stroke();
+
+      // Sculpted Arched Entrance Tunnel
+      ctx.fillStyle = '#b4dcf5';
+      ctx.beginPath();
+      ctx.arc(cx, cy + 2, r * 0.42, Math.PI, 0, false);
+      ctx.closePath();
+      ctx.fill();
 
       ctx.fillStyle = '#061a33';
       ctx.beginPath();
-      ctx.arc(cx, cy + 2, r * 0.35, Math.PI, 0, false);
+      ctx.arc(cx, cy + 2, r * 0.33, Math.PI, 0, false);
+      ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = 'rgba(251, 191, 36, 0.45)';
+      // Warm cozy hearth glow inside doorway & spilling on snow
+      const lanternGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy + 4, r * 0.42);
+      lanternGrad.addColorStop(0, 'rgba(253, 224, 71, 0.72)');
+      lanternGrad.addColorStop(0.55, 'rgba(251, 191, 36, 0.32)');
+      lanternGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      ctx.fillStyle = lanternGrad;
       ctx.beginPath();
-      ctx.arc(cx, cy - 2, r * 0.22, Math.PI, 0, false);
+      ctx.ellipse(cx, cy + 2, r * 0.42, r * 0.28, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 2;
+      // Crisp Flagpole & Waving Colony Pennant
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2.2;
       ctx.beginPath();
       ctx.moveTo(cx, cy - r);
-      ctx.lineTo(cx, cy - r - 16);
+      ctx.lineTo(cx, cy - r - 18);
       ctx.stroke();
 
-      const wave = Math.sin(auroraWavePhase * 3) * 3;
-      ctx.fillStyle = '#38bdf8';
+      ctx.fillStyle = '#fbbf24';
       ctx.beginPath();
-      ctx.moveTo(cx, cy - r - 16);
-      ctx.lineTo(cx + 14, cy - r - 11 + wave);
-      ctx.lineTo(cx, cy - r - 6);
+      ctx.arc(cx, cy - r - 18.5, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      const wave = Math.sin(auroraWavePhase * 3.2) * 3;
+      const flagGrad = ctx.createLinearGradient(cx, cy - r - 17, cx + 16, cy - r - 6);
+      flagGrad.addColorStop(0, '#38bdf8');
+      flagGrad.addColorStop(1, '#0284c7');
+      ctx.fillStyle = flagGrad;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - r - 17);
+      ctx.quadraticCurveTo(cx + 8, cy - r - 16 + wave * 0.6, cx + 16, cy - r - 12 + wave);
+      ctx.lineTo(cx, cy - r - 7);
       ctx.closePath();
       ctx.fill();
 
@@ -4863,15 +6104,16 @@
 
       let tappedPenguin = false;
       for (let p of activePenguins) {
-        if (Math.hypot(p.x - x, p.y - y) < 32) {
+        if (Math.hypot(p.x - x, p.y - y) < 34) {
           tappedPenguin = true;
           dailyManager.track('penguin_taps', 1);
           sound.playChirp();
           sound.triggerHaptic('penguin_tap');
           p.stepPhase += 3;
-          addTapParticle(p.x, p.y - 15, '♥', '#f43f5e', 22);
+          p.happyTimer = 1.1;
+          addTapParticle(p.x, p.y - 18, '♥', '#f43f5e', 22);
           if (p.trait) {
-            addTapParticle(p.x, p.y - 45, `${p.trait.icon} ${p.trait.name}`, p.trait.color, 11);
+            addTapParticle(p.x, p.y - 48, `${p.trait.icon} ${p.trait.name}`, p.trait.color, 11);
           }
 
           const clickFish = state.getFishPerClick() * 2;
@@ -5496,9 +6738,14 @@
 
           const levelYield = Math.round(sp.baseYield * (1 + (pData.level - 1) * 0.15) * 10) / 10;
 
+          const spriteUrl = getPenguinPortraitDataUrl(sp.id);
+          const avatarInnerHtml = spriteUrl
+            ? `<img class="penguin-sprite-img" src="${spriteUrl}" alt="${sp.name}" />`
+            : sp.avatar;
+
           card.innerHTML = `
-            <div class="penguin-avatar">
-              ${sp.avatar}
+            <div class="penguin-avatar" style="border-color: ${sp.accentColor || 'rgba(160, 240, 255, 0.25)'}55;">
+              ${avatarInnerHtml}
               <span class="penguin-count-badge">${pData.count}</span>
             </div>
             <div class="roster-info">

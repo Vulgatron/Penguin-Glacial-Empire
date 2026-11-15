@@ -212,22 +212,42 @@
       background: rgba(56, 189, 248, 0.25);
     }
 
-    /* AURORA EVENT BANNER / STATUS */
+    /* AURORA EVENT BANNER / STATUS (Hidden HUD Timer) */
     #aurora-timer-pill {
+      display: none !important;
+      pointer-events: none;
+    }
+
+    /* WEATHER HUD PILL */
+    .weather-pill {
       pointer-events: auto;
-      background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(56, 189, 248, 0.35));
-      border: 1px solid rgba(168, 85, 247, 0.55);
-      border-radius: 14px;
-      padding: 4px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 5px 10px;
       font-size: 11px;
       font-weight: 700;
-      color: #f1f5f9;
+      color: #e2e8f0;
       display: flex;
       align-items: center;
       gap: 5px;
       cursor: pointer;
-      backdrop-filter: blur(10px);
-      animation: pulseGlow 2.5s infinite;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transition: background 0.25s, border-color 0.25s, transform 0.15s, box-shadow 0.25s;
+    }
+
+    .weather-pill:active {
+      transform: scale(0.94);
+    }
+
+    .weather-pill.weather-blizzard {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(168, 85, 247, 0.32));
+      border-color: rgba(168, 85, 247, 0.7);
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
     }
 
     @keyframes pulseGlow {
@@ -1608,10 +1628,14 @@
 
     <!-- Right Controls -->
     <div class="hud-group">
-      <div id="aurora-timer-pill" title="Next Aurora Blessing">
+      <div id="aurora-timer-pill" style="display: none;" aria-hidden="true">
         <span>✨</span>
-        <span id="aurora-countdown">45s</span>
+        <span id="aurora-countdown">90s</span>
       </div>
+      <button class="weather-pill" id="weather-pill" title="Current Polar Weather">
+        <span id="weather-icon">☀️</span>
+        <span id="weather-label">Clear</span>
+      </button>
       <button class="top-btn" id="audio-toggle-btn" title="Toggle Sound">🔊</button>
       <button class="top-btn" id="info-btn" title="Game Info">ℹ️</button>
     </div>
@@ -1715,6 +1739,16 @@
       constructor() {
         this.ctx = null;
         this.muted = false;
+        this.lastHapticAt = 0;
+        this.ambientReady = false;
+        this.ambientWeatherId = 'clear';
+        this.isBackgrounded = false;
+        this._lastAmbienceKey = '';
+        this.windGain = null;
+        this.snowGain = null;
+        this.windFilter = null;
+        this.snowFilter = null;
+        this.windLfoGain = null;
       }
 
       init() {
@@ -1727,6 +1761,164 @@
         if (this.ctx && this.ctx.state === 'suspended') {
           this.ctx.resume();
         }
+        this.setupAmbientWeatherNodes();
+        this.syncWeatherAmbience();
+      }
+
+      setupAmbientWeatherNodes() {
+        if (this.ambientReady || !this.ctx || this.ctx.state === 'closed') return;
+        if (
+          typeof this.ctx.createBuffer !== 'function' ||
+          typeof this.ctx.createBufferSource !== 'function' ||
+          typeof this.ctx.createBiquadFilter !== 'function'
+        ) {
+          return;
+        }
+        try {
+          const sampleRate = this.ctx.sampleRate || 44100;
+          const length = sampleRate * 3; // 3-second seamless noise buffer
+          const buffer = this.ctx.createBuffer(1, length, sampleRate);
+          const data = buffer.getChannelData(0);
+
+          // Pink/brownian noise generator for smooth wind & soft snow texture
+          let b0 = 0, b1 = 0, b2 = 0, b3 = 0;
+          for (let i = 0; i < length; i++) {
+            const white = Math.random() * 2 - 1;
+            b0 = 0.997 * b0 + white * 0.029;
+            b1 = 0.985 * b1 + white * 0.032;
+            b2 = 0.950 * b2 + white * 0.048;
+            b3 = 0.850 * b3 + white * 0.080;
+            data[i] = Math.max(-1, Math.min(1, (b0 + b1 + b2 + b3) * 0.65));
+          }
+          // Cross-fade buffer boundary edges to eliminate loop clicks
+          const fadeSamples = Math.min(2048, Math.floor(length * 0.05));
+          for (let i = 0; i < fadeSamples; i++) {
+            const k = i / fadeSamples;
+            const tailIdx = length - fadeSamples + i;
+            data[i] = data[i] * k + data[tailIdx] * (1 - k);
+          }
+
+          const windSource = this.ctx.createBufferSource();
+          windSource.buffer = buffer;
+          windSource.loop = true;
+
+          this.windFilter = this.ctx.createBiquadFilter();
+          this.windFilter.type = 'bandpass';
+          this.windFilter.frequency.setValueAtTime(280, this.ctx.currentTime);
+          this.windFilter.Q.setValueAtTime(2.0, this.ctx.currentTime);
+
+          this.windGain = this.ctx.createGain();
+          this.windGain.gain.setValueAtTime(0, this.ctx.currentTime);
+
+          // Slow gust LFO modulating wind bandpass center frequency
+          const windLfo = this.ctx.createOscillator();
+          windLfo.type = 'sine';
+          windLfo.frequency.setValueAtTime(0.18, this.ctx.currentTime);
+          this.windLfoGain = this.ctx.createGain();
+          this.windLfoGain.gain.setValueAtTime(70, this.ctx.currentTime);
+          windLfo.connect(this.windLfoGain);
+          this.windLfoGain.connect(this.windFilter.frequency);
+
+          windSource.connect(this.windFilter);
+          this.windFilter.connect(this.windGain);
+          this.windGain.connect(this.ctx.destination);
+
+          // Separate high-band layer for crisp falling/blowing snow hiss
+          const snowSource = this.ctx.createBufferSource();
+          snowSource.buffer = buffer;
+          snowSource.loop = true;
+          snowSource.loopStart = 0.7;
+
+          this.snowFilter = this.ctx.createBiquadFilter();
+          this.snowFilter.type = 'bandpass';
+          this.snowFilter.frequency.setValueAtTime(2200, this.ctx.currentTime);
+          this.snowFilter.Q.setValueAtTime(0.7, this.ctx.currentTime);
+
+          this.snowGain = this.ctx.createGain();
+          this.snowGain.gain.setValueAtTime(0, this.ctx.currentTime);
+
+          snowSource.connect(this.snowFilter);
+          this.snowFilter.connect(this.snowGain);
+          this.snowGain.connect(this.ctx.destination);
+
+          const startTime = this.ctx.currentTime;
+          windLfo.start(startTime);
+          windSource.start(startTime);
+          snowSource.start(startTime);
+
+          this.ambientReady = true;
+        } catch (e) {
+          this.ambientReady = false;
+        }
+      }
+
+      getWeatherAudioProfile(weatherId) {
+        if (weatherId === 'blizzard') {
+          return { windVol: 0.115, snowVol: 0.055, windFreq: 520, windQ: 2.5, lfoDepth: 250, snowFreq: 2600 };
+        }
+        if (weatherId === 'light_snow') {
+          return { windVol: 0.032, snowVol: 0.018, windFreq: 350, windQ: 1.9, lfoDepth: 110, snowFreq: 2100 };
+        }
+        return { windVol: 0.012, snowVol: 0.0, windFreq: 250, windQ: 1.6, lfoDepth: 55, snowFreq: 1800 };
+      }
+
+      setWeather(weatherId) {
+        if (weatherId && weatherId !== this.ambientWeatherId) {
+          this.ambientWeatherId = weatherId;
+        }
+        this.syncWeatherAmbience();
+      }
+
+      setBackgrounded(hidden) {
+        this.isBackgrounded = Boolean(hidden);
+        this.syncWeatherAmbience(true);
+      }
+
+      syncWeatherAmbience(fast = false) {
+        if (!this.ambientReady || !this.ctx || !this.windGain || !this.snowGain) return;
+        const active = !this.muted && !this.isBackgrounded && this.ctx.state !== 'closed';
+        const key = `${this.ambientWeatherId}|${active}`;
+        if (!fast && this._lastAmbienceKey === key) return;
+        this._lastAmbienceKey = key;
+
+        const now = this.ctx.currentTime;
+        const tau = fast ? 0.08 : 0.45;
+        const profile = this.getWeatherAudioProfile(this.ambientWeatherId);
+
+        const targetWind = active ? profile.windVol : 0;
+        const targetSnow = active ? profile.snowVol : 0;
+
+        this.windGain.gain.setTargetAtTime(targetWind, now, tau);
+        this.snowGain.gain.setTargetAtTime(targetSnow, now, tau);
+
+        if (this.windFilter && this.snowFilter && this.windLfoGain) {
+          this.windFilter.frequency.setTargetAtTime(profile.windFreq, now, tau);
+          this.windFilter.Q.setTargetAtTime(profile.windQ, now, tau);
+          this.windLfoGain.gain.setTargetAtTime(profile.lfoDepth, now, tau);
+          this.snowFilter.frequency.setTargetAtTime(profile.snowFreq, now, tau);
+        }
+      }
+
+      isActive() {
+        return !this.muted && Boolean(this.ctx) && this.ctx.state !== 'closed';
+      }
+
+      triggerHaptic(kind = 'tap', minGapMs = 0) {
+        if (!this.isActive()) return false;
+        const now = performance.now();
+        if (minGapMs > 0 && (now - this.lastHapticAt) < minGapMs) return false;
+        this.lastHapticAt = now;
+        try {
+          if (window.AndroidBridge && typeof window.AndroidBridge.triggerHaptic === 'function') {
+            return Boolean(window.AndroidBridge.triggerHaptic(kind));
+          } else if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+            const ms = kind === 'collect' ? 26 : kind === 'penguin_tap' ? 20 : 14;
+            return Boolean(navigator.vibrate(ms));
+          }
+        } catch (e) {
+          // Ignore haptic bridge errors
+        }
+        return false;
       }
 
       playPlink() {
@@ -1953,6 +2145,13 @@
       { id: 'thrifty', name: 'Thrifty', icon: '🏷️', color: '#2dd4bf', effectLabel: '-10% recruit cost', speedMult: 1.0, costMult: 0.90, yieldMult: 1.0, diveSpeedMult: 1.0 }
     ];
 
+    const WEATHER_CYCLE_SECONDS = 300; // 5 minutes per weather state
+    const WEATHER_TYPES = [
+      { id: 'clear', name: 'Clear', icon: '☀️', yieldMult: 1.0, snowFactor: 0.1, windFactor: 0.25, fogFactor: 0.0, badgeColor: '#38bdf8', desc: 'Crisp polar skies with clear visibility.' },
+      { id: 'light_snow', name: 'Light Snow', icon: '❄️', yieldMult: 1.0, snowFactor: 0.42, windFactor: 0.75, fogFactor: 0.08, badgeColor: '#93c5fd', desc: 'Gentle Antarctic snowfall drifting across the shelf.' },
+      { id: 'blizzard', name: 'Blizzard', icon: '🌨️', yieldMult: 1.20, snowFactor: 1.0, windFactor: 3.4, fogFactor: 1.0, badgeColor: '#c084fc', desc: 'Heavy whiteout storm decreases visibility, +20% Fish Yield!' }
+    ];
+
     function getTraitDef(traitId) {
       return PENGUIN_TRAITS.find(t => t.id === traitId) || PENGUIN_TRAITS[0];
     }
@@ -2168,6 +2367,7 @@
 
         if (obj.rewardType === 'fish') {
           state.addFish(obj.rewardAmount);
+          sound.triggerHaptic('collect');
         } else if (obj.rewardType === 'shards') {
           state.prestigeShards += obj.rewardAmount;
         }
@@ -2485,8 +2685,8 @@
         this.slushDebuffTimer = 0;
         this.goldenFishTimer = 0;
 
-        this.auroraEventInterval = 45;
-        this.auroraEventTimer = 45;
+        this.auroraEventInterval = 90;
+        this.auroraEventTimer = 90;
         this.isAuroraModalOpen = false;
         this.auroraTimeoutSeconds = 10;
         this.currentAuroraCards = [];
@@ -2503,6 +2703,10 @@
         this.totalSlides = 0;
         this.gameStartTime = Date.now();
         this.highestDPS = 0;
+
+        // 5-Minute Cycling Weather System
+        this.weatherIndex = 0;
+        this.weatherTimer = WEATHER_CYCLE_SECONDS;
       }
 
       addCollectedPerk(perk) {
@@ -2588,6 +2792,31 @@
         return 1 + ((this.glacierLevel - 1) * 0.05);
       }
 
+      getCurrentWeather() {
+        return WEATHER_TYPES[this.weatherIndex] || WEATHER_TYPES[0];
+      }
+
+      getWeatherYieldMultiplier() {
+        return this.getCurrentWeather().yieldMult || 1.0;
+      }
+
+      advanceWeather(seconds) {
+        if (!(seconds > 0)) return false;
+        const prevIndex = this.weatherIndex;
+        let rem = this.weatherTimer - seconds;
+        if (rem <= 0) {
+          const steps = Math.floor((-rem) / WEATHER_CYCLE_SECONDS) + 1;
+          this.weatherIndex = (this.weatherIndex + steps) % WEATHER_TYPES.length;
+          this.weatherTimer = WEATHER_CYCLE_SECONDS - ((-rem) % WEATHER_CYCLE_SECONDS);
+          if (this.weatherTimer <= 0 || this.weatherTimer > WEATHER_CYCLE_SECONDS) {
+            this.weatherTimer = WEATHER_CYCLE_SECONDS;
+          }
+        } else {
+          this.weatherTimer = rem;
+        }
+        return this.weatherIndex !== prevIndex;
+      }
+
       getFishPerClick() {
         const base = 1;
         const krillBonus = 1 + (this.tech.bioluminescent_krill * 0.5);
@@ -2595,7 +2824,8 @@
         const levelBonus = this.getGlacierLevelMultiplier();
         const frenzy = this.frenzyTimer > 0 ? 3 : 1;
         const supernova = this.supernovaTimer > 0 ? 4 : 1;
-        return Math.floor(base * krillBonus * prestige * levelBonus * frenzy * supernova * this.clickMult);
+        const weatherMult = this.getWeatherYieldMultiplier();
+        return Math.floor(base * krillBonus * prestige * levelBonus * frenzy * supernova * weatherMult * this.clickMult);
       }
 
       getSpeciesTraitAverages(speciesId) {
@@ -2647,7 +2877,8 @@
           }
         });
 
-        this.dps = total * prestige * levelBonus * cryoBonus * frenzy * supernova;
+        const weatherMult = this.getWeatherYieldMultiplier();
+        this.dps = total * prestige * levelBonus * cryoBonus * frenzy * supernova * weatherMult;
         if (this.dps > this.highestDPS) {
           this.highestDPS = this.dps;
         }
@@ -2724,7 +2955,9 @@
           totalDives: this.totalDives,
           totalSlides: this.totalSlides,
           gameStartTime: this.gameStartTime,
-          highestDPS: this.highestDPS
+          highestDPS: this.highestDPS,
+          weatherIndex: this.weatherIndex,
+          weatherTimer: this.weatherTimer
         };
 
         const jsonStr = JSON.stringify(saveObj);
@@ -2800,6 +3033,7 @@
             if (typeof data.muted === 'boolean') {
               sound.muted = data.muted;
               updateAudioButton();
+              sound.syncWeatherAmbience(true);
             }
 
             if (data.dailyObjectives && data.dailyObjectives.dateKey === dailyManager.dateKey) {
@@ -2814,8 +3048,18 @@
             this.gameStartTime = data.gameStartTime || Date.now();
             this.highestDPS = data.highestDPS || 0;
 
+            if (typeof data.weatherIndex === 'number' && data.weatherIndex >= 0 && data.weatherIndex < WEATHER_TYPES.length) {
+              this.weatherIndex = data.weatherIndex;
+            }
+            if (typeof data.weatherTimer === 'number' && data.weatherTimer > 0) {
+              this.weatherTimer = Math.min(WEATHER_CYCLE_SECONDS, data.weatherTimer);
+            }
+
             if (data.lastSaveTime) {
               const elapsedSec = (Date.now() - data.lastSaveTime) / 1000;
+              if (elapsedSec > 0) {
+                this.advanceWeather(elapsedSec);
+              }
               if (elapsedSec > 10) {
                 this.calculateDPS();
                 const offlineEarned = Math.floor(this.dps * elapsedSec * (2 / 3));
@@ -2968,17 +3212,20 @@
     }
 
     const snowParticles = [];
-    const MAX_SNOW = 65;
+    const MAX_SNOW = 190;
     for (let i = 0; i < MAX_SNOW; i++) {
       snowParticles.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        radius: 1 + Math.random() * 2.5,
-        speedY: 0.5 + Math.random() * 1.5,
-        speedX: -0.5 + Math.random() * 1.0,
-        opacity: 0.2 + Math.random() * 0.6
+        radius: 1 + Math.random() * 2.8,
+        speedY: 0.6 + Math.random() * 1.6,
+        speedX: -0.4 + Math.random() * 1.1,
+        opacity: 0.25 + Math.random() * 0.65
       });
     }
+    let weatherSnowMix = 0.1;
+    let weatherWindMix = 0.25;
+    let weatherFogMix = 0.0;
 
     const tapParticles = [];
     function addTapParticle(x, y, text, color = '#38bdf8', size = 16) {
@@ -3267,10 +3514,12 @@
               const cryoBonus = 1 + (state.tech.cryo_storage * 0.2);
               const frenzy = state.frenzyTimer > 0 ? 3 : 1;
               const supernova = state.supernovaTimer > 0 ? 4 : 1;
-              const totalBanked = Math.floor(this.carriedFish * cryoBonus * state.getPrestigeMultiplier() * frenzy * supernova);
+              const weatherMult = state.getWeatherYieldMultiplier();
+              const totalBanked = Math.floor(this.carriedFish * cryoBonus * state.getPrestigeMultiplier() * frenzy * supernova * weatherMult);
 
               state.addFish(totalBanked);
               sound.playPlink();
+              sound.triggerHaptic('collect', 90);
               addTapParticle(this.x, this.y - 12, `+${totalBanked} 🐟`, '#fbbf24', 16);
 
               this.carriedFish = 0;
@@ -3536,17 +3785,35 @@
 
       if (!state.isAuroraModalOpen) {
         const coilsReduction = state.tech.aurora_coils * 4;
-        const targetInterval = Math.max(15, state.auroraEventInterval - coilsReduction);
+        const targetInterval = Math.max(30, state.auroraEventInterval - coilsReduction);
         state.auroraEventTimer -= dt;
 
-        const pillText = Math.ceil(Math.max(0, state.auroraEventTimer)) + 's';
-        document.getElementById('aurora-countdown').textContent = pillText;
+        const countdownEl = document.getElementById('aurora-countdown');
+        if (countdownEl) {
+          countdownEl.textContent = Math.ceil(Math.max(0, state.auroraEventTimer)) + 's';
+        }
 
         if (state.auroraEventTimer <= 0) {
           triggerAuroraBlessingEvent();
           state.auroraEventTimer = targetInterval;
         }
       }
+
+      if (state.advanceWeather(dt)) {
+        const w = state.getCurrentWeather();
+        if (w.id === 'blizzard') {
+          showToast('🌨️ Blizzard Incoming! Visibility down, +20% Fish Yield!', '🌨️');
+        } else if (w.id === 'light_snow') {
+          showToast('❄️ Light Snow drifting over the glacier.', '❄️');
+        } else {
+          showToast('☀️ The polar skies have Cleared!', '☀️');
+        }
+        state.save();
+        if (state.currentTab === 'stats') {
+          updateSheetContent();
+        }
+      }
+      sound.setWeather(state.getCurrentWeather().id);
 
       if (now - state.lastSaveTime > 3000) {
         state.lastSaveTime = now;
@@ -3559,6 +3826,7 @@
       activePenguins.sort((a, b) => a.y - b.y);
       activePenguins.forEach(p => p.draw(ctx));
 
+      drawBlizzardVisibilityOverlay(ctx, dt);
       updateParticles(ctx, dt);
       updateHUD();
 
@@ -3759,22 +4027,73 @@
     }
 
     function drawSnow(ctx, dt) {
+      const targetWeather = state.getCurrentWeather();
+      const lerpRate = Math.min(1, dt * 1.4);
+      weatherSnowMix += (targetWeather.snowFactor - weatherSnowMix) * lerpRate;
+      weatherWindMix += (targetWeather.windFactor - weatherWindMix) * lerpRate;
+      weatherFogMix += (targetWeather.fogFactor - weatherFogMix) * lerpRate;
+
+      const activeCount = Math.max(8, Math.round(MAX_SNOW * weatherSnowMix));
+      const frameScale = dt * 60;
+
       ctx.save();
-      ctx.fillStyle = 'rgba(240, 250, 255, 0.8)';
-      snowParticles.forEach(p => {
-        p.y += p.speedY;
-        p.x += p.speedX;
+      for (let i = 0; i < activeCount; i++) {
+        const p = snowParticles[i];
+        const vy = p.speedY * (0.85 + weatherSnowMix * 1.4) * frameScale;
+        const vx = (p.speedX + weatherWindMix * 1.35) * frameScale;
+        p.y += vy;
+        p.x += vx;
         if (p.y > height) {
-          p.y = -5;
+          p.y = -6;
           p.x = Math.random() * width;
         }
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
+        if (p.x < -10) p.x = width + 5;
+        if (p.x > width + 10) p.x = -5;
 
+        ctx.fillStyle = `rgba(240, 250, 255, ${Math.min(0.95, p.opacity * (0.7 + weatherSnowMix * 0.45))})`;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        if (weatherFogMix > 0.35) {
+          ctx.ellipse(p.x, p.y, p.radius * (1 + weatherFogMix * 2.2), p.radius * 0.85, 0.22, 0, Math.PI * 2);
+        } else {
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        }
         ctx.fill();
-      });
+      }
+      ctx.restore();
+    }
+
+    function drawBlizzardVisibilityOverlay(ctx, dt) {
+      if (weatherFogMix <= 0.02) return;
+
+      ctx.save();
+      // Overall frosty whiteout haze decreasing visibility across the canvas
+      const baseHazeAlpha = Math.min(0.46, weatherFogMix * 0.42);
+      ctx.fillStyle = `rgba(205, 228, 248, ${baseHazeAlpha})`;
+      ctx.fillRect(0, 0, width, height);
+
+      // Edge whiteout vignette reducing peripheral visibility in storms
+      const cx = width * 0.5;
+      const cy = height * 0.52;
+      const outerR = Math.max(width, height) * 0.72;
+      const fogGrad = ctx.createRadialGradient(cx, cy, outerR * 0.18, cx, cy, outerR);
+      fogGrad.addColorStop(0, `rgba(215, 236, 252, ${(0.08 * weatherFogMix).toFixed(3)})`);
+      fogGrad.addColorStop(0.6, `rgba(190, 222, 248, ${(0.28 * weatherFogMix).toFixed(3)})`);
+      fogGrad.addColorStop(1, `rgba(175, 212, 244, ${(0.52 * weatherFogMix).toFixed(3)})`);
+      ctx.fillStyle = fogGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      // Drifting horizontal wind-gust fog bands during active blizzard
+      if (weatherFogMix > 0.25) {
+        const gustAlpha = Math.min(0.22, (weatherFogMix - 0.2) * 0.22);
+        ctx.fillStyle = `rgba(240, 248, 255, ${gustAlpha})`;
+        for (let i = 0; i < 4; i++) {
+          const bandY = ((height * (0.2 + i * 0.22)) + Math.sin(auroraWavePhase * 1.4 + i) * 28);
+          const driftX = ((auroraWavePhase * (90 + i * 25)) % (width + 240)) - 120;
+          ctx.beginPath();
+          ctx.ellipse(driftX, bandY, 150 + i * 20, 26 + i * 6, -0.05, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       ctx.restore();
     }
 
@@ -3831,6 +4150,7 @@
         if (Math.hypot(p.x - x, p.y - y) < 32) {
           tappedPenguin = true;
           sound.playChirp();
+          sound.triggerHaptic('penguin_tap');
           p.stepPhase += 3;
           addTapParticle(p.x, p.y - 15, '♥', '#f43f5e', 22);
           if (p.trait) {
@@ -3846,6 +4166,7 @@
 
       if (!tappedPenguin) {
         sound.playPlink();
+        sound.triggerHaptic('tap');
         const clickFish = state.getFishPerClick();
         state.addFish(clickFish);
         addTapParticle(x, y - 10, `+${clickFish} 🐟`, '#38bdf8', 16);
@@ -4178,11 +4499,13 @@
       modal.style.display = 'flex';
 
       document.getElementById('offline-claim-btn').onclick = () => {
+        sound.init();
         const toClaim = pendingOfflineFish;
         pendingOfflineFish = 0;
         if (toClaim > 0) {
           state.addFish(toClaim);
           state.save();
+          sound.triggerHaptic('collect');
         }
         sound.playLevelUp();
         modal.style.display = 'none';
@@ -4275,8 +4598,20 @@
         sound.init();
         sound.muted = !sound.muted;
         updateAudioButton();
+        sound.syncWeatherAmbience(true);
         showToast(sound.muted ? '🔇 Sound Muted' : '🔊 Sound Enabled');
       });
+
+      const weatherPill = document.getElementById('weather-pill');
+      if (weatherPill) {
+        weatherPill.addEventListener('click', () => {
+          const w = state.getCurrentWeather();
+          const mins = Math.floor(Math.max(0, state.weatherTimer) / 60);
+          const secs = Math.floor(Math.max(0, state.weatherTimer) % 60);
+          const timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+          showToast(`${w.icon} ${w.name} (${timeStr} left) — ${w.desc}`, w.icon);
+        });
+      }
 
       document.getElementById('info-btn').addEventListener('click', () => {
         showToast('🐧 Tap penguins & ice to gather fish! Complete daily tasks & review stats.');
@@ -4695,6 +5030,10 @@
               <div class="stat-card-header">⚡ Waddle Speed</div>
               <div class="stat-card-val" style="color: #fbbf24;">+${Math.round((state.perkWalkSpeedMult - 1) * 100)}%</div>
             </div>
+            <div class="stat-card">
+              <div class="stat-card-header">${state.getCurrentWeather().icon} Polar Weather</div>
+              <div class="stat-card-val" style="color: ${state.getCurrentWeather().badgeColor};">${state.getCurrentWeather().name}${state.getWeatherYieldMultiplier() > 1 ? ' (+20%)' : ''}</div>
+            </div>
           </div>
         `;
 
@@ -4725,7 +5064,7 @@
               <div style="font-size: 26px; margin-bottom: 4px;">🌌</div>
               <div style="font-size: 13px; font-weight: 700; color: #f1f5f9;">No Aurora Perks in Current Cycle</div>
               <div style="font-size: 11px; color: #94a3b8; margin-top: 3px; max-width: 320px; line-height: 1.4;">
-                Aurora blessings appear every 45s. Claim perks to unlock powerful boosts! Legendary perks will be preserved upon Rebirth.
+                Aurora blessings arrive periodically from the polar sky. Claim perks to unlock powerful boosts! Legendary perks will be preserved upon Rebirth.
               </div>
             </div>
           `;
@@ -4907,6 +5246,16 @@
       document.getElementById('level-req-text').textContent = `${formatNumber(state.levelFish)} / ${formatNumber(req)}`;
       document.getElementById('glacier-level-fill').style.width = `${pct}%`;
 
+      const w = state.getCurrentWeather();
+      const weatherPill = document.getElementById('weather-pill');
+      const weatherIconEl = document.getElementById('weather-icon');
+      const weatherLabelEl = document.getElementById('weather-label');
+      if (weatherPill && weatherIconEl && weatherLabelEl) {
+        weatherIconEl.textContent = w.icon;
+        weatherLabelEl.textContent = w.id === 'blizzard' ? 'Blizzard +20%' : w.name;
+        weatherPill.classList.toggle('weather-blizzard', w.id === 'blizzard');
+      }
+
       document.getElementById('pill-dps').textContent = `${formatNumber(state.dps)}/s`;
 
       let affordableCount = 0;
@@ -4959,14 +5308,23 @@
     window.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         backgroundedAt = Date.now();
+        if (typeof sound !== 'undefined' && sound.setBackgrounded) {
+          sound.setBackgrounded(true);
+        }
         if (typeof state !== 'undefined' && state.save) {
           state.save();
         }
       } else {
         lastTime = performance.now();
+        if (typeof sound !== 'undefined' && sound.setBackgrounded) {
+          sound.setBackgrounded(false);
+        }
         if (backgroundedAt && typeof state !== 'undefined') {
           const elapsedSec = (Date.now() - backgroundedAt) / 1000;
           backgroundedAt = null;
+          if (elapsedSec > 0) {
+            state.advanceWeather(elapsedSec);
+          }
           if (elapsedSec > 10) {
             state.calculateDPS();
             const offlineEarned = Math.floor(state.dps * elapsedSec * (2 / 3));

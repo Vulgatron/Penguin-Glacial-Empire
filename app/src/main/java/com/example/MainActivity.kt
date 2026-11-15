@@ -2,7 +2,11 @@ package com.example
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -67,6 +71,56 @@ class MainActivity : ComponentActivity() {
         // Ignore
       }
       return ""
+    }
+
+    private val vibrator: Vibrator? by lazy {
+      try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+          val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+          manager?.defaultVibrator
+        } else {
+          @Suppress("DEPRECATION")
+          context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+      } catch (_: Exception) {
+        null
+      }
+    }
+
+    @JavascriptInterface
+    fun triggerHaptic(type: String): Boolean {
+      return try {
+        val v = vibrator ?: return false
+        if (!v.hasVibrator()) return false
+
+        val durationMs: Long
+        val amplitude: Int
+        when (type) {
+          "collect" -> {
+            durationMs = 26L
+            amplitude = 140
+          }
+          "penguin_tap" -> {
+            durationMs = 20L
+            amplitude = 115
+          }
+          else -> {
+            durationMs = 14L
+            amplitude = 75
+          }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          val effectAmplitude = if (v.hasAmplitudeControl()) amplitude else VibrationEffect.DEFAULT_AMPLITUDE
+          v.vibrate(VibrationEffect.createOneShot(durationMs, effectAmplitude))
+        } else {
+          @Suppress("DEPRECATION")
+          v.vibrate(durationMs)
+        }
+        true
+      } catch (_: Exception) {
+        false
+      }
     }
 
     @JavascriptInterface

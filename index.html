@@ -262,11 +262,38 @@
       pointer-events: none;
     }
 
+    .sheet-drag-handle {
+      width: 100%;
+      padding: 10px 0 6px 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .sheet-drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .sheet-handle-bar {
+      width: 44px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.35);
+      border-radius: 3px;
+      transition: background 0.15s, transform 0.15s;
+    }
+
+    .sheet-drag-handle:active .sheet-handle-bar {
+      background: rgba(125, 211, 252, 0.75);
+      transform: scaleX(1.1);
+    }
+
     .sheet-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 12px 10px 12px;
+      padding: 4px 12px 10px 12px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       gap: 8px;
     }
@@ -338,20 +365,6 @@
       border-radius: 8px;
       font-size: 11px;
       font-weight: 800;
-      cursor: pointer;
-    }
-
-    .collapse-toggle-btn {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: var(--text-main);
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
       cursor: pointer;
     }
 
@@ -447,6 +460,33 @@
     .roster-desc {
       font-size: 10px;
       color: #7dd3fc;
+      opacity: 0.9;
+    }
+
+    .trait-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+      margin-top: 3px;
+    }
+
+    .trait-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(15, 23, 42, 0.7);
+      line-height: 1.2;
+    }
+
+    .trait-squad-summary {
+      font-size: 10px;
+      color: #cbd5e1;
       opacity: 0.9;
     }
 
@@ -1092,8 +1132,12 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 20px;
+      justify-content: flex-start;
+      padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.3s ease;
@@ -1107,6 +1151,8 @@
     .aurora-modal-card {
       width: 100%;
       max-width: 520px;
+      max-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+      margin: auto;
       background: linear-gradient(180deg, rgba(17, 36, 68, 0.95) 0%, rgba(10, 24, 46, 0.95) 100%);
       border: 2px solid rgba(168, 85, 247, 0.6);
       border-radius: 24px;
@@ -1116,7 +1162,28 @@
       align-items: center;
       box-shadow: 0 0 40px rgba(168, 85, 247, 0.35);
       position: relative;
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      flex-shrink: 0;
+    }
+
+    .aurora-modal-card * {
+      touch-action: pan-y;
+    }
+
+    .aurora-modal-card::-webkit-scrollbar {
+      width: 5px;
+    }
+    .aurora-modal-card::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 4px;
+    }
+    .aurora-modal-card::-webkit-scrollbar-thumb {
+      background: rgba(125, 211, 252, 0.38);
+      border-radius: 4px;
     }
 
     .aurora-header-banner {
@@ -1125,6 +1192,7 @@
       align-items: center;
       gap: 4px;
       margin-bottom: 12px;
+      flex-shrink: 0;
     }
 
     .aurora-title {
@@ -1149,10 +1217,16 @@
       position: relative;
       width: 74px;
       height: 74px;
-      margin: 6px 0 14px 0;
+      margin: 6px 0 8px 0;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .timer-container.paused {
+      transform: scale(1.04);
     }
 
     .timer-svg {
@@ -1184,6 +1258,28 @@
       color: #ffffff;
     }
 
+    .timer-pause-status {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      color: #94a3b8;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 3px 10px;
+      margin-bottom: 8px;
+      text-align: center;
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+
+    .timer-pause-status.paused {
+      color: #7dd3fc;
+      background: rgba(56, 189, 248, 0.18);
+      border-color: rgba(56, 189, 248, 0.55);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
     .timeout-warning {
       font-size: 10px;
       font-weight: 700;
@@ -1194,6 +1290,7 @@
       padding: 3px 10px;
       border-radius: 10px;
       border: 1px solid rgba(248, 113, 113, 0.3);
+      flex-shrink: 0;
     }
 
     /* 3 Perk Cards */
@@ -1202,6 +1299,7 @@
       gap: 10px;
       width: 100%;
       justify-content: center;
+      flex-shrink: 0;
     }
 
     @media (max-width: 480px) {
@@ -1521,6 +1619,9 @@
 
   <!-- Collapsible Bottom Drawer -->
   <div id="bottom-sheet">
+    <div id="sheet-drag-handle" class="sheet-drag-handle" role="button" aria-label="Pull down to close menu">
+      <div class="sheet-handle-bar"></div>
+    </div>
     <div class="sheet-header">
       <div class="sheet-tabs">
         <button class="tab-btn active" data-tab="penguins">🐧 Penguins</button>
@@ -1531,7 +1632,6 @@
       </div>
       <div class="header-actions">
         <button class="buy-mult-btn" id="buy-mult-toggle">1x</button>
-        <button class="collapse-toggle-btn" id="collapse-drawer-btn" title="Collapse Menu">▼</button>
       </div>
     </div>
 
@@ -1553,19 +1653,23 @@
 
   <!-- Fullscreen Aurora Blessing RNG Modal -->
   <div id="aurora-modal">
-    <div class="aurora-modal-card">
+    <div class="aurora-modal-card" id="aurora-modal-card">
       <div class="aurora-header-banner">
         <div class="aurora-title">✨ Aurora Blessing ✨</div>
         <div class="aurora-subtitle">Select a celestial perk before the cosmic winds shift!</div>
       </div>
 
       <!-- 10s Circular Timer Bar -->
-      <div class="timer-container">
+      <div class="timer-container" id="aurora-timer-container">
         <svg class="timer-svg" viewBox="0 0 74 74">
           <circle class="timer-circle-bg" cx="37" cy="37" r="31"></circle>
           <circle class="timer-circle-fg" id="timer-fg-circle" cx="37" cy="37" r="31"></circle>
         </svg>
         <span class="timer-text" id="timer-num">10.0s</span>
+      </div>
+
+      <div class="timer-pause-status" id="timer-pause-status">
+        Scroll or touch to pause countdown
       </div>
 
       <div class="timeout-warning">
@@ -1594,7 +1698,7 @@
         While you were resting, your loyal penguin colony kept diving through the ice sheets!
       </p>
       <div style="background: rgba(56, 189, 248, 0.15); border: 1px solid var(--accent-cyan); border-radius: 16px; padding: 12px; width: 100%;">
-        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Fish Banked</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Fish Banked (1/3 Idle Reduction)</div>
         <div style="font-size: 22px; font-weight: 900; color: var(--accent-gold);" id="offline-fish-val">+0 🐟</div>
       </div>
       <button class="prestige-btn" id="offline-claim-btn" style="width: 100%;">Claim Catch</button>
@@ -1839,6 +1943,37 @@
         color: '#38bdf8'
       }
     ];
+
+    const PENGUIN_TRAITS = [
+      { id: 'optimistic', name: 'Optimistic', icon: '☀️', color: '#34d399', effectLabel: '+20% waddle speed', speedMult: 1.20, costMult: 1.0, yieldMult: 1.0, diveSpeedMult: 1.0 },
+      { id: 'lazy', name: 'Lazy', icon: '💤', color: '#94a3b8', effectLabel: '-20% speed, -15% cost', speedMult: 0.80, costMult: 0.85, yieldMult: 1.0, diveSpeedMult: 1.0 },
+      { id: 'greedy', name: 'Greedy', icon: '💰', color: '#fbbf24', effectLabel: '+20% catch, +10% cost', speedMult: 1.0, costMult: 1.10, yieldMult: 1.20, diveSpeedMult: 1.0 },
+      { id: 'energetic', name: 'Energetic', icon: '⚡', color: '#38bdf8', effectLabel: '+25% dive speed', speedMult: 1.05, costMult: 1.0, yieldMult: 1.0, diveSpeedMult: 1.25 },
+      { id: 'focused', name: 'Focused', icon: '🎯', color: '#c084fc', effectLabel: '+15% catch, -5% speed', speedMult: 0.95, costMult: 1.0, yieldMult: 1.15, diveSpeedMult: 1.0 },
+      { id: 'thrifty', name: 'Thrifty', icon: '🏷️', color: '#2dd4bf', effectLabel: '-10% recruit cost', speedMult: 1.0, costMult: 0.90, yieldMult: 1.0, diveSpeedMult: 1.0 }
+    ];
+
+    function getTraitDef(traitId) {
+      return PENGUIN_TRAITS.find(t => t.id === traitId) || PENGUIN_TRAITS[0];
+    }
+
+    function rollRandomTraitId() {
+      return PENGUIN_TRAITS[Math.floor(Math.random() * PENGUIN_TRAITS.length)].id;
+    }
+
+    function pickRecruitedTrait(speciesId) {
+      const pData = state && state.penguins && state.penguins[speciesId];
+      if (!pData || !pData.traitCounts) return PENGUIN_TRAITS[0];
+      const entries = Object.entries(pData.traitCounts).filter(([, c]) => c > 0);
+      if (entries.length === 0) return getTraitDef(pData.nextTrait);
+      const total = entries.reduce((sum, [, c]) => sum + c, 0);
+      let roll = Math.random() * total;
+      for (const [tId, cnt] of entries) {
+        roll -= cnt;
+        if (roll <= 0) return getTraitDef(tId);
+      }
+      return getTraitDef(entries[0][0]);
+    }
 
     const GLACIER_TECH = [
       {
@@ -2318,11 +2453,11 @@
         this.currentTab = 'penguins';
         
         this.penguins = {
-          adelie: { count: 1, level: 1 },
-          gentoo: { count: 0, level: 1 },
-          chinstrap: { count: 0, level: 1 },
-          emperor: { count: 0, level: 1 },
-          cyber: { count: 0, level: 1 }
+          adelie: { count: 1, level: 1, nextTrait: rollRandomTraitId(), traitCounts: { optimistic: 1 } },
+          gentoo: { count: 0, level: 1, nextTrait: rollRandomTraitId(), traitCounts: {} },
+          chinstrap: { count: 0, level: 1, nextTrait: rollRandomTraitId(), traitCounts: {} },
+          emperor: { count: 0, level: 1, nextTrait: rollRandomTraitId(), traitCounts: {} },
+          cyber: { count: 0, level: 1, nextTrait: rollRandomTraitId(), traitCounts: {} }
         };
 
         this.tech = {
@@ -2420,8 +2555,29 @@
         }
       }
 
+      ensurePenguinTraits() {
+        PENGUIN_SPECIES.forEach(sp => {
+          if (!this.penguins[sp.id]) {
+            this.penguins[sp.id] = { count: sp.id === 'adelie' ? 1 : 0, level: 1, nextTrait: rollRandomTraitId(), traitCounts: sp.id === 'adelie' ? { optimistic: 1 } : {} };
+          }
+          const pData = this.penguins[sp.id];
+          if (!pData.nextTrait || !PENGUIN_TRAITS.some(t => t.id === pData.nextTrait)) {
+            pData.nextTrait = rollRandomTraitId();
+          }
+          if (!pData.traitCounts || typeof pData.traitCounts !== 'object') {
+            pData.traitCounts = {};
+          }
+          const assignedTotal = Object.values(pData.traitCounts).reduce((a, b) => a + (b || 0), 0);
+          if (assignedTotal < pData.count) {
+            const diff = pData.count - assignedTotal;
+            pData.traitCounts[pData.nextTrait] = (pData.traitCounts[pData.nextTrait] || 0) + diff;
+          }
+          pData.level = Math.max(1, Math.floor(1 + pData.count / 10));
+        });
+      }
+
       getLevelReq() {
-        return Math.floor(100 * Math.pow(1.18, this.glacierLevel));
+        return Math.floor(150 * Math.pow(1.32, this.glacierLevel));
       }
 
       getPrestigeMultiplier() {
@@ -2429,7 +2585,7 @@
       }
 
       getGlacierLevelMultiplier() {
-        return 1 + ((this.glacierLevel - 1) * 0.10);
+        return 1 + ((this.glacierLevel - 1) * 0.05);
       }
 
       getFishPerClick() {
@@ -2440,6 +2596,32 @@
         const frenzy = this.frenzyTimer > 0 ? 3 : 1;
         const supernova = this.supernovaTimer > 0 ? 4 : 1;
         return Math.floor(base * krillBonus * prestige * levelBonus * frenzy * supernova * this.clickMult);
+      }
+
+      getSpeciesTraitAverages(speciesId) {
+        const pData = this.penguins[speciesId];
+        if (!pData || !pData.traitCounts) {
+          return { speedMult: 1, yieldMult: 1, diveSpeedMult: 1 };
+        }
+        let total = 0;
+        let speedSum = 0;
+        let yieldSum = 0;
+        let diveSum = 0;
+        Object.entries(pData.traitCounts).forEach(([tId, cnt]) => {
+          if (cnt > 0) {
+            const tr = getTraitDef(tId);
+            total += cnt;
+            speedSum += tr.speedMult * cnt;
+            yieldSum += tr.yieldMult * cnt;
+            diveSum += tr.diveSpeedMult * cnt;
+          }
+        });
+        if (total <= 0) return { speedMult: 1, yieldMult: 1, diveSpeedMult: 1 };
+        return {
+          speedMult: speedSum / total,
+          yieldMult: yieldSum / total,
+          diveSpeedMult: diveSum / total
+        };
       }
 
       calculateDPS() {
@@ -2454,11 +2636,12 @@
         PENGUIN_SPECIES.forEach(sp => {
           const pData = this.penguins[sp.id];
           if (pData && pData.count > 0) {
-            let yieldVal = sp.baseYield * (1 + (pData.level - 1) * 0.25) * this.perkCatchMult * lineBonus;
+            const traitAvg = this.getSpeciesTraitAverages(sp.id);
+            let yieldVal = sp.baseYield * (1 + (pData.level - 1) * 0.15) * traitAvg.yieldMult * this.perkCatchMult * lineBonus;
             if (sp.id === 'emperor' && this.emperorBoost > 0) {
               yieldVal *= (1 + this.emperorBoost);
             }
-            const tripSeconds = Math.max(2.5, 9 / (sp.baseSpeed * (1 + this.tech.thermal_parkas * 0.15)));
+            const tripSeconds = Math.max(2.5, 9 / (sp.baseSpeed * traitAvg.speedMult * traitAvg.diveSpeedMult * (1 + this.tech.thermal_parkas * 0.15)));
             const rate = (yieldVal / tripSeconds) * pData.count;
             total += rate;
           }
@@ -2471,10 +2654,15 @@
         return this.dps;
       }
 
-      getPenguinCost(id, currentCount) {
+      getPenguinCost(id, currentCount, applyTraitDiscount = true) {
         const def = PENGUIN_SPECIES.find(s => s.id === id);
         if (!def) return 999999;
-        return Math.floor(def.baseCost * Math.pow(def.costMult, currentCount));
+        let base = Math.floor(def.baseCost * Math.pow(def.costMult, currentCount));
+        if (applyTraitDiscount && this.penguins[id] && this.penguins[id].nextTrait) {
+          const trait = getTraitDef(this.penguins[id].nextTrait);
+          base = Math.max(1, Math.floor(base * trait.costMult));
+        }
+        return base;
       }
 
       getTechCost(id, currentLvl) {
@@ -2490,12 +2678,17 @@
 
         dailyManager.track('collect_fish', amount);
 
-        const req = this.getLevelReq();
-        if (this.levelFish >= req) {
+        let levelsGained = 0;
+        let req = this.getLevelReq();
+        while (this.levelFish >= req && levelsGained < 10) {
           this.levelFish -= req;
           this.glacierLevel++;
+          levelsGained++;
+          req = this.getLevelReq();
+        }
+        if (levelsGained > 0) {
           sound.playLevelUp();
-          showToast(`🧊 Glacier Level Up! Now Level ${this.glacierLevel} (+10% Production)`);
+          showToast(`🧊 Glacier Level Up! Now Level ${this.glacierLevel} (+5% Production per level)`);
           spawnLevelUpCelebration();
           this.save();
         }
@@ -2582,6 +2775,7 @@
             this.levelFish = (typeof data.levelFish === 'number') ? data.levelFish : 0;
             this.prestigeShards = (typeof data.prestigeShards === 'number') ? data.prestigeShards : 0;
             if (data.penguins) this.penguins = Object.assign(this.penguins, data.penguins);
+            this.ensurePenguinTraits();
             if (data.tech) this.tech = Object.assign(this.tech, data.tech);
 
             if (Array.isArray(data.collectedPerks)) {
@@ -2624,7 +2818,7 @@
               const elapsedSec = (Date.now() - data.lastSaveTime) / 1000;
               if (elapsedSec > 10) {
                 this.calculateDPS();
-                const offlineEarned = Math.floor(this.dps * elapsedSec * 0.85);
+                const offlineEarned = Math.floor(this.dps * elapsedSec * (2 / 3));
                 if (offlineEarned > 5) {
                   showOfflineModal(offlineEarned);
                 }
@@ -2820,10 +3014,11 @@
     let penguinUniqueCounter = 0;
 
     class ActivePenguin {
-      constructor(speciesId) {
+      constructor(speciesId, forcedTrait = null) {
         this.uid = ++penguinUniqueCounter;
         this.speciesId = speciesId;
         this.species = PENGUIN_SPECIES.find(s => s.id === speciesId) || PENGUIN_SPECIES[0];
+        this.trait = forcedTrait || pickRecruitedTrait(speciesId);
 
         this.x = width * DEPOT.x + (Math.random() - 0.5) * 24;
         this.y = height * DEPOT.y + DEPOT.doorOffset.y + (Math.random() - 0.5) * 10;
@@ -2905,7 +3100,8 @@
       update(dt) {
         this.stepPhase += dt * 6;
 
-        let speed = this.species.baseSpeed * 40 * state.perkWalkSpeedMult * (1 + state.tech.thermal_parkas * 0.15);
+        const traitSpeed = this.trait ? this.trait.speedMult : 1.0;
+        let speed = this.species.baseSpeed * 40 * traitSpeed * state.perkWalkSpeedMult * (1 + state.tech.thermal_parkas * 0.15);
         if (state.slushDebuffTimer > 0) speed *= 0.92;
         if (state.supernovaTimer > 0) speed *= 2.5;
 
@@ -3003,7 +3199,8 @@
             this.diveTimer -= dt;
             if (this.diveTimer <= 0) {
               this.state = 'FISHING';
-              const diveRate = state.diveSpeedMult * (1 + (this.species.diveTime > 1 ? 0.2 : 0));
+              const traitDive = this.trait ? this.trait.diveSpeedMult : 1.0;
+              const diveRate = state.diveSpeedMult * traitDive * (1 + (this.species.diveTime > 1 ? 0.2 : 0));
               this.diveTimer = Math.max(0.6, this.species.diveTime / diveRate);
               sound.playSplash();
               if (this.claimedTarget) {
@@ -3028,7 +3225,8 @@
 
               const lineBonus = 1 + (state.tech.reinforced_line * 0.25);
               const pData = state.penguins[this.species.id] || { level: 1 };
-              const catchVal = Math.round(this.species.baseYield * (1 + (pData.level - 1) * 0.25) * state.perkCatchMult * lineBonus);
+              const traitYield = this.trait ? this.trait.yieldMult : 1.0;
+              const catchVal = Math.round(this.species.baseYield * (1 + (pData.level - 1) * 0.15) * traitYield * state.perkCatchMult * lineBonus);
               this.carriedFish = Math.max(1, catchVal);
 
               releaseSlot(this.uid);
@@ -3635,6 +3833,9 @@
           sound.playChirp();
           p.stepPhase += 3;
           addTapParticle(p.x, p.y - 15, '♥', '#f43f5e', 22);
+          if (p.trait) {
+            addTapParticle(p.x, p.y - 45, `${p.trait.icon} ${p.trait.name}`, p.trait.color, 11);
+          }
 
           const clickFish = state.getFishPerClick() * 2;
           state.addFish(clickFish);
@@ -3660,6 +3861,161 @@
 
     // --- AURORA BLESSING RNG EVENT & FORCED TIMEOUT WORST-CHOICE PENALTY ---
 
+    let auroraIsPointerDown = false;
+    let auroraIsMouseHover = false;
+    let auroraInteractionPauseUntil = 0;
+
+    function resetAuroraInteractionPause() {
+      auroraIsPointerDown = false;
+      auroraIsMouseHover = false;
+      auroraInteractionPauseUntil = 0;
+    }
+
+    function markAuroraInteraction(durationMs = 1800) {
+      if (!state.isAuroraModalOpen) return;
+      auroraInteractionPauseUntil = Math.max(auroraInteractionPauseUntil, performance.now() + durationMs);
+    }
+
+    function isAuroraCountdownPaused() {
+      if (!state.isAuroraModalOpen) return false;
+      return auroraIsPointerDown || auroraIsMouseHover || performance.now() < auroraInteractionPauseUntil;
+    }
+
+    function updateAuroraTimerUI() {
+      const fgCircle = document.getElementById('timer-fg-circle');
+      const timerNum = document.getElementById('timer-num');
+      const timerContainer = document.getElementById('aurora-timer-container');
+      const pauseStatus = document.getElementById('timer-pause-status');
+      const circumference = 2 * Math.PI * 31;
+      fgCircle.style.strokeDasharray = circumference;
+
+      const progress = Math.max(0, state.auroraTimeoutSeconds / 10.0);
+      fgCircle.style.strokeDashoffset = circumference * (1 - progress);
+      timerNum.textContent = Math.max(0, state.auroraTimeoutSeconds).toFixed(1) + 's';
+
+      const paused = isAuroraCountdownPaused();
+      if (timerContainer) timerContainer.classList.toggle('paused', paused);
+      if (pauseStatus) {
+        pauseStatus.classList.toggle('paused', paused);
+        pauseStatus.textContent = paused
+          ? '⏸ COUNTDOWN PAUSED (Interacting)'
+          : 'Scroll or touch to pause countdown';
+      }
+
+      if (paused) {
+        fgCircle.style.stroke = '#7dd3fc';
+        timerNum.style.color = '#7dd3fc';
+      } else if (state.auroraTimeoutSeconds < 3.0) {
+        fgCircle.style.stroke = '#ef4444';
+        timerNum.style.color = '#ef4444';
+      } else if (state.auroraTimeoutSeconds < 6.0) {
+        fgCircle.style.stroke = '#f59e0b';
+        timerNum.style.color = '#fbbf24';
+      } else {
+        fgCircle.style.stroke = '#38bdf8';
+        timerNum.style.color = '#ffffff';
+      }
+    }
+
+    (function bindAuroraModalInteractionListeners() {
+      const modalEl = document.getElementById('aurora-modal');
+      const modalCard = document.getElementById('aurora-modal-card');
+      if (!modalEl || !modalCard) return;
+
+      modalEl.addEventListener('pointerdown', () => {
+        auroraIsPointerDown = true;
+        markAuroraInteraction(2000);
+        updateAuroraTimerUI();
+      }, { passive: true });
+
+      window.addEventListener('pointerup', () => {
+        if (auroraIsPointerDown) {
+          auroraIsPointerDown = false;
+          markAuroraInteraction(1800);
+          updateAuroraTimerUI();
+        }
+      }, { passive: true });
+
+      window.addEventListener('pointercancel', () => {
+        if (auroraIsPointerDown) {
+          auroraIsPointerDown = false;
+          markAuroraInteraction(1800);
+          updateAuroraTimerUI();
+        }
+      }, { passive: true });
+
+      modalEl.addEventListener('touchstart', () => {
+        auroraIsPointerDown = true;
+        markAuroraInteraction(2000);
+        updateAuroraTimerUI();
+      }, { passive: true });
+
+      modalEl.addEventListener('touchmove', () => {
+        auroraIsPointerDown = true;
+        markAuroraInteraction(2200);
+        updateAuroraTimerUI();
+      }, { passive: true });
+
+      modalEl.addEventListener('touchend', () => {
+        auroraIsPointerDown = false;
+        markAuroraInteraction(1800);
+        updateAuroraTimerUI();
+      }, { passive: true });
+
+      modalEl.addEventListener('touchcancel', () => {
+        auroraIsPointerDown = false;
+        markAuroraInteraction(1800);
+        updateAuroraTimerUI();
+      }, { passive: true });
+
+      modalCard.addEventListener('scroll', () => {
+        markAuroraInteraction(2200);
+        updateAuroraTimerUI();
+      }, { passive: true });
+
+      modalEl.addEventListener('scroll', () => {
+        markAuroraInteraction(2200);
+        updateAuroraTimerUI();
+      }, { passive: true });
+
+      modalEl.addEventListener('wheel', () => {
+        markAuroraInteraction(2200);
+        updateAuroraTimerUI();
+      }, { passive: true });
+
+      modalCard.addEventListener('pointermove', (e) => {
+        if (e.pointerType === 'mouse') {
+          markAuroraInteraction(1500);
+          updateAuroraTimerUI();
+        }
+      }, { passive: true });
+
+      modalCard.addEventListener('pointerenter', (e) => {
+        if (e.pointerType === 'mouse') {
+          auroraIsMouseHover = true;
+          updateAuroraTimerUI();
+        }
+      }, { passive: true });
+
+      modalCard.addEventListener('pointerleave', (e) => {
+        if (e.pointerType === 'mouse') {
+          auroraIsMouseHover = false;
+          markAuroraInteraction(1200);
+          updateAuroraTimerUI();
+        }
+      }, { passive: true });
+
+      modalEl.addEventListener('focusin', () => {
+        markAuroraInteraction(2000);
+        updateAuroraTimerUI();
+      });
+
+      modalEl.addEventListener('keydown', () => {
+        markAuroraInteraction(2000);
+        updateAuroraTimerUI();
+      });
+    })();
+
     function triggerAuroraBlessingEvent() {
       if (state.isAuroraModalOpen) return;
       sound.init();
@@ -3667,6 +4023,7 @@
 
       state.isAuroraModalOpen = true;
       state.auroraTimeoutSeconds = 10.0;
+      resetAuroraInteractionPause();
 
       const rolledCards = [];
       const poolCopy = [...AURORA_PERKS_POOL];
@@ -3704,37 +4061,25 @@
       renderAuroraModal();
 
       const modalEl = document.getElementById('aurora-modal');
+      const modalCard = document.getElementById('aurora-modal-card');
+      modalEl.scrollTop = 0;
+      if (modalCard) modalCard.scrollTop = 0;
       modalEl.classList.add('open');
 
       if (state.auroraTimerInterval) clearInterval(state.auroraTimerInterval);
-
-      const fgCircle = document.getElementById('timer-fg-circle');
-      const timerNum = document.getElementById('timer-num');
-      const circumference = 2 * Math.PI * 31;
-      fgCircle.style.strokeDasharray = circumference;
+      updateAuroraTimerUI();
 
       state.auroraTimerInterval = setInterval(() => {
-        state.auroraTimeoutSeconds -= 0.1;
+        if (!isAuroraCountdownPaused()) {
+          state.auroraTimeoutSeconds -= 0.1;
+        }
 
         if (state.auroraTimeoutSeconds <= 0) {
           clearInterval(state.auroraTimerInterval);
           state.auroraTimerInterval = null;
           executeWorstChoicePenalty();
         } else {
-          const progress = Math.max(0, state.auroraTimeoutSeconds / 10.0);
-          fgCircle.style.strokeDashoffset = circumference * (1 - progress);
-          timerNum.textContent = state.auroraTimeoutSeconds.toFixed(1) + 's';
-
-          if (state.auroraTimeoutSeconds < 3.0) {
-            fgCircle.style.stroke = '#ef4444';
-            timerNum.style.color = '#ef4444';
-          } else if (state.auroraTimeoutSeconds < 6.0) {
-            fgCircle.style.stroke = '#f59e0b';
-            timerNum.style.color = '#fbbf24';
-          } else {
-            fgCircle.style.stroke = '#38bdf8';
-            timerNum.style.color = '#ffffff';
-          }
+          updateAuroraTimerUI();
         }
       }, 100);
     }
@@ -3768,6 +4113,7 @@
         clearInterval(state.auroraTimerInterval);
         state.auroraTimerInterval = null;
       }
+      resetAuroraInteractionPause();
 
       const chosenPerk = state.currentAuroraCards[cardIndex];
       if (chosenPerk) {
@@ -3824,13 +4170,20 @@
     }
 
     // --- OFFLINE PROGRESS MODAL ---
+    let pendingOfflineFish = 0;
     function showOfflineModal(amount) {
+      pendingOfflineFish += amount;
       const modal = document.getElementById('offline-modal');
-      document.getElementById('offline-fish-val').textContent = `+${formatNumber(amount)} 🐟`;
+      document.getElementById('offline-fish-val').textContent = `+${formatNumber(pendingOfflineFish)} 🐟`;
       modal.style.display = 'flex';
 
       document.getElementById('offline-claim-btn').onclick = () => {
-        state.addFish(amount);
+        const toClaim = pendingOfflineFish;
+        pendingOfflineFish = 0;
+        if (toClaim > 0) {
+          state.addFish(toClaim);
+          state.save();
+        }
         sound.playLevelUp();
         modal.style.display = 'none';
       };
@@ -3859,14 +4212,59 @@
 
       const sheet = document.getElementById('bottom-sheet');
       const pill = document.getElementById('collapsed-pill');
-      const collapseBtn = document.getElementById('collapse-drawer-btn');
+      const dragHandle = document.getElementById('sheet-drag-handle');
 
-      collapseBtn.addEventListener('click', () => {
+      const collapseSheet = () => {
         sheet.classList.add('collapsed');
         pill.classList.remove('hidden');
-      });
+      };
+
+      if (dragHandle) {
+        let isDragging = false;
+        let startY = 0;
+        let currentDy = 0;
+        let dragStartTime = 0;
+
+        dragHandle.addEventListener('pointerdown', (e) => {
+          isDragging = true;
+          startY = e.clientY;
+          currentDy = 0;
+          dragStartTime = performance.now();
+          sheet.style.transition = 'none';
+          if (dragHandle.setPointerCapture) {
+            try { dragHandle.setPointerCapture(e.pointerId); } catch (_) {}
+          }
+        });
+
+        dragHandle.addEventListener('pointermove', (e) => {
+          if (!isDragging) return;
+          currentDy = Math.max(0, e.clientY - startY);
+          sheet.style.transform = `translateY(${currentDy}px)`;
+        });
+
+        const endDrag = (e) => {
+          if (!isDragging) return;
+          isDragging = false;
+          const elapsed = Math.max(1, performance.now() - dragStartTime);
+          const velocity = currentDy / elapsed;
+          sheet.style.transition = '';
+          sheet.style.transform = '';
+
+          if (dragHandle.releasePointerCapture) {
+            try { dragHandle.releasePointerCapture(e.pointerId); } catch (_) {}
+          }
+
+          if (currentDy > 50 || (velocity > 0.35 && currentDy > 16)) {
+            collapseSheet();
+          }
+        };
+
+        dragHandle.addEventListener('pointerup', endDrag);
+        dragHandle.addEventListener('pointercancel', endDrag);
+      }
 
       pill.addEventListener('click', () => {
+        sheet.style.transform = '';
         sheet.classList.remove('collapsed');
         pill.classList.add('hidden');
         updateSheetContent();
@@ -3895,7 +4293,8 @@
 
       if (state.currentTab === 'penguins') {
         PENGUIN_SPECIES.forEach(sp => {
-          const pData = state.penguins[sp.id] || { count: 0, level: 1 };
+          const pData = state.penguins[sp.id] || { count: 0, level: 1, nextTrait: 'optimistic', traitCounts: {} };
+          const nextTrait = getTraitDef(pData.nextTrait);
           const card = document.createElement('div');
           
           let qty = typeof state.buyMultiplier === 'number' ? state.buyMultiplier : 1;
@@ -3906,7 +4305,7 @@
             let tempFish = state.fish;
             let tempCount = pData.count;
             while (true) {
-              let nextCost = state.getPenguinCost(sp.id, tempCount);
+              let nextCost = state.getPenguinCost(sp.id, tempCount, affordableQty === 0);
               if (tempFish >= nextCost && affordableQty < 100) {
                 tempFish -= nextCost;
                 cost += nextCost;
@@ -3917,19 +4316,29 @@
               }
             }
             if (affordableQty === 0) {
-              cost = state.getPenguinCost(sp.id, pData.count);
+              cost = state.getPenguinCost(sp.id, pData.count, true);
               qty = 1;
             } else {
               qty = affordableQty;
             }
           } else {
             for (let i = 0; i < qty; i++) {
-              cost += state.getPenguinCost(sp.id, pData.count + i);
+              cost += state.getPenguinCost(sp.id, pData.count + i, i === 0);
             }
           }
 
           const canAfford = state.fish >= cost;
           card.className = `roster-card ${canAfford ? 'can-afford' : ''}`;
+
+          const squadTraitsHtml = Object.entries(pData.traitCounts || {})
+            .filter(([, cnt]) => cnt > 0)
+            .map(([tId, cnt]) => {
+              const t = getTraitDef(tId);
+              return `<span title="${t.name}: ${t.effectLabel}">${t.icon}×${cnt}</span>`;
+            })
+            .join(' ');
+
+          const levelYield = Math.round(sp.baseYield * (1 + (pData.level - 1) * 0.15) * 10) / 10;
 
           card.innerHTML = `
             <div class="penguin-avatar">
@@ -3941,8 +4350,14 @@
                 <span class="roster-name">${sp.name}</span>
                 <span class="roster-level">Lvl ${pData.level}</span>
               </div>
-              <div class="roster-stat">+${sp.baseYield * pData.level} fish / dive</div>
+              <div class="roster-stat">+${levelYield} fish / dive</div>
               <div class="roster-desc">${sp.desc}</div>
+              <div class="trait-row">
+                <span class="trait-pill" style="color: ${nextTrait.color}; border-color: ${nextTrait.color}66;">
+                  Next: ${nextTrait.icon} ${nextTrait.name} (${nextTrait.effectLabel})
+                </span>
+                ${squadTraitsHtml ? `<span class="trait-squad-summary">Squad: ${squadTraitsHtml}</span>` : ''}
+              </div>
             </div>
             <button class="buy-btn" ${canAfford ? '' : 'disabled'}>
               <span class="buy-btn-label">RECRUIT +${qty}</span>
@@ -3955,10 +4370,26 @@
             if (state.fish >= cost) {
               state.fish -= cost;
               pData.count += qty;
-              pData.level = Math.floor(1 + pData.count / 5);
+              pData.level = Math.floor(1 + pData.count / 10);
+
+              if (!pData.traitCounts) pData.traitCounts = {};
+              const firstTraitId = nextTrait.id;
+              pData.traitCounts[firstTraitId] = (pData.traitCounts[firstTraitId] || 0) + 1;
+              for (let i = 1; i < qty; i++) {
+                const extraTrait = rollRandomTraitId();
+                pData.traitCounts[extraTrait] = (pData.traitCounts[extraTrait] || 0) + 1;
+              }
+              pData.nextTrait = rollRandomTraitId();
+
               sound.playChirp();
+              showToast(`Recruited ${nextTrait.icon} ${nextTrait.name} ${sp.name}${qty > 1 ? ` (+${qty - 1} more)` : ''}!`);
               checkAchievements();
               state.save();
+              if (activePenguins.length >= 14) {
+                const oldest = activePenguins.shift();
+                if (oldest) releaseSlot(oldest.uid);
+              }
+              activePenguins.push(new ActivePenguin(sp.id, nextTrait));
               syncActivePenguins();
               updateSheetContent();
             }
@@ -4075,7 +4506,7 @@
         });
 
       } else if (state.currentTab === 'prestige') {
-        const pendingShards = Math.floor(Math.cbrt(state.lifetimeFish / 50000));
+        const pendingShards = Math.floor(Math.cbrt(state.lifetimeFish / 150000));
         const currentMultiplierPct = Math.round(state.prestigeShards * 5);
         const nextMultiplierPct = Math.round(pendingShards * 5);
         const preservedCount = (state.collectedPerks || []).filter(p => p.rarity === 'legendary').length;
@@ -4122,12 +4553,13 @@
               state.fish = 0;
               state.glacierLevel = 1;
               state.levelFish = 0;
+              const starterTrait = rollRandomTraitId();
               state.penguins = {
-                adelie: { count: 1, level: 1 },
-                gentoo: { count: 0, level: 1 },
-                chinstrap: { count: 0, level: 1 },
-                emperor: { count: 0, level: 1 },
-                cyber: { count: 0, level: 1 }
+                adelie: { count: 1, level: 1, nextTrait: rollRandomTraitId(), traitCounts: { [starterTrait]: 1 } },
+                gentoo: { count: 0, level: 1, nextTrait: rollRandomTraitId(), traitCounts: {} },
+                chinstrap: { count: 0, level: 1, nextTrait: rollRandomTraitId(), traitCounts: {} },
+                emperor: { count: 0, level: 1, nextTrait: rollRandomTraitId(), traitCounts: {} },
+                cyber: { count: 0, level: 1, nextTrait: rollRandomTraitId(), traitCounts: {} }
               };
               Object.keys(state.tech).forEach(k => state.tech[k] = 0);
 
@@ -4253,7 +4685,7 @@
             </div>
             <div class="stat-card">
               <div class="stat-card-header">🧊 Glacier Level Bonus</div>
-              <div class="stat-card-val" style="color: #38bdf8;">+${(state.glacierLevel - 1) * 10}%</div>
+              <div class="stat-card-val" style="color: #38bdf8;">+${(state.glacierLevel - 1) * 5}%</div>
             </div>
             <div class="stat-card">
               <div class="stat-card-header">🎣 Catch Multiplier</div>
@@ -4523,9 +4955,26 @@
       init();
     }
 
+    let backgroundedAt = null;
     window.addEventListener('visibilitychange', () => {
-      if (document.hidden && typeof state !== 'undefined' && state.save) {
-        state.save();
+      if (document.hidden) {
+        backgroundedAt = Date.now();
+        if (typeof state !== 'undefined' && state.save) {
+          state.save();
+        }
+      } else {
+        lastTime = performance.now();
+        if (backgroundedAt && typeof state !== 'undefined') {
+          const elapsedSec = (Date.now() - backgroundedAt) / 1000;
+          backgroundedAt = null;
+          if (elapsedSec > 10) {
+            state.calculateDPS();
+            const offlineEarned = Math.floor(state.dps * elapsedSec * (2 / 3));
+            if (offlineEarned > 5) {
+              showOfflineModal(offlineEarned);
+            }
+          }
+        }
       }
     });
 

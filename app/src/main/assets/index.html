@@ -911,6 +911,12 @@
       color: #fde68a;
     }
 
+    .perk-preservation-tag.mythic-tag {
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.28), rgba(168, 85, 247, 0.28));
+      border: 1px solid rgba(236, 72, 153, 0.65);
+      color: #f9a8d4;
+    }
+
     .perk-preservation-tag.reset-tag {
       background: rgba(100, 116, 139, 0.25);
       border: 1px solid rgba(148, 163, 184, 0.35);
@@ -1595,6 +1601,320 @@
       color: #94a3b8;
       margin-top: 6px;
     }
+
+    /* 1-Second Aurora Incoming Alert Overlay */
+    #aurora-alert-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 48;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      transition: opacity 0.14s ease;
+      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.18) 0%, rgba(168, 85, 247, 0.22) 55%, rgba(6, 17, 33, 0.55) 100%);
+      box-shadow: inset 0 0 60px rgba(56, 189, 248, 0.55), inset 0 0 110px rgba(192, 132, 252, 0.45);
+    }
+
+    #aurora-alert-overlay.active {
+      opacity: 1;
+      animation: auroraAlertPulse 0.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes auroraAlertPulse {
+      0% { box-shadow: inset 0 0 45px rgba(56, 189, 248, 0.45), inset 0 0 90px rgba(192, 132, 252, 0.35); }
+      100% { box-shadow: inset 0 0 85px rgba(52, 211, 153, 0.75), inset 0 0 140px rgba(236, 72, 153, 0.65); }
+    }
+
+    .aurora-alert-banner {
+      background: linear-gradient(135deg, rgba(15, 38, 72, 0.96), rgba(38, 22, 68, 0.96));
+      border: 2px solid #7dd3fc;
+      border-radius: 22px;
+      padding: 18px 24px;
+      text-align: center;
+      max-width: 340px;
+      width: 100%;
+      box-shadow: 0 0 36px rgba(56, 189, 248, 0.55), 0 12px 30px rgba(0, 0, 0, 0.5);
+      transform: scale(0.92);
+      transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+
+    #aurora-alert-overlay.active .aurora-alert-banner {
+      transform: scale(1);
+    }
+
+    .aurora-alert-title {
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #7dd3fc, #34d399, #f472b6, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .aurora-alert-sub {
+      font-size: 12px;
+      color: #e2e8f0;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .aurora-alert-bar {
+      width: 100%;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.14);
+      border-radius: 4px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .aurora-alert-bar-fill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #c084fc, #fbbf24);
+      transform-origin: left center;
+    }
+
+    #aurora-alert-overlay.active .aurora-alert-bar-fill {
+      animation: auroraAlertSweep 1s linear forwards;
+    }
+
+    @keyframes auroraAlertSweep {
+      from { transform: scaleX(1); }
+      to { transform: scaleX(0); }
+    }
+
+    /* Stats Level/XP Card & Rebirth History */
+    .stats-level-card {
+      background: linear-gradient(135deg, rgba(16, 46, 84, 0.88), rgba(22, 38, 72, 0.88));
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 16px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .stats-level-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stats-level-title {
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--accent-gold);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stats-level-bonus-pill {
+      font-size: 10px;
+      font-weight: 800;
+      color: #7dd3fc;
+      background: rgba(56, 189, 248, 0.18);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      padding: 3px 8px;
+      border-radius: 10px;
+    }
+
+    .stats-xp-labels {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .rebirth-history-summary {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .rebirth-history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .rebirth-entry-card {
+      background: rgba(15, 33, 58, 0.78);
+      border: 1px solid rgba(192, 132, 252, 0.35);
+      border-radius: 12px;
+      padding: 9px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .rebirth-entry-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .rebirth-entry-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #e9d5ff;
+    }
+
+    .rebirth-entry-date {
+      font-size: 10px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .rebirth-entry-meta {
+      font-size: 10px;
+      color: #cbd5e1;
+    }
+
+    .rebirth-entry-gain {
+      font-size: 13px;
+      font-weight: 900;
+      color: #c084fc;
+      background: rgba(168, 85, 247, 0.18);
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      padding: 4px 9px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
+    /* Settings Tab Controls */
+    .settings-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .settings-card {
+      background: rgba(15, 33, 58, 0.78);
+      border: 1px solid rgba(160, 240, 255, 0.22);
+      border-radius: 16px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .settings-card-header {
+      font-size: 13px;
+      font-weight: 800;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 8px;
+    }
+
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .settings-row-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+    }
+
+    .settings-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .settings-desc {
+      font-size: 10px;
+      color: #94a3b8;
+      line-height: 1.3;
+    }
+
+    .settings-slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .settings-slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .settings-slider-val {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--accent-cyan);
+    }
+
+    .settings-slider {
+      width: 100%;
+      accent-color: #38bdf8;
+      height: 6px;
+      cursor: pointer;
+    }
+
+    .toggle-pill-btn {
+      min-width: 92px;
+      min-height: 36px;
+      padding: 6px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(52, 211, 153, 0.55);
+      background: rgba(52, 211, 153, 0.2);
+      color: #34d399;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.12s, background 0.15s;
+    }
+
+    .toggle-pill-btn.off {
+      border-color: rgba(248, 113, 113, 0.5);
+      background: rgba(248, 113, 113, 0.16);
+      color: #fca5a5;
+    }
+
+    .toggle-pill-btn:active {
+      transform: scale(0.95);
+    }
+
+    .settings-test-btn {
+      background: rgba(56, 189, 248, 0.18);
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      color: #7dd3fc;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      align-self: flex-start;
+    }
+
+    .settings-test-btn:active {
+      transform: scale(0.96);
+    }
   </style>
 </head>
 <body>
@@ -1615,17 +1935,6 @@
       </div>
     </div>
 
-    <!-- Glacier Level Bar -->
-    <div class="level-container">
-      <div class="level-header">
-        <span class="level-badge">🧊 Level <span id="glacier-level">1</span></span>
-        <span id="level-req-text">0 / 100</span>
-      </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="glacier-level-fill"></div>
-      </div>
-    </div>
-
     <!-- Right Controls -->
     <div class="hud-group">
       <div id="aurora-timer-pill" style="display: none;" aria-hidden="true">
@@ -1636,7 +1945,6 @@
         <span id="weather-icon">☀️</span>
         <span id="weather-label">Clear</span>
       </button>
-      <button class="top-btn" id="audio-toggle-btn" title="Toggle Sound">🔊</button>
       <button class="top-btn" id="info-btn" title="Game Info">ℹ️</button>
     </div>
   </div>
@@ -1653,8 +1961,9 @@
         <button class="tab-btn" data-tab="daily">🎯 Daily <span id="daily-tab-dot" class="tab-badge-dot" style="display:none;"></span></button>
         <button class="tab-btn" data-tab="prestige">✨ Prestige</button>
         <button class="tab-btn" data-tab="stats">📊 Stats</button>
+        <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
       </div>
-      <div class="header-actions">
+      <div class="header-actions" id="header-actions-box">
         <button class="buy-mult-btn" id="buy-mult-toggle">1x</button>
       </div>
     </div>
@@ -1673,6 +1982,17 @@
     </div>
     <span class="pill-affordable-count" id="pill-badge">0</span>
     <span class="pill-expand-icon">▲ Open Menu</span>
+  </div>
+
+  <!-- 1-Second Aurora Incoming Alert Overlay -->
+  <div id="aurora-alert-overlay" aria-live="polite">
+    <div class="aurora-alert-banner">
+      <div class="aurora-alert-title">✨ Aurora Blessing Incoming! ✨</div>
+      <div class="aurora-alert-sub">Celestial winds converging...</div>
+      <div class="aurora-alert-bar">
+        <div class="aurora-alert-bar-fill"></div>
+      </div>
+    </div>
   </div>
 
   <!-- Fullscreen Aurora Blessing RNG Modal -->
@@ -1739,11 +2059,18 @@
       constructor() {
         this.ctx = null;
         this.muted = false;
+        this.masterVolume = 1.0;
+        this.sfxVolume = 1.0;
+        this.ambientVolume = 1.0;
+        this.hapticsEnabled = true;
         this.lastHapticAt = 0;
         this.ambientReady = false;
         this.ambientWeatherId = 'clear';
         this.isBackgrounded = false;
         this._lastAmbienceKey = '';
+        this.masterGain = null;
+        this.sfxGain = null;
+        this.ambientGain = null;
         this.windGain = null;
         this.snowGain = null;
         this.windFilter = null;
@@ -1761,8 +2088,45 @@
         if (this.ctx && this.ctx.state === 'suspended') {
           this.ctx.resume();
         }
+        this.initAudioRouting();
         this.setupAmbientWeatherNodes();
-        this.syncWeatherAmbience();
+        this.applyVolumes(true);
+        this.syncWeatherAmbience(true);
+      }
+
+      initAudioRouting() {
+        if (!this.ctx || this.ctx.state === 'closed' || this.masterGain) return;
+        if (typeof this.ctx.createGain !== 'function') return;
+        this.masterGain = this.ctx.createGain();
+        this.sfxGain = this.ctx.createGain();
+        this.ambientGain = this.ctx.createGain();
+
+        this.sfxGain.connect(this.masterGain);
+        this.ambientGain.connect(this.masterGain);
+        this.masterGain.connect(this.ctx.destination);
+      }
+
+      getSfxOutput() {
+        return this.sfxGain || (this.ctx ? this.ctx.destination : null);
+      }
+
+      applyVolumes(immediate = false) {
+        if (!this.ctx || this.ctx.state === 'closed' || !this.masterGain) return;
+        const now = this.ctx.currentTime;
+        const active = !this.muted && !this.isBackgrounded;
+        const mVal = active ? Math.max(0, Math.min(1, this.masterVolume)) : 0;
+        const sVal = Math.max(0, Math.min(1, this.sfxVolume));
+        const aVal = Math.max(0, Math.min(1, this.ambientVolume));
+
+        if (immediate) {
+          this.masterGain.gain.setValueAtTime(mVal, now);
+          if (this.sfxGain) this.sfxGain.gain.setValueAtTime(sVal, now);
+          if (this.ambientGain) this.ambientGain.gain.setValueAtTime(aVal, now);
+        } else {
+          this.masterGain.gain.setTargetAtTime(mVal, now, 0.04);
+          if (this.sfxGain) this.sfxGain.gain.setTargetAtTime(sVal, now, 0.04);
+          if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(aVal, now, 0.06);
+        }
       }
 
       setupAmbientWeatherNodes() {
@@ -1775,6 +2139,8 @@
           return;
         }
         try {
+          this.initAudioRouting();
+          const ambDest = this.ambientGain || this.ctx.destination;
           const sampleRate = this.ctx.sampleRate || 44100;
           const length = sampleRate * 3; // 3-second seamless noise buffer
           const buffer = this.ctx.createBuffer(1, length, sampleRate);
@@ -1821,7 +2187,7 @@
 
           windSource.connect(this.windFilter);
           this.windFilter.connect(this.windGain);
-          this.windGain.connect(this.ctx.destination);
+          this.windGain.connect(ambDest);
 
           // Separate high-band layer for crisp falling/blowing snow hiss
           const snowSource = this.ctx.createBufferSource();
@@ -1839,7 +2205,7 @@
 
           snowSource.connect(this.snowFilter);
           this.snowFilter.connect(this.snowGain);
-          this.snowGain.connect(this.ctx.destination);
+          this.snowGain.connect(ambDest);
 
           const startTime = this.ctx.currentTime;
           windLfo.start(startTime);
@@ -1871,13 +2237,15 @@
 
       setBackgrounded(hidden) {
         this.isBackgrounded = Boolean(hidden);
+        this.applyVolumes(true);
         this.syncWeatherAmbience(true);
       }
 
       syncWeatherAmbience(fast = false) {
+        this.applyVolumes(fast);
         if (!this.ambientReady || !this.ctx || !this.windGain || !this.snowGain) return;
-        const active = !this.muted && !this.isBackgrounded && this.ctx.state !== 'closed';
-        const key = `${this.ambientWeatherId}|${active}`;
+        const active = !this.muted && !this.isBackgrounded && this.masterVolume > 0 && this.ambientVolume > 0 && this.ctx.state !== 'closed';
+        const key = `${this.ambientWeatherId}|${active}|${this.ambientVolume.toFixed(2)}|${this.masterVolume.toFixed(2)}`;
         if (!fast && this._lastAmbienceKey === key) return;
         this._lastAmbienceKey = key;
 
@@ -1900,11 +2268,11 @@
       }
 
       isActive() {
-        return !this.muted && Boolean(this.ctx) && this.ctx.state !== 'closed';
+        return !this.muted && this.masterVolume > 0 && Boolean(this.ctx) && this.ctx.state !== 'closed';
       }
 
       triggerHaptic(kind = 'tap', minGapMs = 0) {
-        if (!this.isActive()) return false;
+        if (!this.hapticsEnabled || !this.isActive()) return false;
         const now = performance.now();
         if (minGapMs > 0 && (now - this.lastHapticAt) < minGapMs) return false;
         this.lastHapticAt = now;
@@ -1922,7 +2290,9 @@
       }
 
       playPlink() {
-        if (this.muted || !this.ctx) return;
+        if (this.muted || !this.ctx || this.masterVolume <= 0 || this.sfxVolume <= 0) return;
+        const out = this.getSfxOutput();
+        if (!out) return;
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
@@ -1936,13 +2306,15 @@
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(out);
         osc.start(now);
         osc.stop(now + 0.12);
       }
 
       playChirp() {
-        if (this.muted || !this.ctx) return;
+        if (this.muted || !this.ctx || this.masterVolume <= 0 || this.sfxVolume <= 0) return;
+        const out = this.getSfxOutput();
+        if (!out) return;
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
@@ -1956,13 +2328,15 @@
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(out);
         osc.start(now);
         osc.stop(now + 0.14);
       }
 
       playSlide() {
-        if (this.muted || !this.ctx) return;
+        if (this.muted || !this.ctx || this.masterVolume <= 0 || this.sfxVolume <= 0) return;
+        const out = this.getSfxOutput();
+        if (!out) return;
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
@@ -1975,13 +2349,15 @@
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(out);
         osc.start(now);
         osc.stop(now + 0.18);
       }
 
       playSplash() {
-        if (this.muted || !this.ctx) return;
+        if (this.muted || !this.ctx || this.masterVolume <= 0 || this.sfxVolume <= 0) return;
+        const out = this.getSfxOutput();
+        if (!out) return;
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
@@ -1994,13 +2370,15 @@
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(out);
         osc.start(now);
         osc.stop(now + 0.16);
       }
 
       playLevelUp() {
-        if (this.muted || !this.ctx) return;
+        if (this.muted || !this.ctx || this.masterVolume <= 0 || this.sfxVolume <= 0) return;
+        const out = this.getSfxOutput();
+        if (!out) return;
         const now = this.ctx.currentTime;
         const notes = [523.25, 659.25, 783.99, 1046.50];
 
@@ -2016,14 +2394,16 @@
           gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.35);
 
           osc.connect(gain);
-          gain.connect(this.ctx.destination);
+          gain.connect(out);
           osc.start(noteTime);
           osc.stop(noteTime + 0.35);
         });
       }
 
       playBuzzer() {
-        if (this.muted || !this.ctx) return;
+        if (this.muted || !this.ctx || this.masterVolume <= 0 || this.sfxVolume <= 0) return;
+        const out = this.getSfxOutput();
+        if (!out) return;
         const now = this.ctx.currentTime;
         const osc1 = this.ctx.createOscillator();
         const osc2 = this.ctx.createOscillator();
@@ -2039,7 +2419,7 @@
 
         osc1.connect(gain);
         osc2.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(out);
 
         osc1.start(now);
         osc2.start(now);
@@ -2047,8 +2427,38 @@
         osc2.stop(now + 0.45);
       }
 
+      // 1-second crystalline rising alert immediately preceding Blessing choice
+      playAuroraAlert() {
+        if (this.muted || !this.ctx || this.masterVolume <= 0 || this.sfxVolume <= 0) return;
+        const out = this.getSfxOutput();
+        if (!out) return;
+        const now = this.ctx.currentTime;
+        const chimeNotes = [587.33, 739.99, 880.00, 1174.66, 1479.98];
+
+        chimeNotes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const t0 = now + idx * 0.16;
+
+          osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+          osc.frequency.setValueAtTime(freq, t0);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.03, t0 + 0.25);
+
+          gain.gain.setValueAtTime(0.001, t0);
+          gain.gain.linearRampToValueAtTime(0.16, t0 + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, Math.min(now + 0.98, t0 + 0.34));
+
+          osc.connect(gain);
+          gain.connect(out);
+          osc.start(t0);
+          osc.stop(Math.min(now + 1.0, t0 + 0.36));
+        });
+      }
+
       playAuroraChord() {
-        if (this.muted || !this.ctx) return;
+        if (this.muted || !this.ctx || this.masterVolume <= 0 || this.sfxVolume <= 0) return;
+        const out = this.getSfxOutput();
+        if (!out) return;
         const now = this.ctx.currentTime;
         const chord = [392.00, 493.88, 587.33, 783.99];
 
@@ -2062,7 +2472,7 @@
           gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
 
           osc.connect(gain);
-          gain.connect(this.ctx.destination);
+          gain.connect(out);
           osc.start(now + i * 0.04);
           osc.stop(now + 1.2);
         });
@@ -2231,23 +2641,40 @@
       }
     ];
 
-    // 15 UNIQUE AURORA BLESSING PERKS
+    // 28 UNIQUE AURORA BLESSING PERKS
     const AURORA_PERKS_POOL = [
       { id: 't_pebble', tier: 1, rarity: 'trivial', name: 'Chilly Pebble', icon: '🪨', desc: 'Tripped on a smooth arctic pebble. +1 Flat Fish immediately.', grant: (g) => { g.addFish(1); } },
       { id: 't_slush', tier: 1, rarity: 'trivial', name: 'Slushy Feet (Debuff)', icon: '🧊', desc: 'Cold slush! -8% waddle speed for 20s, but grants +5 flat fish.', grant: (g) => { g.addFish(5); g.slushDebuffTimer = 20; } },
       { id: 't_breeze', tier: 1, rarity: 'trivial', name: 'Breeze of Frost', icon: '💨', desc: 'A tiny polar gust blows by. +0.5% temporary slide speed.', grant: (g) => { g.tempSpeedBoost += 0.005; } },
+
       { id: 'c_booties', tier: 2, rarity: 'common', name: 'Thermal Booties', icon: '🥾', desc: '+15% penguin waddle speed across all species permanently.', grant: () => {} },
       { id: 'c_herring', tier: 2, rarity: 'common', name: 'Schooling Herring', icon: '🐟', desc: 'Dense fish school in the hole! +20% catch capacity permanently.', grant: () => {} },
       { id: 'c_quickcatch', tier: 2, rarity: 'common', name: 'Quick Net Catch', icon: '⏱️', desc: 'Instantly gain 30 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(25, g.dps * 30)); } },
       { id: 'c_flappers', tier: 2, rarity: 'common', name: 'Crisp Flappers', icon: '🪽', desc: '+35% manual screen and penguin tap/click fish yield.', grant: () => {} },
+      { id: 'c_sonar', tier: 2, rarity: 'common', name: 'Echo Ice Finder', icon: '📡', desc: '+12% catch yield and +10% dive speed permanently.', grant: () => {} },
+      { id: 'c_wax', tier: 2, rarity: 'common', name: 'Glacier Belly Wax', icon: '🧈', desc: '+25% belly-slide speed and +10% tap fish yield permanently.', grant: () => {} },
+      { id: 'c_krill_snack', tier: 2, rarity: 'common', name: 'Krill Ration Crate', icon: '🦐', desc: 'Instantly harvest 45 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(40, g.dps * 45)); } },
+
       { id: 'r_sledding', tier: 3, rarity: 'rare', name: 'Glacial Sledding League', icon: '🛷', desc: 'Gentoo and sliding penguins gain +50% slide speed permanently.', grant: () => {} },
       { id: 'r_trench', tier: 3, rarity: 'rare', name: 'Deep Trench Oxygen', icon: '🌊', desc: 'Diving cycle 25% faster and carries +40% dive capacity.', grant: () => {} },
       { id: 'r_squid', tier: 3, rarity: 'rare', name: 'Abyssal Squid Haul', icon: '🦑', desc: 'Instantly harvest 100 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(90, g.dps * 100)); } },
       { id: 'r_magnetic', tier: 3, rarity: 'rare', name: 'Aurora Magnetic Krill', icon: '🧲', desc: 'Rare Golden Fish spawns swim across the ice shelf twice as often for 120s.', grant: (g) => { g.goldenFishTimer = 120; } },
-      { id: 'l_frenzy', tier: 4, rarity: 'legendary', name: 'Blizzard Feeding Frenzy', icon: '🌨️', desc: 'Antarctic storm triples (3x) all fish yield for 45 seconds!', grant: (g) => { g.frenzyTimer = 45; } },
-      { id: 'l_monarch', tier: 4, rarity: 'legendary', name: "Emperor's Royal Decree", icon: '👑', desc: 'Emperor Monarch aura radius +100%, and boosts all penguin speeds by +50%.', grant: () => {} },
-      { id: 'l_mammoth', tier: 4, rarity: 'legendary', name: 'Mammoth Ice Cache', icon: '🦣', desc: 'Unearth ancient frozen fish: instantly gain 300 seconds of fish production!', grant: (g) => { g.addFish(Math.max(250, g.dps * 300)); } },
-      { id: 'm_supernova', tier: 5, rarity: 'mythic', name: 'Cosmic Glacial Supernova', icon: '🌌', desc: 'Cosmic awakening: all penguins equip jet boosters (+250% speed), +4x fish yield, and instant 600s fish!', grant: (g) => { g.addFish(Math.max(600, g.dps * 600)); g.supernovaTimer = 60; } }
+      { id: 'r_cryo_net', tier: 3, rarity: 'rare', name: 'Cryo-Weave Trawler', icon: '🕸️', desc: '+30% catch capacity and +20% tap fish yield permanently.', grant: () => {} },
+      { id: 'r_storm_sail', tier: 3, rarity: 'rare', name: 'Gale-Force Flippers', icon: '⛵', desc: '+25% waddle speed and +30% belly-slide speed permanently.', grant: () => {} },
+      { id: 'r_polar_surge', tier: 3, rarity: 'rare', name: 'Polar Current Surge', icon: '🌀', desc: 'Double (2x) all fish yield for 60s and immediately gain 75s of fish!', grant: (g) => { g.polarSurgeTimer = 60; g.addFish(Math.max(70, g.dps * 75)); } },
+      { id: 'r_ember_lantern', tier: 3, rarity: 'rare', name: 'Thermal Igloo Lanterns', icon: '🏮', desc: '+20% dive speed and +25% catch capacity permanently.', grant: () => {} },
+
+      { id: 'l_frenzy', tier: 4, rarity: 'legendary', name: 'Blizzard Feeding Frenzy', icon: '🌨️', desc: 'Antarctic storm triples (3x) fish yield for 45s & grants +15% catch permanently!', grant: (g) => { g.frenzyTimer = 45; } },
+      { id: 'l_monarch', tier: 4, rarity: 'legendary', name: "Emperor's Royal Decree", icon: '👑', desc: 'Emperor Monarch aura +100%, and boosts all penguin speeds by +50% permanently.', grant: () => {} },
+      { id: 'l_mammoth', tier: 4, rarity: 'legendary', name: 'Mammoth Ice Cache', icon: '🦣', desc: 'Unearth frozen cache (+300s instant fish) & gain +20% catch yield permanently!', grant: (g) => { g.addFish(Math.max(250, g.dps * 300)); } },
+      { id: 'l_glacier_heart', tier: 4, rarity: 'legendary', name: 'Heart of the Glacier', icon: '💠', desc: 'Permanent +50% catch yield and +35% tap yield across all rebirths!', grant: () => {} },
+      { id: 'l_chrono_flipper', tier: 4, rarity: 'legendary', name: 'Chrono-Slide Mastery', icon: '⏳', desc: 'Permanent +40% waddle speed, +60% slide speed, and +30% dive speed!', grant: () => {} },
+      { id: 'l_golden_aurora', tier: 4, rarity: 'legendary', name: 'Golden Aurora Conduit', icon: '🌟', desc: 'Permanent +40% catch yield & activates 240s Golden Fish frequency boost!', grant: (g) => { g.goldenFishTimer = Math.max(g.goldenFishTimer || 0, 240); } },
+
+      { id: 'm_supernova', tier: 5, rarity: 'mythic', name: 'Cosmic Glacial Supernova', icon: '🌌', desc: '+35% catch & +30% speed forever, plus 60s of +4x yield & instant 600s fish!', grant: (g) => { g.addFish(Math.max(600, g.dps * 600)); g.supernovaTimer = 60; } },
+      { id: 'm_eternal_frost', tier: 5, rarity: 'mythic', name: "Eternal Sovereign's Mantle", icon: '🔱', desc: 'Mythic power retained forever: +100% catch yield, +50% speed, and +50% dive speed!', grant: () => {} },
+      { id: 'm_starlight_nexus', tier: 5, rarity: 'mythic', name: 'Starlight Tap Singularity', icon: '💫', desc: 'Mythic radiance retained forever: +150% tap yield, +60% slide speed & +450s fish!', grant: (g) => { g.addFish(Math.max(450, g.dps * 450)); } },
+      { id: 'm_glacial_ascension', tier: 5, rarity: 'mythic', name: 'Glacial Ascension Core', icon: '❄️', desc: 'Mythic core retained forever: +75% catch & tap yield, plus 45s 3x Frenzy!', grant: (g) => { g.frenzyTimer = Math.max(g.frenzyTimer || 0, 45); } }
     ];
 
     // =========================================================================
@@ -2414,6 +2841,7 @@
           sound.triggerHaptic('collect');
         } else if (obj.rewardType === 'shards') {
           state.prestigeShards += obj.rewardAmount;
+          state.totalEssenceEarned = (state.totalEssenceEarned || 0) + obj.rewardAmount;
         }
 
         showToast(`🎁 Claimed ${obj.rewardLabel}!`);
@@ -2586,6 +3014,14 @@
         progress: (s) => ({ cur: (s.collectedPerks && s.collectedPerks.some(p => p.rarity === 'legendary')) ? 1 : 0, max: 1 })
       },
       {
+        id: 'ach_mythic_perk',
+        title: 'Mythic Astral Bond',
+        icon: '🌌',
+        desc: 'Collect a Mythic Aurora Blessing perk',
+        check: (s) => Boolean(s.collectedPerks && s.collectedPerks.some(p => p.rarity === 'mythic')),
+        progress: (s) => ({ cur: (s.collectedPerks && s.collectedPerks.some(p => p.rarity === 'mythic')) ? 1 : 0, max: 1 })
+      },
+      {
         id: 'ach_prestige_first',
         title: 'Celestial Rebirth',
         icon: '💎',
@@ -2621,25 +3057,25 @@
         id: 'ach_essence_10',
         title: 'Essence Collector',
         icon: '🔮',
-        desc: 'Accumulate 10 or more Frost Essence',
-        check: (s) => (s.prestigeShards || 0) >= 10,
-        progress: (s) => ({ cur: Math.min(10, Math.floor(s.prestigeShards || 0)), max: 10 })
+        desc: 'Accumulate 10 or more cumulative Frost Essence',
+        check: (s) => Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0) >= 10,
+        progress: (s) => ({ cur: Math.min(10, Math.floor(Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0))), max: 10 })
       },
       {
         id: 'ach_essence_50',
         title: 'Astral Reactor',
         icon: '🌠',
-        desc: 'Accumulate 50 or more Frost Essence',
-        check: (s) => (s.prestigeShards || 0) >= 50,
-        progress: (s) => ({ cur: Math.min(50, Math.floor(s.prestigeShards || 0)), max: 50 })
+        desc: 'Accumulate 50 or more cumulative Frost Essence',
+        check: (s) => Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0) >= 50,
+        progress: (s) => ({ cur: Math.min(50, Math.floor(Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0))), max: 50 })
       },
       {
         id: 'ach_essence_250',
         title: 'Celestial Singularity',
         icon: '✨',
-        desc: 'Accumulate 250 or more Frost Essence',
-        check: (s) => (s.prestigeShards || 0) >= 250,
-        progress: (s) => ({ cur: Math.min(250, Math.floor(s.prestigeShards || 0)), max: 250 })
+        desc: 'Accumulate 250 or more cumulative Frost Essence',
+        check: (s) => Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0) >= 250,
+        progress: (s) => ({ cur: Math.min(250, Math.floor(Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0))), max: 250 })
       }
     ];
 
@@ -2775,21 +3211,27 @@
         this.emperorBoost = 0;
         this.frenzyTimer = 0;
         this.supernovaTimer = 0;
+        this.polarSurgeTimer = 0;
         this.slushDebuffTimer = 0;
         this.goldenFishTimer = 0;
 
         this.auroraEventInterval = 90;
         this.auroraEventTimer = 90;
         this.isAuroraModalOpen = false;
+        this.isAuroraAlertActive = false;
         this.auroraTimeoutSeconds = 10;
         this.currentAuroraCards = [];
+        this.lastAuroraCardIds = [];
         this.auroraTimerInterval = null;
+        this.auroraAlertTimeoutId = null;
 
         this.dps = 0;
         this.lastSaveTime = Date.now();
 
-        // Statistics tracking
+        // Statistics & Rebirth History tracking
         this.totalRebirths = 0;
+        this.totalEssenceEarned = 0;
+        this.rebirthHistory = [];
         this.totalAuroraBlessingsClaimed = 0;
         this.totalManualClicks = 0;
         this.totalDives = 0;
@@ -2804,10 +3246,12 @@
 
       addCollectedPerk(perk) {
         if (!this.collectedPerks) this.collectedPerks = [];
+        const isPreserved = (perk.rarity === 'legendary' || perk.rarity === 'mythic');
         const existing = this.collectedPerks.find(p => p.id === perk.id);
         if (existing) {
           existing.count = (existing.count || 1) + 1;
           existing.lastAcquiredAt = Date.now();
+          existing.isPreserved = isPreserved;
         } else {
           this.collectedPerks.push({
             id: perk.id,
@@ -2817,6 +3261,7 @@
             desc: perk.desc,
             count: 1,
             isLegendary: (perk.rarity === 'legendary'),
+            isPreserved,
             firstAcquiredAt: Date.now(),
             lastAcquiredAt: Date.now()
           });
@@ -2839,14 +3284,63 @@
             if (cp.id === 'c_booties') this.perkWalkSpeedMult += 0.15 * count;
             if (cp.id === 'c_herring') this.perkCatchMult += 0.20 * count;
             if (cp.id === 'c_flappers') this.clickMult += 0.35 * count;
+            if (cp.id === 'c_sonar') {
+              this.perkCatchMult += 0.12 * count;
+              this.diveSpeedMult += 0.10 * count;
+            }
+            if (cp.id === 'c_wax') {
+              this.perkSlideSpeedMult += 0.25 * count;
+              this.clickMult += 0.10 * count;
+            }
             if (cp.id === 'r_sledding') this.perkSlideSpeedMult += 0.50 * count;
             if (cp.id === 'r_trench') {
               this.perkCatchMult += 0.40 * count;
               this.diveSpeedMult += 0.25 * count;
             }
+            if (cp.id === 'r_cryo_net') {
+              this.perkCatchMult += 0.30 * count;
+              this.clickMult += 0.20 * count;
+            }
+            if (cp.id === 'r_storm_sail') {
+              this.perkWalkSpeedMult += 0.25 * count;
+              this.perkSlideSpeedMult += 0.30 * count;
+            }
+            if (cp.id === 'r_ember_lantern') {
+              this.diveSpeedMult += 0.20 * count;
+              this.perkCatchMult += 0.25 * count;
+            }
+            if (cp.id === 'l_frenzy') this.perkCatchMult += 0.15 * count;
             if (cp.id === 'l_monarch') {
               this.emperorBoost += 1.0 * count;
               this.perkWalkSpeedMult += 0.50 * count;
+            }
+            if (cp.id === 'l_mammoth') this.perkCatchMult += 0.20 * count;
+            if (cp.id === 'l_glacier_heart') {
+              this.perkCatchMult += 0.50 * count;
+              this.clickMult += 0.35 * count;
+            }
+            if (cp.id === 'l_chrono_flipper') {
+              this.perkWalkSpeedMult += 0.40 * count;
+              this.perkSlideSpeedMult += 0.60 * count;
+              this.diveSpeedMult += 0.30 * count;
+            }
+            if (cp.id === 'l_golden_aurora') this.perkCatchMult += 0.40 * count;
+            if (cp.id === 'm_supernova') {
+              this.perkCatchMult += 0.35 * count;
+              this.perkWalkSpeedMult += 0.30 * count;
+            }
+            if (cp.id === 'm_eternal_frost') {
+              this.perkCatchMult += 1.00 * count;
+              this.perkWalkSpeedMult += 0.50 * count;
+              this.diveSpeedMult += 0.50 * count;
+            }
+            if (cp.id === 'm_starlight_nexus') {
+              this.clickMult += 1.50 * count;
+              this.perkSlideSpeedMult += 0.60 * count;
+            }
+            if (cp.id === 'm_glacial_ascension') {
+              this.perkCatchMult += 0.75 * count;
+              this.clickMult += 0.75 * count;
             }
           });
         }
@@ -2921,8 +3415,9 @@
         const levelBonus = this.getGlacierLevelMultiplier();
         const frenzy = this.frenzyTimer > 0 ? 3 : 1;
         const supernova = this.supernovaTimer > 0 ? 4 : 1;
+        const polarSurge = this.polarSurgeTimer > 0 ? 2 : 1;
         const weatherMult = this.getWeatherYieldMultiplier();
-        return Math.floor(base * krillBonus * prestige * levelBonus * frenzy * supernova * weatherMult * this.clickMult);
+        return Math.floor(base * krillBonus * prestige * levelBonus * frenzy * supernova * polarSurge * weatherMult * this.clickMult);
       }
 
       getSpeciesTraitAverages(speciesId) {
@@ -2959,6 +3454,7 @@
         const lineBonus = 1 + (this.tech.reinforced_line * 0.25);
         const frenzy = this.frenzyTimer > 0 ? 3 : 1;
         const supernova = this.supernovaTimer > 0 ? 4 : 1;
+        const polarSurge = this.polarSurgeTimer > 0 ? 2 : 1;
 
         PENGUIN_SPECIES.forEach(sp => {
           const pData = this.penguins[sp.id];
@@ -2975,7 +3471,7 @@
         });
 
         const weatherMult = this.getWeatherYieldMultiplier();
-        this.dps = total * prestige * levelBonus * cryoBonus * frenzy * supernova * weatherMult;
+        this.dps = total * prestige * levelBonus * cryoBonus * frenzy * supernova * polarSurge * weatherMult;
         if (this.dps > this.highestDPS) {
           this.highestDPS = this.dps;
         }
@@ -3046,12 +3542,18 @@
           diveSpeedMult: this.diveSpeedMult,
           emperorBoost: this.emperorBoost,
           muted: sound.muted,
+          masterVolume: sound.masterVolume,
+          sfxVolume: sound.sfxVolume,
+          ambientVolume: sound.ambientVolume,
+          hapticsEnabled: sound.hapticsEnabled,
           lastSaveTime: Date.now(),
           dailyObjectives: {
             dateKey: dailyManager.dateKey,
             objectives: dailyManager.objectives
           },
           totalRebirths: this.totalRebirths,
+          totalEssenceEarned: this.totalEssenceEarned,
+          rebirthHistory: this.rebirthHistory,
           totalAuroraBlessingsClaimed: this.totalAuroraBlessingsClaimed,
           totalManualClicks: this.totalManualClicks,
           totalDives: this.totalDives,
@@ -3132,13 +3634,18 @@
             this.emperorBoost = data.emperorBoost || 0;
             this.recalculatePerkMultipliers();
 
-            if (typeof data.muted === 'boolean') {
-              sound.muted = data.muted;
-              updateAudioButton();
-              sound.syncWeatherAmbience(true);
-            }
+            if (typeof data.muted === 'boolean') sound.muted = data.muted;
+            if (typeof data.masterVolume === 'number') sound.masterVolume = Math.max(0, Math.min(1, data.masterVolume));
+            if (typeof data.sfxVolume === 'number') sound.sfxVolume = Math.max(0, Math.min(1, data.sfxVolume));
+            if (typeof data.ambientVolume === 'number') sound.ambientVolume = Math.max(0, Math.min(1, data.ambientVolume));
+            if (typeof data.hapticsEnabled === 'boolean') sound.hapticsEnabled = data.hapticsEnabled;
+            sound.syncWeatherAmbience(true);
 
             this.totalRebirths = data.totalRebirths || 0;
+            this.totalEssenceEarned = (typeof data.totalEssenceEarned === 'number')
+              ? Math.max(this.prestigeShards, data.totalEssenceEarned)
+              : Math.max(0, this.prestigeShards);
+            this.rebirthHistory = Array.isArray(data.rebirthHistory) ? data.rebirthHistory : [];
             if (typeof data.runFish === 'number') {
               this.runFish = Math.max(0, data.runFish);
             } else {
@@ -3628,8 +4135,9 @@
               const cryoBonus = 1 + (state.tech.cryo_storage * 0.2);
               const frenzy = state.frenzyTimer > 0 ? 3 : 1;
               const supernova = state.supernovaTimer > 0 ? 4 : 1;
+              const polarSurge = state.polarSurgeTimer > 0 ? 2 : 1;
               const weatherMult = state.getWeatherYieldMultiplier();
-              const totalBanked = Math.floor(this.carriedFish * cryoBonus * state.getPrestigeMultiplier() * frenzy * supernova * weatherMult);
+              const totalBanked = Math.floor(this.carriedFish * cryoBonus * state.getPrestigeMultiplier() * frenzy * supernova * polarSurge * weatherMult);
 
               state.addFish(totalBanked);
               sound.playPlink();
@@ -3895,10 +4403,11 @@
 
       if (state.frenzyTimer > 0) state.frenzyTimer = Math.max(0, state.frenzyTimer - dt);
       if (state.supernovaTimer > 0) state.supernovaTimer = Math.max(0, state.supernovaTimer - dt);
+      if (state.polarSurgeTimer > 0) state.polarSurgeTimer = Math.max(0, state.polarSurgeTimer - dt);
       if (state.slushDebuffTimer > 0) state.slushDebuffTimer = Math.max(0, state.slushDebuffTimer - dt);
       if (state.goldenFishTimer > 0) state.goldenFishTimer = Math.max(0, state.goldenFishTimer - dt);
 
-      if (!state.isAuroraModalOpen) {
+      if (!state.isAuroraModalOpen && !state.isAuroraAlertActive) {
         const coilsReduction = state.tech.aurora_coils * 4;
         const targetInterval = Math.max(30, state.auroraEventInterval - coilsReduction);
         state.auroraEventTimer -= dt;
@@ -3909,7 +4418,7 @@
         }
 
         if (state.auroraEventTimer <= 0) {
-          triggerAuroraBlessingEvent();
+          startAuroraAlertSequence();
           state.auroraEventTimer = targetInterval;
         }
       }
@@ -4453,6 +4962,111 @@
       });
     })();
 
+    function shuffleArrayFisherYates(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = copy[i];
+        copy[i] = copy[j];
+        copy[j] = tmp;
+      }
+      return copy;
+    }
+
+    function rollAuroraBlessingCards() {
+      const rarityWeights = [
+        { rarity: 'trivial', weight: 16 },
+        { rarity: 'common', weight: 38 },
+        { rarity: 'rare', weight: 26 },
+        { rarity: 'legendary', weight: 14 },
+        { rarity: 'mythic', weight: 6 }
+      ];
+
+      const buckets = {
+        trivial: shuffleArrayFisherYates(AURORA_PERKS_POOL.filter(p => p.rarity === 'trivial')),
+        common: shuffleArrayFisherYates(AURORA_PERKS_POOL.filter(p => p.rarity === 'common')),
+        rare: shuffleArrayFisherYates(AURORA_PERKS_POOL.filter(p => p.rarity === 'rare')),
+        legendary: shuffleArrayFisherYates(AURORA_PERKS_POOL.filter(p => p.rarity === 'legendary')),
+        mythic: shuffleArrayFisherYates(AURORA_PERKS_POOL.filter(p => p.rarity === 'mythic'))
+      };
+
+      const usedIds = new Set();
+      const recentIds = new Set(state.lastAuroraCardIds || []);
+      const rolledCards = [];
+      let trivialCount = 0;
+
+      const pickRarity = (allowTrivial) => {
+        const activeWeights = rarityWeights.filter(r => {
+          if (!allowTrivial && r.rarity === 'trivial') return false;
+          return buckets[r.rarity].some(p => !usedIds.has(p.id));
+        });
+        if (activeWeights.length === 0) return null;
+        const totalW = activeWeights.reduce((sum, r) => sum + r.weight, 0);
+        let roll = Math.random() * totalW;
+        for (const r of activeWeights) {
+          roll -= r.weight;
+          if (roll <= 0) return r.rarity;
+        }
+        return activeWeights[activeWeights.length - 1].rarity;
+      };
+
+      for (let i = 0; i < 3; i++) {
+        const chosenRarity = pickRarity(trivialCount < 1);
+        if (!chosenRarity) break;
+        if (chosenRarity === 'trivial') trivialCount++;
+
+        const available = buckets[chosenRarity].filter(p => !usedIds.has(p.id));
+        const fresh = available.filter(p => !recentIds.has(p.id));
+        const candidates = fresh.length > 0 ? fresh : available;
+        const picked = candidates[Math.floor(Math.random() * candidates.length)];
+        if (picked) {
+          usedIds.add(picked.id);
+          rolledCards.push(picked);
+        }
+      }
+
+      if (rolledCards.length < 3) {
+        const fallback = shuffleArrayFisherYates(AURORA_PERKS_POOL).filter(p => !usedIds.has(p.id));
+        while (rolledCards.length < 3 && fallback.length > 0) {
+          const extra = fallback.shift();
+          usedIds.add(extra.id);
+          rolledCards.push(extra);
+        }
+      }
+
+      const finalCards = shuffleArrayFisherYates(rolledCards);
+      state.lastAuroraCardIds = finalCards.map(c => c.id);
+      return finalCards;
+    }
+
+    function startAuroraAlertSequence() {
+      if (state.isAuroraModalOpen || state.isAuroraAlertActive) return;
+      state.isAuroraAlertActive = true;
+      sound.init();
+      sound.playAuroraAlert();
+      sound.triggerHaptic('collect');
+
+      const alertOverlay = document.getElementById('aurora-alert-overlay');
+      if (alertOverlay) {
+        alertOverlay.classList.remove('active');
+        // Force reflow so the 1s bar sweep animation restarts cleanly
+        void alertOverlay.offsetWidth;
+        alertOverlay.classList.add('active');
+      }
+
+      if (state.auroraAlertTimeoutId) {
+        clearTimeout(state.auroraAlertTimeoutId);
+      }
+      state.auroraAlertTimeoutId = setTimeout(() => {
+        state.auroraAlertTimeoutId = null;
+        state.isAuroraAlertActive = false;
+        if (alertOverlay) {
+          alertOverlay.classList.remove('active');
+        }
+        triggerAuroraBlessingEvent();
+      }, 1000);
+    }
+
     function triggerAuroraBlessingEvent() {
       if (state.isAuroraModalOpen) return;
       sound.init();
@@ -4462,39 +5076,7 @@
       state.auroraTimeoutSeconds = 10.0;
       resetAuroraInteractionPause();
 
-      const rolledCards = [];
-      const poolCopy = [...AURORA_PERKS_POOL];
-
-      for (let i = 0; i < 3; i++) {
-        const totalWeight = poolCopy.reduce((sum, item) => {
-          let w = 40;
-          if (item.rarity === 'common') w = 30;
-          else if (item.rarity === 'rare') w = 18;
-          else if (item.rarity === 'legendary') w = 9;
-          else if (item.rarity === 'mythic') w = 3;
-          return sum + w;
-        }, 0);
-
-        let rand = Math.random() * totalWeight;
-        let chosenIdx = 0;
-        for (let j = 0; j < poolCopy.length; j++) {
-          let w = 40;
-          if (poolCopy[j].rarity === 'common') w = 30;
-          else if (poolCopy[j].rarity === 'rare') w = 18;
-          else if (poolCopy[j].rarity === 'legendary') w = 9;
-          else if (poolCopy[j].rarity === 'mythic') w = 3;
-
-          rand -= w;
-          if (rand <= 0) {
-            chosenIdx = j;
-            break;
-          }
-        }
-        rolledCards.push(poolCopy[chosenIdx]);
-        poolCopy.splice(chosenIdx, 1);
-      }
-
-      state.currentAuroraCards = rolledCards;
+      state.currentAuroraCards = rollAuroraBlessingCards();
       renderAuroraModal();
 
       const modalEl = document.getElementById('aurora-modal');
@@ -4710,13 +5292,15 @@
       });
 
       const audioBtn = document.getElementById('audio-toggle-btn');
-      audioBtn.addEventListener('click', () => {
-        sound.init();
-        sound.muted = !sound.muted;
-        updateAudioButton();
-        sound.syncWeatherAmbience(true);
-        showToast(sound.muted ? '🔇 Sound Muted' : '🔊 Sound Enabled');
-      });
+      if (audioBtn) {
+        audioBtn.addEventListener('click', () => {
+          sound.init();
+          sound.muted = !sound.muted;
+          updateAudioButton();
+          sound.syncWeatherAmbience(true);
+          showToast(sound.muted ? '🔇 Sound Muted' : '🔊 Sound Enabled');
+        });
+      }
 
       const weatherPill = document.getElementById('weather-pill');
       if (weatherPill) {
@@ -4730,15 +5314,20 @@
       }
 
       document.getElementById('info-btn').addEventListener('click', () => {
-        showToast('🐧 Tap penguins & ice to gather fish! Complete daily tasks & review stats.');
+        showToast('🐧 Tap penguins & ice! View Level/XP in Stats and Audio/Haptics in Settings.');
       });
     }
 
     function updateAudioButton() {
-      document.getElementById('audio-toggle-btn').textContent = sound.muted ? '🔇' : '🔊';
+      const btn = document.getElementById('audio-toggle-btn');
+      if (btn) btn.textContent = sound.muted ? '🔇' : '🔊';
     }
 
     function updateSheetContent() {
+      const actionsBox = document.getElementById('header-actions-box');
+      if (actionsBox) {
+        actionsBox.style.display = state.currentTab === 'penguins' ? 'flex' : 'none';
+      }
       const container = document.getElementById('sheet-content-container');
       container.innerHTML = '';
 
@@ -4964,7 +5553,8 @@
         const nextShardThreshold = Math.pow(pendingShards + 1, 3) * 150000;
         const currentMultiplierPct = Math.round(state.prestigeShards * 5);
         const nextMultiplierPct = Math.round(pendingShards * 5);
-        const preservedCount = (state.collectedPerks || []).filter(p => p.rarity === 'legendary').length;
+        const preservedList = (state.collectedPerks || []).filter(p => p.rarity === 'legendary' || p.rarity === 'mythic');
+        const preservedCount = preservedList.length;
 
         const prestigeBox = document.createElement('div');
         prestigeBox.className = 'prestige-box';
@@ -4976,9 +5566,9 @@
           </p>
           <div style="background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.35); border-radius: 12px; padding: 10px; text-align: left; font-size: 11px; line-height: 1.4; color: #fde68a;">
             🛡️ <strong>Perk Preservation Rule:</strong>
-            All perks reset upon Rebirth <strong>except Legendary perks</strong>! Legendary perks remain active and retained across all prestige cycles.
+            All perks reset upon Rebirth <strong>except Legendary &amp; Mythic perks</strong>! Legendary &amp; Mythic perks remain active and retained across all prestige cycles.
             <div style="margin-top: 4px; font-weight: 700; color: #ffffff;">
-              Currently Preserved: ${preservedCount} Legendary Perk${preservedCount === 1 ? '' : 's'}
+              Currently Preserved: ${preservedCount} Legendary/Mythic Perk${preservedCount === 1 ? '' : 's'}
             </div>
           </div>
           <div style="background: rgba(0,0,0,0.25); border-radius: 12px; padding: 10px;">
@@ -4998,14 +5588,28 @@
         const btn = prestigeBox.querySelector('#rebirth-action-btn');
         if (pendingShards > 0) {
           btn.addEventListener('click', () => {
-            const preservedCount = (state.collectedPerks || []).filter(p => p.rarity === 'legendary').length;
-            const promptMsg = preservedCount > 0
-              ? `Are you sure you want to perform Glacial Rebirth and claim ${pendingShards} Frost Essence?\n\n${preservedCount} Legendary perk(s) will be permanently preserved. All other perks will reset.`
-              : `Are you sure you want to perform Glacial Rebirth and claim ${pendingShards} Frost Essence?\n\n(All non-legendary perks will reset.)`;
+            const preservedCountNow = (state.collectedPerks || []).filter(p => p.rarity === 'legendary' || p.rarity === 'mythic').length;
+            const promptMsg = preservedCountNow > 0
+              ? `Are you sure you want to perform Glacial Rebirth and claim ${pendingShards} Frost Essence?\n\n${preservedCountNow} Legendary/Mythic perk(s) will be permanently preserved. All other perks will reset.`
+              : `Are you sure you want to perform Glacial Rebirth and claim ${pendingShards} Frost Essence?\n\n(All non-Legendary/Mythic perks will reset.)`;
 
             if (confirm(promptMsg)) {
+              const rebirthFishHarvested = state.runFish || 0;
+              const rebirthLevelReached = state.glacierLevel || 1;
               state.prestigeShards += pendingShards;
+              state.totalEssenceEarned = (state.totalEssenceEarned || 0) + pendingShards;
               state.totalRebirths = (state.totalRebirths || 0) + 1;
+
+              if (!Array.isArray(state.rebirthHistory)) state.rebirthHistory = [];
+              state.rebirthHistory.unshift({
+                rebirthNumber: state.totalRebirths,
+                timestamp: Date.now(),
+                essenceGained: pendingShards,
+                totalEssenceAfter: state.prestigeShards,
+                runFish: rebirthFishHarvested,
+                glacierLevel: rebirthLevelReached
+              });
+
               state.fish = 0;
               state.runFish = 0;
               state.glacierLevel = 1;
@@ -5020,27 +5624,28 @@
               };
               Object.keys(state.tech).forEach(k => state.tech[k] = 0);
 
-              // PRESTIGE RULE: Reset all perks EXCEPT legendary perks!
+              // PRESTIGE RULE: Reset all perks EXCEPT Legendary & Mythic perks!
               const prevPerksCount = (state.collectedPerks || []).length;
-              state.collectedPerks = (state.collectedPerks || []).filter(p => p.rarity === 'legendary');
-              const keptLegendaryCount = state.collectedPerks.length;
-              const resetPerksCount = prevPerksCount - keptLegendaryCount;
+              state.collectedPerks = (state.collectedPerks || []).filter(p => p.rarity === 'legendary' || p.rarity === 'mythic');
+              const keptPreservedCount = state.collectedPerks.length;
+              const resetPerksCount = prevPerksCount - keptPreservedCount;
 
-              // Re-calculate multipliers so only surviving legendary perks apply!
+              // Re-calculate multipliers so only surviving Legendary & Mythic perks apply!
               state.recalculatePerkMultipliers();
 
               // Clear transient/temporary timers
               state.frenzyTimer = 0;
               state.supernovaTimer = 0;
+              state.polarSurgeTimer = 0;
               state.slushDebuffTimer = 0;
               state.goldenFishTimer = 0;
               state.tempSpeedBoost = 0;
 
               sound.playLevelUp();
-              if (keptLegendaryCount > 0) {
-                showToast(`🌟 Glacial Rebirth! ${keptLegendaryCount} Legendary perk${keptLegendaryCount > 1 ? 's' : ''} preserved; ${resetPerksCount} non-legendary perks reset.`);
+              if (keptPreservedCount > 0) {
+                showToast(`🌟 Glacial Rebirth! ${keptPreservedCount} Legendary/Mythic perk${keptPreservedCount > 1 ? 's' : ''} preserved; ${resetPerksCount} other perks reset.`);
               } else {
-                showToast(`🌟 Glacial Rebirth complete! Non-legendary perks reset. Bonus multiplier now +${state.prestigeShards * 5}%!`);
+                showToast(`🌟 Glacial Rebirth complete! Non-preserved perks reset. Bonus multiplier now +${state.prestigeShards * 5}%!`);
               }
               checkAchievements();
               state.save();
@@ -5059,6 +5664,9 @@
 
         const playtimeStr = formatPlaytime(Date.now() - state.gameStartTime);
         const rankTitle = getColonyRank(state.lifetimeFish);
+        const reqXp = state.getLevelReq();
+        const xpPct = Math.min(100, Math.round((state.levelFish / reqXp) * 100));
+        const xpRemaining = Math.max(0, reqXp - state.levelFish);
 
         let totalPenguins = 0;
         Object.keys(state.penguins).forEach(id => {
@@ -5070,6 +5678,46 @@
           totalTechLevels += state.tech[id];
         });
 
+        const cumulativeEssence = Math.max(state.prestigeShards || 0, state.totalEssenceEarned || 0);
+        const rebirthHistoryList = Array.isArray(state.rebirthHistory) ? state.rebirthHistory : [];
+        let rebirthEntriesHtml = '';
+        if (rebirthHistoryList.length === 0) {
+          rebirthEntriesHtml = `
+            <div class="empty-stats-card" style="padding: 14px 12px;">
+              <div style="font-size: 22px; margin-bottom: 3px;">💎</div>
+              <div style="font-size: 12px; font-weight: 700; color: #f1f5f9;">
+                ${state.totalRebirths > 0 ? 'No Dated Rebirth Logs Yet' : 'No Glacial Rebirths Recorded Yet'}
+              </div>
+              <div style="font-size: 11px; color: #94a3b8; margin-top: 2px; line-height: 1.35;">
+                ${state.totalRebirths > 0
+                  ? 'Future Glacial Rebirths will appear here with date, essence gained, and shelf milestones.'
+                  : 'Perform a Glacial Rebirth in the Prestige tab to record dates & Frost Essence milestones here.'}
+              </div>
+            </div>
+          `;
+        } else {
+          rebirthEntriesHtml = `<div class="rebirth-history-list">` + rebirthHistoryList.map(entry => {
+            const dtObj = new Date(entry.timestamp || Date.now());
+            const dateStr = dtObj.toLocaleString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit'
+            });
+            return `
+              <div class="rebirth-entry-card">
+                <div class="rebirth-entry-left">
+                  <div class="rebirth-entry-title">Rebirth #${entry.rebirthNumber || 1}</div>
+                  <div class="rebirth-entry-date">📅 ${dateStr}</div>
+                  <div class="rebirth-entry-meta">🧊 Level ${entry.glacierLevel || 1} • 🐟 ${formatNumber(entry.runFish || 0)} run fish</div>
+                </div>
+                <div class="rebirth-entry-gain">+${entry.essenceGained || 0} 💎</div>
+              </div>
+            `;
+          }).join('') + `</div>`;
+        }
+
         statsContainer.innerHTML = `
           <!-- Hero Overview -->
           <div class="stats-hero-card">
@@ -5080,6 +5728,22 @@
             <div class="stats-playtime-badge">
               <div class="stats-playtime-label">Expedition Time</div>
               <div class="stats-playtime-val">${playtimeStr}</div>
+            </div>
+          </div>
+
+          <!-- Relocated Glacier Level & XP Progress -->
+          <div class="stat-section-title">Glacier Level &amp; XP</div>
+          <div class="stats-level-card">
+            <div class="stats-level-top">
+              <div class="stats-level-title">🧊 Glacier Level <span id="stats-glacier-level">${state.glacierLevel}</span></div>
+              <div class="stats-level-bonus-pill" id="stats-level-bonus">+${(state.glacierLevel - 1) * 5}% Production</div>
+            </div>
+            <div class="progress-bar-bg" style="height: 8px;">
+              <div class="progress-bar-fill" id="stats-glacier-level-fill" style="width: ${xpPct}%;"></div>
+            </div>
+            <div class="stats-xp-labels">
+              <span id="stats-level-req-text">${formatNumber(state.levelFish)} / ${formatNumber(reqXp)} XP</span>
+              <span id="stats-level-remaining">${xpPct}% (${formatNumber(xpRemaining)} to next)</span>
             </div>
           </div>
 
@@ -5103,6 +5767,28 @@
               <div class="stat-card-val">+${formatNumber(state.highestDPS || state.dps)}/s</div>
             </div>
           </div>
+
+          <!-- Rebirth History Section -->
+          <div class="stat-section-header-row" style="margin-top: 6px;">
+            <div>
+              <div class="stat-section-title" style="margin: 0;">💎 Rebirth History</div>
+              <div class="stat-section-subtitle">Past Glacial Rebirths &amp; total Frost Essence accumulated</div>
+            </div>
+            <div class="achievements-pct-pill" style="color: #c084fc; border-color: rgba(192,132,252,0.45); background: rgba(168,85,247,0.16);">
+              ${formatNumber(cumulativeEssence)} 💎 Total Earned
+            </div>
+          </div>
+          <div class="rebirth-history-summary">
+            <div class="stat-card purple-highlight">
+              <div class="stat-card-header">💎 Cumulative Essence</div>
+              <div class="stat-card-val" style="color: #c084fc;">${formatNumber(cumulativeEssence)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">🔄 Logged Rebirths</div>
+              <div class="stat-card-val">${rebirthHistoryList.length}</div>
+            </div>
+          </div>
+          ${rebirthEntriesHtml}
 
           <!-- Colony Activity Stats -->
           <div class="stat-section-title">Colony Activity</div>
@@ -5166,16 +5852,16 @@
         perksSection.style.gap = '8px';
 
         const collectedPerksList = state.collectedPerks || [];
-        const legendaryPerksCount = collectedPerksList.filter(p => p.rarity === 'legendary').reduce((acc, p) => acc + (p.count || 1), 0);
+        const preservedPerksCount = collectedPerksList.filter(p => p.rarity === 'legendary' || p.rarity === 'mythic').reduce((acc, p) => acc + (p.count || 1), 0);
 
         let perksHtml = `
           <div class="stat-section-header-row">
             <div>
               <div class="stat-section-title" style="margin: 0;">✨ Aurora Perks (${collectedPerksList.length})</div>
-              <div class="stat-section-subtitle">🛡️ Legendary perks survive Rebirth; all others reset.</div>
+              <div class="stat-section-subtitle">🛡️ Legendary &amp; Mythic perks survive Rebirth; all others reset.</div>
             </div>
-            <div class="achievements-pct-pill" style="color: ${legendaryPerksCount > 0 ? '#fbbf24' : '#38bdf8'}; border-color: ${legendaryPerksCount > 0 ? 'rgba(251,191,36,0.4)' : 'rgba(56,189,248,0.4)'}; background: ${legendaryPerksCount > 0 ? 'rgba(251,191,36,0.15)' : 'rgba(56,189,248,0.15)'};">
-              ${legendaryPerksCount} Legendary Preserved
+            <div class="achievements-pct-pill" style="color: ${preservedPerksCount > 0 ? '#fbbf24' : '#38bdf8'}; border-color: ${preservedPerksCount > 0 ? 'rgba(251,191,36,0.4)' : 'rgba(56,189,248,0.4)'}; background: ${preservedPerksCount > 0 ? 'rgba(251,191,36,0.15)' : 'rgba(56,189,248,0.15)'};">
+              ${preservedPerksCount} Preserved on Rebirth
             </div>
           </div>
         `;
@@ -5186,13 +5872,14 @@
               <div style="font-size: 26px; margin-bottom: 4px;">🌌</div>
               <div style="font-size: 13px; font-weight: 700; color: #f1f5f9;">No Aurora Perks in Current Cycle</div>
               <div style="font-size: 11px; color: #94a3b8; margin-top: 3px; max-width: 320px; line-height: 1.4;">
-                Aurora blessings arrive periodically from the polar sky. Claim perks to unlock powerful boosts! Legendary perks will be preserved upon Rebirth.
+                Aurora blessings arrive periodically from the polar sky. Claim perks to unlock powerful boosts! Legendary &amp; Mythic perks are preserved upon Rebirth.
               </div>
             </div>
           `;
         } else {
           perksHtml += `<div class="perks-stat-list">`;
           collectedPerksList.forEach(perk => {
+            const isMythic = (perk.rarity === 'mythic');
             const isLeg = (perk.rarity === 'legendary');
             perksHtml += `
               <div class="perk-stat-item rarity-${perk.rarity}">
@@ -5206,9 +5893,11 @@
                   <div class="perk-stat-desc">${perk.desc}</div>
                 </div>
                 <div>
-                  ${isLeg 
-                    ? `<span class="perk-preservation-tag legendary-tag">🛡️ Preserved</span>` 
-                    : `<span class="perk-preservation-tag reset-tag">🔄 Resets</span>`
+                  ${isMythic
+                    ? `<span class="perk-preservation-tag mythic-tag">🌌 Mythic Kept</span>`
+                    : isLeg
+                      ? `<span class="perk-preservation-tag legendary-tag">🛡️ Preserved</span>`
+                      : `<span class="perk-preservation-tag reset-tag">🔄 Resets</span>`
                   }
                 </div>
               </div>
@@ -5353,6 +6042,138 @@
         statsContainer.appendChild(loreSection);
 
         container.appendChild(statsContainer);
+
+      } else if (state.currentTab === 'settings') {
+        const settingsWrap = document.createElement('div');
+        settingsWrap.className = 'settings-container';
+
+        const masterPct = Math.round(sound.masterVolume * 100);
+        const sfxPct = Math.round(sound.sfxVolume * 100);
+        const ambPct = Math.round(sound.ambientVolume * 100);
+
+        settingsWrap.innerHTML = `
+          <div class="settings-card">
+            <div class="settings-card-header">🔊 Sound &amp; Volume Controls</div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <div class="settings-label">Sound Engine</div>
+                <div class="settings-desc">Enable or mute all game audio and weather ambience</div>
+              </div>
+              <button id="settings-mute-btn" class="toggle-pill-btn ${sound.muted ? 'off' : ''}">
+                ${sound.muted ? '🔇 Muted' : '🔊 Active'}
+              </button>
+            </div>
+
+            <div class="settings-slider-group">
+              <div class="settings-slider-header">
+                <span>Master Volume</span>
+                <span class="settings-slider-val" id="settings-master-val">${masterPct}%</span>
+              </div>
+              <input type="range" min="0" max="100" value="${masterPct}" id="settings-master-slider" class="settings-slider" />
+            </div>
+
+            <div class="settings-slider-group">
+              <div class="settings-slider-header">
+                <span>Sound Effects Volume</span>
+                <span class="settings-slider-val" id="settings-sfx-val">${sfxPct}%</span>
+              </div>
+              <input type="range" min="0" max="100" value="${sfxPct}" id="settings-sfx-slider" class="settings-slider" />
+            </div>
+
+            <div class="settings-slider-group">
+              <div class="settings-slider-header">
+                <span>Wind &amp; Snow Ambience</span>
+                <span class="settings-slider-val" id="settings-amb-val">${ambPct}%</span>
+              </div>
+              <input type="range" min="0" max="100" value="${ambPct}" id="settings-amb-slider" class="settings-slider" />
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">📳 Haptics &amp; Tactile Feedback</div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <div class="settings-label">Vibration Feedback</div>
+                <div class="settings-desc">Native vibration on taps &amp; fish catches (requires active Sound Engine)</div>
+              </div>
+              <button id="settings-haptics-btn" class="toggle-pill-btn ${sound.hapticsEnabled ? '' : 'off'}">
+                ${sound.hapticsEnabled ? '📳 On' : '📴 Off'}
+              </button>
+            </div>
+
+            <button id="settings-test-haptic-btn" class="settings-test-btn">
+              ✨ Test Sound &amp; Haptic Pulse
+            </button>
+          </div>
+        `;
+
+        const muteBtn = settingsWrap.querySelector('#settings-mute-btn');
+        if (muteBtn) {
+          muteBtn.addEventListener('click', () => {
+            sound.init();
+            sound.muted = !sound.muted;
+            updateAudioButton();
+            sound.syncWeatherAmbience(true);
+            state.save();
+            showToast(sound.muted ? '🔇 Sound Muted' : '🔊 Sound Enabled');
+            updateSheetContent();
+          });
+        }
+
+        const bindSlider = (sliderId, valId, prop, syncAmb) => {
+          const slider = settingsWrap.querySelector(sliderId);
+          const valEl = settingsWrap.querySelector(valId);
+          if (!slider) return;
+          slider.addEventListener('input', () => {
+            sound.init();
+            const pct = Math.max(0, Math.min(100, parseInt(slider.value, 10) || 0));
+            sound[prop] = pct / 100;
+            if (valEl) valEl.textContent = `${pct}%`;
+            if (syncAmb) sound.syncWeatherAmbience(true);
+            else sound.applyVolumes(false);
+          });
+          slider.addEventListener('change', () => {
+            state.save();
+          });
+        };
+
+        bindSlider('#settings-master-slider', '#settings-master-val', 'masterVolume', true);
+        bindSlider('#settings-sfx-slider', '#settings-sfx-val', 'sfxVolume', false);
+        bindSlider('#settings-amb-slider', '#settings-amb-val', 'ambientVolume', true);
+
+        const hapticsBtn = settingsWrap.querySelector('#settings-haptics-btn');
+        if (hapticsBtn) {
+          hapticsBtn.addEventListener('click', () => {
+            sound.init();
+            sound.hapticsEnabled = !sound.hapticsEnabled;
+            state.save();
+            if (sound.hapticsEnabled) {
+              sound.triggerHaptic('penguin_tap');
+              showToast('📳 Haptic Feedback Enabled');
+            } else {
+              showToast('📴 Haptic Feedback Disabled');
+            }
+            updateSheetContent();
+          });
+        }
+
+        const testBtn = settingsWrap.querySelector('#settings-test-haptic-btn');
+        if (testBtn) {
+          testBtn.addEventListener('click', () => {
+            sound.init();
+            if (!sound.isActive()) {
+              showToast('🔇 Enable Sound Engine (unmute & volume > 0%) to feel haptics');
+              return;
+            }
+            sound.playChirp();
+            sound.triggerHaptic('collect');
+            showToast(sound.hapticsEnabled ? '📳 Haptic & Audio pulse triggered!' : '🔊 Audio played (Haptics turned Off)');
+          });
+        }
+
+        container.appendChild(settingsWrap);
       }
     }
 
@@ -5362,11 +6183,22 @@
       document.getElementById('fish-count').textContent = formatNumber(state.fish);
       document.getElementById('dps-count').textContent = `+${formatNumber(state.dps)}/s`;
 
-      const req = state.getLevelReq();
-      const pct = Math.min(100, (state.levelFish / req) * 100);
-      document.getElementById('glacier-level').textContent = state.glacierLevel;
-      document.getElementById('level-req-text').textContent = `${formatNumber(state.levelFish)} / ${formatNumber(req)}`;
-      document.getElementById('glacier-level-fill').style.width = `${pct}%`;
+      const statsLevelEl = document.getElementById('stats-glacier-level');
+      if (statsLevelEl) {
+        const req = state.getLevelReq();
+        const pct = Math.min(100, (state.levelFish / req) * 100);
+        const pctRounded = Math.round(pct);
+        const remaining = Math.max(0, req - state.levelFish);
+        statsLevelEl.textContent = state.glacierLevel;
+        const reqTextEl = document.getElementById('stats-level-req-text');
+        const fillEl = document.getElementById('stats-glacier-level-fill');
+        const bonusEl = document.getElementById('stats-level-bonus');
+        const remEl = document.getElementById('stats-level-remaining');
+        if (reqTextEl) reqTextEl.textContent = `${formatNumber(state.levelFish)} / ${formatNumber(req)} XP`;
+        if (fillEl) fillEl.style.width = `${pct}%`;
+        if (bonusEl) bonusEl.textContent = `+${(state.glacierLevel - 1) * 5}% Production`;
+        if (remEl) remEl.textContent = `${pctRounded}% (${formatNumber(remaining)} to next)`;
+      }
 
       const w = state.getCurrentWeather();
       const weatherPill = document.getElementById('weather-pill');

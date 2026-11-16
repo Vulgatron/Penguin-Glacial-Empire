@@ -3234,7 +3234,7 @@
           {
             icon: '💬',
             title: 'Penguin Speech Bubbles',
-            desc: 'Colony penguins now randomly speak above the ice, sharing true penguin facts and playful lines matching their personal traits!'
+            desc: 'Colony penguins now step off to the side for 15 seconds sharing true penguin facts and playful lines matching their personal traits!'
           },
           {
             icon: '📜',
@@ -6125,8 +6125,12 @@
         this.speechText = null;
         this.speechCategory = 'fact';
         this.speechTimer = 0;
-        this.speechDuration = 4.8;
+        this.speechDuration = 15.0;
         this.nextSpeechCooldown = 2.0 + Math.random() * 8.0;
+        this.talkSide = 'left';
+        this.talkSpotX = 0;
+        this.talkSpotY = 0;
+        this.isStandingAtTalkSpot = false;
 
         this.initiatePathToFishingHole();
       }
@@ -6188,7 +6192,9 @@
       }
 
       update(dt) {
-        this.stepPhase += dt * 6;
+        if (this.state !== 'TALKING_ON_SIDE' || !this.isStandingAtTalkSpot) {
+          this.stepPhase += dt * 6;
+        }
 
         if (this.happyTimer > 0) {
           this.happyTimer = Math.max(0, this.happyTimer - dt);
@@ -6208,6 +6214,14 @@
           this.speechTimer = Math.max(0, this.speechTimer - dt);
           if (this.speechTimer <= 0) {
             this.speechText = null;
+            this.isStandingAtTalkSpot = false;
+            if (this.state === 'TALKING_ON_SIDE') {
+              if (this.carriedFish > 0) {
+                this.initiatePathToDepot();
+              } else {
+                this.initiatePathToFishingHole();
+              }
+            }
           }
         } else if (
           this.state === 'NAVIGATE_TO_HOLE' ||
@@ -6219,13 +6233,13 @@
             const nowMs = Date.now();
             const activeBubbleCount = activePenguins.filter(p => p.speechTimer > 0 && p.speechText).length;
             const sinceLastGlobal = nowMs - lastGlobalPenguinSpeechAt;
-            const globalGapOk = lastGlobalPenguinSpeechAt === 0 || sinceLastGlobal >= 4500;
+            const globalGapOk = lastGlobalPenguinSpeechAt === 0 || sinceLastGlobal >= 8000;
             if (activeBubbleCount < 2 && globalGapOk) {
               this.speakRandomLine();
               lastGlobalPenguinSpeechAt = nowMs;
-              this.nextSpeechCooldown = 10.0 + Math.random() * 14.0;
+              this.nextSpeechCooldown = 16.0 + Math.random() * 14.0;
             } else {
-              this.nextSpeechCooldown = 2.5 + Math.random() * 4.5;
+              this.nextSpeechCooldown = 3.0 + Math.random() * 5.0;
             }
           }
         }
@@ -6411,6 +6425,28 @@
             }
             break;
           }
+
+          case 'TALKING_ON_SIDE': {
+            const dx = this.talkSpotX - this.x;
+            const dy = this.talkSpotY - this.y;
+            const dist = Math.hypot(dx, dy);
+            const step = speed * dt;
+
+            if (dist > 6 && dist > step) {
+              this.isStandingAtTalkSpot = false;
+              if (Math.abs(dx) > 2) {
+                this.facing = dx > 0 ? 1 : -1;
+              }
+              this.x += (dx / dist) * step;
+              this.y += (dy / dist) * step;
+            } else {
+              this.x = this.talkSpotX;
+              this.y = this.talkSpotY;
+              this.isStandingAtTalkSpot = true;
+              this.facing = this.talkSpotX < width * 0.5 ? 1 : -1;
+            }
+            break;
+          }
         }
       }
 
@@ -6450,6 +6486,8 @@
           bounceY = -Math.abs(Math.sin(this.happyTimer * Math.PI * 5)) * 4;
         }
 
+        const renderStepPhase = (this.state === 'TALKING_ON_SIDE' && this.isStandingAtTalkSpot) ? 0 : this.stepPhase;
+
         // Soft ice reflection directly beneath penguin
         ctx.save();
         ctx.translate(this.x, this.y + 22);
@@ -6458,7 +6496,7 @@
         PenguinSpriteRenderer.draw(ctx, {
           speciesId: this.species.id,
           pose: isSliding ? 'slide' : 'waddle',
-          stepPhase: this.stepPhase,
+          stepPhase: renderStepPhase,
           blink: this.isBlinking,
           happy: this.happyTimer > 0,
           carryingFish: this.carriedFish > 0,
@@ -6476,7 +6514,7 @@
         PenguinSpriteRenderer.draw(ctx, {
           speciesId: this.species.id,
           pose: isSliding ? 'slide' : 'waddle',
-          stepPhase: this.stepPhase,
+          stepPhase: renderStepPhase,
           blink: this.isBlinking,
           happy: this.happyTimer > 0,
           carryingFish: this.carriedFish > 0,
@@ -6517,8 +6555,35 @@
         this.lastSpokenLine = chosenText;
         this.speechText = chosenText;
         this.speechCategory = category;
-        this.speechDuration = 5.0;
-        this.speechTimer = this.speechDuration;
+        this.speechDuration = 15.0;
+        this.speechTimer = 15.0;
+
+        // Free any claimed fishing hole slot so other penguins can collect unhindered
+        releaseSlot(this.uid);
+        this.claimedTarget = null;
+
+        // Pick an open side spot away from the central depot & fishing holes
+        const otherTalkers = activePenguins.filter(p => p !== this && p.state === 'TALKING_ON_SIDE');
+        const leftBusy = otherTalkers.some(p => p.talkSide === 'left');
+        const rightBusy = otherTalkers.some(p => p.talkSide === 'right');
+        if (leftBusy && !rightBusy) {
+          this.talkSide = 'right';
+        } else if (rightBusy && !leftBusy) {
+          this.talkSide = 'left';
+        } else {
+          this.talkSide = this.x < width * 0.5 ? 'left' : 'right';
+        }
+
+        const safeMarginX = Math.max(42, width * 0.13);
+        const sideAnchorX = this.talkSide === 'left'
+          ? Math.min(safeMarginX, width * 0.5 - DEPOT.radius - 32)
+          : Math.max(width - safeMarginX, width * 0.5 + DEPOT.radius + 32);
+        this.talkSpotX = Math.max(36, Math.min(width - 36, sideAnchorX));
+        const sameSideCount = otherTalkers.filter(p => p.talkSide === this.talkSide).length;
+        this.talkSpotY = Math.min(height * 0.50, Math.max(height * 0.42, height * 0.445 + sameSideCount * 22));
+        this.isSliding = false;
+        this.isStandingAtTalkSpot = false;
+        this.state = 'TALKING_ON_SIDE';
 
         const record = state.recordSpeechLog(this.species.id, {
           text: chosenText,

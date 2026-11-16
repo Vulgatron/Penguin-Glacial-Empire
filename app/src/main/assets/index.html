@@ -1492,19 +1492,19 @@
 
     /* OFFLINE MODAL */
     #offline-modal {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
-      z-index: 55;
+      z-index: 65;
       background: rgba(2, 8, 18, 0.85);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       display: none;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: max(20px, env(safe-area-inset-top, 20px)) 20px max(20px, env(safe-area-inset-bottom, 20px));
     }
 
     .offline-card {
@@ -2457,7 +2457,7 @@
         <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Fish Banked (1/3 Idle Reduction)</div>
         <div style="font-size: 22px; font-weight: 900; color: var(--accent-gold);" id="offline-fish-val">+0 🐟</div>
       </div>
-      <label class="prestige-btn" id="offline-claim-btn" role="button" tabindex="0" data-ios-haptic-label="1" style="width: 100%;">Claim Catch</label>
+      <label class="prestige-btn" id="offline-claim-btn" role="button" tabindex="0" data-ios-haptic-label="1" style="width: 100%; touch-action: manipulation;">Claim Catch</label>
     </div>
   </div>
 
@@ -4286,6 +4286,7 @@
         this.auroraAlertTimeoutId = null;
 
         this.dps = 0;
+        this.pendingOfflineFish = 0;
         this.lastSaveTime = Date.now();
 
         // Statistics & Rebirth History tracking
@@ -4681,6 +4682,7 @@
           speechLog: this.speechLog,
           speechLogExpanded: this.speechLogExpanded,
           lastColonySpeechEndedAt: this.lastColonySpeechEndedAt,
+          pendingOfflineFish: this.pendingOfflineFish,
           lastSeenFeatureReleaseId: this.lastSeenFeatureReleaseId,
           dailyReminderEnabled: typeof pushReminders !== 'undefined' ? pushReminders.enabled : false,
           lastDailyReminderDateKey: typeof pushReminders !== 'undefined' ? pushReminders.lastNotifiedDateKey : ''
@@ -4821,6 +4823,11 @@
             if (typeof data.lastColonySpeechEndedAt === 'number' && data.lastColonySpeechEndedAt >= 0) {
               this.lastColonySpeechEndedAt = data.lastColonySpeechEndedAt;
             }
+            if (typeof data.pendingOfflineFish === 'number' && data.pendingOfflineFish > 0) {
+              this.pendingOfflineFish = Math.floor(data.pendingOfflineFish);
+            } else {
+              this.pendingOfflineFish = 0;
+            }
             if (typeof data.lastSeenFeatureReleaseId === 'string') {
               this.lastSeenFeatureReleaseId = data.lastSeenFeatureReleaseId;
             }
@@ -4834,9 +4841,14 @@
                 this.calculateDPS();
                 const offlineEarned = Math.floor(this.dps * elapsedSec * (2 / 3));
                 if (offlineEarned > 5) {
-                  showOfflineModal(offlineEarned);
+                  this.pendingOfflineFish += offlineEarned;
                 }
               }
+            }
+            if (this.pendingOfflineFish > 0) {
+              this.lastSaveTime = Date.now();
+              this.save();
+              showOfflineModal(0);
             }
           }
         } catch (e) {
@@ -6807,6 +6819,7 @@
     // --- MAIN GAME LOOP (60FPS requestAnimationFrame) ---
 
     let lastTime = performance.now();
+    let lastAutoSavePerfNow = lastTime;
     let auroraWavePhase = 0;
     let achievementCheckTimer = 0;
 
@@ -6828,7 +6841,8 @@
       if (state.slushDebuffTimer > 0) state.slushDebuffTimer = Math.max(0, state.slushDebuffTimer - dt);
       if (state.goldenFishTimer > 0) state.goldenFishTimer = Math.max(0, state.goldenFishTimer - dt);
 
-      if (!state.isAuroraModalOpen && !state.isAuroraAlertActive) {
+      const isOfflineOrWhatsNewBlocking = (typeof isModalBlockingAurora === 'function') && isModalBlockingAurora();
+      if (!state.isAuroraModalOpen && !state.isAuroraAlertActive && !isOfflineOrWhatsNewBlocking) {
         const coilsReduction = state.tech.aurora_coils * 4;
         const targetInterval = Math.max(30, state.auroraEventInterval - coilsReduction);
         state.auroraEventTimer -= dt;
@@ -6860,8 +6874,9 @@
       }
       sound.setWeather(state.getCurrentWeather().id);
 
-      if (now - state.lastSaveTime > 3000) {
-        state.lastSaveTime = now;
+      if ((typeof document === 'undefined' || !document.hidden) && (now - lastAutoSavePerfNow > 3000)) {
+        lastAutoSavePerfNow = now;
+        state.lastSaveTime = Date.now();
         state.save();
         if (typeof pushReminders !== 'undefined') {
           pushReminders.checkForeground8AmReminder();
@@ -7920,6 +7935,9 @@
       }
 
       updateSheetContent();
+      if (typeof window.flushPendingSwReload === 'function') {
+        window.flushPendingSwReload();
+      }
     }
 
     function executeWorstChoicePenalty() {
@@ -7953,27 +7971,70 @@
     }
 
     // --- OFFLINE PROGRESS MODAL ---
-    let pendingOfflineFish = 0;
-    function showOfflineModal(amount) {
-      pendingOfflineFish += amount;
+    function isModalBlockingAurora() {
+      const offlineModal = document.getElementById('offline-modal');
+      const whatsNewModal = document.getElementById('whats-new-modal');
+      return Boolean(
+        (offlineModal && offlineModal.style.display === 'flex') ||
+        (whatsNewModal && whatsNewModal.style.display === 'flex') ||
+        (typeof state !== 'undefined' && state.pendingOfflineFish > 0)
+      );
+    }
+
+    function claimOfflineCatch() {
       const modal = document.getElementById('offline-modal');
-      document.getElementById('offline-fish-val').textContent = `+${formatNumber(pendingOfflineFish)} 🐟`;
-      modal.style.display = 'flex';
+      const toClaim = Math.max(0, Math.floor((state && state.pendingOfflineFish) || 0));
+      if (state) {
+        state.pendingOfflineFish = 0;
+      }
+      if (modal) {
+        modal.style.display = 'none';
+      }
+      sound.init();
+      if (toClaim > 0 && state) {
+        state.addFish(toClaim);
+        sound.triggerHaptic('collect');
+        showToast(`🐟 Claimed +${formatNumber(toClaim)} idle fish!`, '🐟');
+      }
+      sound.playLevelUp();
+      if (state) {
+        state.lastSaveTime = Date.now();
+        state.save();
+      }
+      if (typeof updateHUD === 'function') updateHUD();
+      if (typeof updateSheetContent === 'function') updateSheetContent();
+      const openedWhatsNew = maybeShowWhatsNewModal();
+      if (!openedWhatsNew && typeof window.flushPendingSwReload === 'function') {
+        window.flushPendingSwReload();
+      }
+    }
+
+    function showOfflineModal(amount = 0) {
+      const added = Math.max(0, Math.floor(amount || 0));
+      if (added > 0) {
+        state.pendingOfflineFish = Math.max(0, Math.floor(state.pendingOfflineFish || 0)) + added;
+        state.lastSaveTime = Date.now();
+        state.save();
+      }
+      const pendingTotal = Math.max(0, Math.floor(state.pendingOfflineFish || 0));
+      if (pendingTotal <= 0) return;
+
+      const modal = document.getElementById('offline-modal');
+      const valEl = document.getElementById('offline-fish-val');
+      if (valEl) {
+        valEl.textContent = `+${formatNumber(pendingTotal)} 🐟`;
+      }
+      if (modal) {
+        modal.style.display = 'flex';
+      }
       sound.syncIosHapticDomState();
 
-      document.getElementById('offline-claim-btn').onclick = () => {
-        sound.init();
-        const toClaim = pendingOfflineFish;
-        pendingOfflineFish = 0;
-        if (toClaim > 0) {
-          state.addFish(toClaim);
-          state.save();
-          sound.triggerHaptic('collect');
-        }
-        sound.playLevelUp();
-        modal.style.display = 'none';
-        maybeShowWhatsNewModal();
-      };
+      const claimBtn = document.getElementById('offline-claim-btn');
+      if (claimBtn) {
+        claimBtn.onclick = () => {
+          claimOfflineCatch();
+        };
+      }
     }
 
     function maybeShowWhatsNewModal(forceOpen = false) {
@@ -7984,7 +8045,7 @@
       if (!forceOpen) {
         if (state.lastSeenFeatureReleaseId === LATEST_FEATURE_RELEASE.id) return false;
         const offlineModal = document.getElementById('offline-modal');
-        if (offlineModal && offlineModal.style.display === 'flex') {
+        if ((offlineModal && offlineModal.style.display === 'flex') || (state && state.pendingOfflineFish > 0)) {
           return false; // Wait until player claims offline catch
         }
       }
@@ -8022,6 +8083,9 @@
           state.lastSeenFeatureReleaseId = LATEST_FEATURE_RELEASE.id;
           state.save();
           modal.style.display = 'none';
+          if (typeof window.flushPendingSwReload === 'function') {
+            window.flushPendingSwReload();
+          }
         };
       }
       return true;
@@ -9321,6 +9385,7 @@
         }
       } else {
         lastTime = performance.now();
+        lastAutoSavePerfNow = lastTime;
         if (typeof sound !== 'undefined' && sound.setBackgrounded) {
           sound.setBackgrounded(false);
         }
@@ -9330,24 +9395,34 @@
         if (typeof pushReminders !== 'undefined') {
           pushReminders.checkForeground8AmReminder();
         }
-        if (backgroundedAt && typeof state !== 'undefined') {
-          const elapsedSec = (Date.now() - backgroundedAt) / 1000;
+        if (typeof state !== 'undefined') {
+          const resumeNow = Date.now();
+          const awayStart = backgroundedAt || state.lastSaveTime;
           backgroundedAt = null;
-          if (elapsedSec > 0) {
-            state.advanceWeather(elapsedSec);
-          }
-          if (elapsedSec > 10) {
-            state.calculateDPS();
-            const offlineEarned = Math.floor(state.dps * elapsedSec * (2 / 3));
-            if (offlineEarned > 5) {
-              showOfflineModal(offlineEarned);
+          if (awayStart) {
+            const elapsedSec = (resumeNow - awayStart) / 1000;
+            if (elapsedSec > 0) {
+              state.advanceWeather(elapsedSec);
             }
+            if (elapsedSec > 10) {
+              state.calculateDPS();
+              const offlineEarned = Math.floor(state.dps * elapsedSec * (2 / 3));
+              if (offlineEarned > 5) {
+                showOfflineModal(offlineEarned);
+              }
+            }
+            state.lastSaveTime = resumeNow;
+            state.save();
+          }
+          if (state.pendingOfflineFish > 0) {
+            showOfflineModal(0);
           }
         }
       }
     });
 
     window.addEventListener('pagehide', () => {
+      if (!backgroundedAt) backgroundedAt = Date.now();
       if (typeof state !== 'undefined' && state.save) {
         state.save();
       }
@@ -9375,10 +9450,38 @@
     ) {
       const hadSwController = Boolean(navigator.serviceWorker.controller);
       let swReloading = false;
+      let pendingSwReload = false;
       let activeSwReg = null;
+
+      function hasBlockingModalOrPendingReward() {
+        const offlineEl = document.getElementById('offline-modal');
+        const whatsNewEl = document.getElementById('whats-new-modal');
+        const offlineOpen = Boolean(offlineEl && offlineEl.style.display === 'flex');
+        const whatsNewOpen = Boolean(whatsNewEl && whatsNewEl.style.display === 'flex');
+        return (
+          offlineOpen ||
+          whatsNewOpen ||
+          (typeof state !== 'undefined' && (state.pendingOfflineFish > 0 || state.isAuroraModalOpen || state.isAuroraAlertActive))
+        );
+      }
+
+      window.flushPendingSwReload = function() {
+        if (!pendingSwReload || swReloading) return;
+        if (hasBlockingModalOrPendingReward()) return;
+        pendingSwReload = false;
+        swReloading = true;
+        if (typeof state !== 'undefined' && state.save) {
+          state.save();
+        }
+        window.location.reload();
+      };
 
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!hadSwController || swReloading) return;
+        if (hasBlockingModalOrPendingReward()) {
+          pendingSwReload = true;
+          return;
+        }
         swReloading = true;
         window.location.reload();
       });

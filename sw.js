@@ -1,4 +1,4 @@
-const CACHE_NAME = 'penguin-glacial-empire-v9';
+const CACHE_NAME = 'penguin-glacial-empire-v10';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -12,7 +12,13 @@ const CORE_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        CORE_ASSETS.map((assetUrl) =>
+          cache.add(new Request(assetUrl, { cache: 'reload' })).catch(() => cache.add(assetUrl))
+        )
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -33,14 +39,15 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Network-first for HTML navigation & push-config.json so updates arrive immediately
+  // Network-first (revalidating HTTP cache) for HTML navigation & push-config.json so Android/iOS PWAs receive updates immediately
   if (
     event.request.mode === 'navigate' ||
+    url.pathname.endsWith('/') ||
     url.pathname.endsWith('index.html') ||
     url.pathname.endsWith('push-config.json')
   ) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request.url, { cache: 'no-cache' })
         .then((response) => {
           if (response && response.ok) {
             const copy = response.clone();

@@ -154,6 +154,20 @@ class MainActivity : ComponentActivity() {
           webView?.evaluateJavascript(
             """
             (function() {
+              const whatsNewModal = document.getElementById('whats-new-modal');
+              if (whatsNewModal && whatsNewModal.style.display === 'flex') {
+                const dismissBtn = document.getElementById('whats-new-dismiss-btn');
+                if (dismissBtn) {
+                  dismissBtn.click();
+                } else {
+                  whatsNewModal.style.display = 'none';
+                }
+                return true;
+              }
+              const offlineModal = document.getElementById('offline-modal');
+              if (offlineModal && offlineModal.style.display === 'flex') {
+                return true;
+              }
               const modal = document.getElementById('aurora-modal');
               if (modal && modal.classList.contains('open')) {
                 return false;

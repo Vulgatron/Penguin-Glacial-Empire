@@ -330,9 +330,12 @@
     }
 
     .sheet-tabs {
+      flex: 1;
+      min-width: 0;
       display: flex;
       gap: 4px;
       overflow-x: auto;
+      touch-action: pan-x;
       scrollbar-width: none;
       -webkit-overflow-scrolling: touch;
     }
@@ -342,6 +345,7 @@
     }
 
     .tab-btn {
+      flex-shrink: 0;
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid transparent;
       color: var(--text-sub);
@@ -2228,7 +2232,7 @@
       display: none;
       align-items: center;
       justify-content: center;
-      padding: 18px;
+      padding: max(18px, env(safe-area-inset-top, 18px)) 18px max(18px, env(safe-area-inset-bottom, 18px));
     }
 
     .whats-new-card {
@@ -8833,10 +8837,16 @@
               const tagText = isTrait
                 ? `${entry.traitIcon || '✨'} ${escapeLogHtml(entry.traitName || 'Trait')} Saying`
                 : '📘 True Penguin Fact';
-              const timeStr = new Date(entry.timestamp || Date.now()).toLocaleTimeString([], {
-                hour: 'numeric',
-                minute: '2-digit'
-              });
+              let timeStr = '';
+              try {
+                timeStr = new Date(entry.timestamp || Date.now()).toLocaleTimeString([], {
+                  hour: 'numeric',
+                  minute: '2-digit'
+                });
+              } catch (_) {
+                const d = new Date(entry.timestamp || Date.now());
+                timeStr = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+              }
               return `
                 <div class="speech-log-entry ${isTrait ? 'is-trait' : 'is-fact'}" style="border-left-color: ${tagBorder};">
                   <div class="speech-log-entry-meta">
@@ -9259,13 +9269,34 @@
         window.location.hostname === 'localhost' ||
         window.location.hostname === '127.0.0.1')
     ) {
+      const hadSwController = Boolean(navigator.serviceWorker.controller);
+      let swReloading = false;
+      let activeSwReg = null;
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadSwController || swReloading) return;
+        swReloading = true;
+        window.location.reload();
+      });
+
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data && event.data.type === 'OPEN_DAILY_TAB') {
           openDailyTabFromNotification();
         }
       });
+
+      window.addEventListener('visibilitychange', () => {
+        if (!document.hidden && activeSwReg && typeof activeSwReg.update === 'function') {
+          activeSwReg.update().catch(() => {});
+        }
+      });
+
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then(() => {
+        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+          activeSwReg = reg;
+          if (reg && typeof reg.update === 'function') {
+            reg.update().catch(() => {});
+          }
           if (typeof pushReminders !== 'undefined') {
             pushReminders.refreshSubscriptionState().catch(() => {});
           }

@@ -1958,6 +1958,35 @@
     .settings-test-btn:active {
       transform: scale(0.96);
     }
+
+    .settings-status-box {
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 12px;
+      padding: 9px 11px;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #cbd5e1;
+    }
+
+    .settings-status-box.ok {
+      border-color: rgba(52, 211, 153, 0.45);
+      background: rgba(16, 185, 129, 0.12);
+      color: #a7f3d0;
+    }
+
+    .settings-status-box.warn {
+      border-color: rgba(251, 191, 36, 0.45);
+      background: rgba(245, 158, 11, 0.12);
+      color: #fde68a;
+    }
+
+    .settings-btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
   </style>
 </head>
 <body>
@@ -3047,6 +3076,377 @@
 
     const dailyManager = new DailyObjectivesManager();
 
+    // =========================================================================
+    // DAILY 8:00 AM PWA PUSH REMINDER MANAGER (Android & Apple iOS)
+    // =========================================================================
+    class DailyPushReminderManager {
+      constructor() {
+        this.enabled = false;
+        this.lastNotifiedDateKey = '';
+        this.pushSubscribed = false;
+        this.configLoaded = false;
+        this.config = {
+          vapidPublicKey: '',
+          subscribeApiUrl: '',
+          unsubscribeApiUrl: '',
+          defaultReminderHour: 8,
+          defaultReminderMinute: 0
+        };
+        this._lastCheckMs = 0;
+      }
+
+      isHostedOverWeb() {
+        if (typeof window === 'undefined' || !window.location) return false;
+        const proto = window.location.protocol;
+        const host = window.location.hostname;
+        return proto === 'https:' || host === 'localhost' || host === '127.0.0.1';
+      }
+
+      isIOSDevice() {
+        if (typeof navigator === 'undefined') return false;
+        const ua = navigator.userAgent || '';
+        const platform = navigator.platform || '';
+        const maxTouch = navigator.maxTouchPoints || 0;
+        return /iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && maxTouch > 1);
+      }
+
+      isStandalonePWA() {
+        if (typeof window === 'undefined') return false;
+        if (typeof navigator !== 'undefined' && navigator.standalone === true) return true;
+        if (typeof window.matchMedia === 'function') {
+          try {
+            return window.matchMedia('(display-mode: standalone)').matches;
+          } catch (_) {
+            return false;
+          }
+        }
+        return false;
+      }
+
+      needsIOSHomeScreenInstall() {
+        return this.isIOSDevice() && !this.isStandalonePWA();
+      }
+
+      supportsNotifications() {
+        return (
+          this.isHostedOverWeb() &&
+          typeof window !== 'undefined' &&
+          'Notification' in window &&
+          typeof navigator !== 'undefined' &&
+          'serviceWorker' in navigator
+        );
+      }
+
+      supportsWebPush() {
+        return this.supportsNotifications() && 'PushManager' in window;
+      }
+
+      getPermissionState() {
+        if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
+        return Notification.permission || 'default';
+      }
+
+      hasRelayConfigured() {
+        return Boolean(
+          this.config &&
+          typeof this.config.vapidPublicKey === 'string' &&
+          this.config.vapidPublicKey.trim().length > 10 &&
+          typeof this.config.subscribeApiUrl === 'string' &&
+          this.config.subscribeApiUrl.trim().startsWith('http')
+        );
+      }
+
+      urlBase64ToUint8Array(base64String) {
+        const clean = String(base64String || '').trim();
+        const padding = '='.repeat((4 - (clean.length % 4)) % 4);
+        const base64 = (clean + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(base64);
+        const output = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) {
+          output[i] = raw.charCodeAt(i);
+        }
+        return output;
+      }
+
+      async loadConfig() {
+        if (this.configLoaded || !this.isHostedOverWeb() || typeof fetch !== 'function') return;
+        this.configLoaded = true;
+        try {
+          const res = await fetch('./push-config.json', { cache: 'no-store' });
+          if (res && res.ok) {
+            const parsed = await res.json();
+            if (parsed && typeof parsed === 'object') {
+              this.config = Object.assign({}, this.config, parsed);
+            }
+          }
+        } catch (_) {
+          // Ignore config fetch failure when offline or running locally without config
+        }
+        await this.refreshSubscriptionState();
+      }
+
+      async refreshSubscriptionState() {
+        if (!this.supportsWebPush()) {
+          this.pushSubscribed = false;
+          return;
+        }
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && reg.pushManager) {
+            const sub = await reg.pushManager.getSubscription();
+            this.pushSubscribed = Boolean(sub);
+          }
+        } catch (_) {
+          this.pushSubscribed = false;
+        }
+      }
+
+      getStatusSummary() {
+        if (!this.isHostedOverWeb()) {
+          return {
+            tone: 'normal',
+            text: '📱 Running offline/inside native wrapper. 8:00 AM Web Push activates when opened from your GitHub Pages HTTPS URL on Android or iOS.'
+          };
+        }
+        if (this.needsIOSHomeScreenInstall()) {
+          return {
+            tone: 'warn',
+            text: '🍎 iPhone/iPad step: Tap Share → Add to Home Screen, then launch Glacial Empire from your Home Screen icon to enable Apple Push Notifications (iOS 16.4+).'
+          };
+        }
+        if (!this.supportsNotifications()) {
+          return {
+            tone: 'warn',
+            text: '⚠️ This browser does not expose Web Notifications / Service Worker support.'
+          };
+        }
+
+        const perm = this.getPermissionState();
+        if (perm === 'denied') {
+          return {
+            tone: 'warn',
+            text: '🚫 Notifications are blocked in your device/browser settings. Allow notifications for Glacial Empire to receive 8:00 AM reminders.'
+          };
+        }
+
+        if (this.enabled && perm === 'granted') {
+          if (this.pushSubscribed && this.hasRelayConfigured()) {
+            return {
+              tone: 'ok',
+              text: '✅ 8:00 AM Web Push Active! Your device is subscribed to daily colony task reminders even when the app is closed.'
+            };
+          }
+          if (!this.hasRelayConfigured()) {
+            return {
+              tone: 'warn',
+              text: '⏰ Permission granted (open-app 8:00 AM reminders active). To deliver push notifications while closed, deploy push-relay/ & fill push-config.json.'
+            };
+          }
+          return {
+            tone: 'warn',
+            text: '🔔 Permission granted. Tap Re-Sync Push to finish registering this device with your 8:00 AM push relay.'
+          };
+        }
+
+        return {
+          tone: 'normal',
+          text: 'Get reminded at 8:00 AM local time whenever new Daily Goals are waiting. Works on Android & Apple Home Screen PWAs (iOS 16.4+).'
+        };
+      }
+
+      async subscribeToPushRelay() {
+        if (!this.supportsWebPush() || !this.hasRelayConfigured()) return false;
+        const reg = await navigator.serviceWorker.ready;
+        if (!reg || !reg.pushManager) return false;
+
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: this.urlBase64ToUint8Array(this.config.vapidPublicKey)
+          });
+        }
+
+        const timeZone = (typeof Intl !== 'undefined' && Intl.DateTimeFormat)
+          ? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
+          : 'UTC';
+
+        const resp = await fetch(this.config.subscribeApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: sub.toJSON(),
+            timeZone,
+            tzOffsetMinutes: -new Date().getTimezoneOffset(),
+            reminderHour: typeof this.config.defaultReminderHour === 'number' ? this.config.defaultReminderHour : 8,
+            reminderMinute: typeof this.config.defaultReminderMinute === 'number' ? this.config.defaultReminderMinute : 0,
+            app: 'penguin-glacial-empire'
+          })
+        });
+
+        this.pushSubscribed = Boolean(resp && resp.ok);
+        return this.pushSubscribed;
+      }
+
+      async enable() {
+        await this.loadConfig();
+
+        if (!this.isHostedOverWeb()) {
+          showToast('🌐 Open the GitHub Pages HTTPS link on iOS/Android to enable PWA push reminders.', '🔔');
+          return false;
+        }
+        if (this.needsIOSHomeScreenInstall()) {
+          showToast('🍎 On iPhone/iPad, tap Share → Add to Home Screen first to enable Apple Push.', '📲');
+          return false;
+        }
+        if (!this.supportsNotifications()) {
+          showToast('⚠️ Notifications are not supported on this browser.', '⚠️');
+          return false;
+        }
+
+        try {
+          const perm = await Notification.requestPermission();
+          if (perm !== 'granted') {
+            this.enabled = false;
+            if (typeof state !== 'undefined' && state.save) state.save();
+            showToast(perm === 'denied'
+              ? '🚫 Notifications blocked. Enable them in browser/iOS Settings.'
+              : '🔔 Notification permission dismissed.', '🔔');
+            if (typeof updateSheetContent === 'function') updateSheetContent();
+            return false;
+          }
+
+          this.enabled = true;
+          if (this.hasRelayConfigured() && this.supportsWebPush()) {
+            const ok = await this.subscribeToPushRelay();
+            showToast(ok
+              ? '🔔 8:00 AM Daily Push Reminders enabled!'
+              : '⚠️ Permission granted, but push relay registration failed.', '🔔');
+          } else {
+            showToast('⏰ 8:00 AM Reminders armed (add push-config.json relay for background delivery)!', '🔔');
+          }
+          if (typeof state !== 'undefined' && state.save) state.save();
+          if (typeof updateSheetContent === 'function') updateSheetContent();
+          return true;
+        } catch (err) {
+          showToast('⚠️ Could not enable notifications: ' + (err && err.message ? err.message : 'Error'), '⚠️');
+          if (typeof updateSheetContent === 'function') updateSheetContent();
+          return false;
+        }
+      }
+
+      async disable() {
+        this.enabled = false;
+        try {
+          if (this.supportsWebPush()) {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+            if (sub) {
+              if (this.config && this.config.unsubscribeApiUrl && typeof fetch === 'function') {
+                await fetch(this.config.unsubscribeApiUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ endpoint: sub.endpoint })
+                }).catch(() => {});
+              }
+              await sub.unsubscribe().catch(() => {});
+            }
+          }
+        } catch (_) {
+          // Ignore cleanup errors
+        }
+        this.pushSubscribed = false;
+        if (typeof state !== 'undefined' && state.save) state.save();
+        showToast('🔕 Daily 8:00 AM Reminders turned off.', '🔕');
+        if (typeof updateSheetContent === 'function') updateSheetContent();
+      }
+
+      async showNotificationNow(title, body, tag = 'daily-goals-reminder') {
+        if (!this.supportsNotifications() || this.getPermissionState() !== 'granted') return false;
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && typeof reg.showNotification === 'function') {
+            await reg.showNotification(title, {
+              body,
+              icon: './icons/icon-192.png',
+              badge: './icons/icon-192.png',
+              tag,
+              renotify: true,
+              data: { url: './?tab=daily', tab: 'daily' }
+            });
+            return true;
+          }
+          if (reg && reg.active) {
+            reg.active.postMessage({ type: 'SHOW_LOCAL_NOTIFICATION', title, body, tag });
+            return true;
+          }
+        } catch (_) {
+          // Fallback below
+        }
+        try {
+          new Notification(title, { body, icon: './icons/icon-192.png', tag });
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }
+
+      async sendTestReminder() {
+        await this.loadConfig();
+        if (this.needsIOSHomeScreenInstall()) {
+          showToast('🍎 Install to Home Screen on iOS first to test Apple notifications.', '📲');
+          return false;
+        }
+        if (!this.supportsNotifications()) {
+          showToast('🌐 Test notifications require the HTTPS PWA.', '🔔');
+          return false;
+        }
+        if (this.getPermissionState() !== 'granted') {
+          const ok = await this.enable();
+          if (!ok) return false;
+        }
+        const pending = dailyManager.objectives.filter(o => !o.claimed).length;
+        const sent = await this.showNotificationNow(
+          '🎯 Daily Goals Reminder — Glacial Empire',
+          pending > 0
+            ? `Good morning! ${pending} daily colony goal${pending === 1 ? ' is' : 's are'} ready to complete.`
+            : 'All daily goals for this cycle are claimed! Check back at 3:00 AM.',
+          'daily-goals-test'
+        );
+        showToast(sent ? '🔔 Test reminder notification dispatched!' : '⚠️ Unable to display OS notification here.', '🔔');
+        return sent;
+      }
+
+      checkForeground8AmReminder(nowMs = Date.now()) {
+        if (!this.enabled || this.getPermissionState() !== 'granted') return false;
+        if (nowMs - this._lastCheckMs < 25000) return false;
+        this._lastCheckMs = nowMs;
+
+        const now = new Date(nowMs);
+        const reminderHour = typeof this.config.defaultReminderHour === 'number' ? this.config.defaultReminderHour : 8;
+        if (now.getHours() < reminderHour) return false;
+
+        const cycleKey = dailyManager.getCycleDateKey(nowMs);
+        if (this.lastNotifiedDateKey === cycleKey) return false;
+
+        const remainingCount = dailyManager.objectives.filter(o => !o.claimed).length;
+        this.lastNotifiedDateKey = cycleKey;
+        if (typeof state !== 'undefined' && state.save) state.save();
+
+        if (remainingCount > 0) {
+          this.showNotificationNow(
+            '🎯 Daily Goals Ready — Glacial Empire',
+            `It's past 8:00 AM! ${remainingCount} colony goal${remainingCount === 1 ? ' is' : 's are'} waiting for rewards.`,
+            'daily-goals-reminder'
+          );
+          return true;
+        }
+        return false;
+      }
+    }
+
+    const pushReminders = new DailyPushReminderManager();
+
     // Helper functions for Statistics
     function formatPlaytime(ms) {
       const totalSec = Math.max(0, Math.floor(ms / 1000));
@@ -3752,7 +4152,9 @@
           gameStartTime: this.gameStartTime,
           highestDPS: this.highestDPS,
           weatherIndex: this.weatherIndex,
-          weatherTimer: this.weatherTimer
+          weatherTimer: this.weatherTimer,
+          dailyReminderEnabled: typeof pushReminders !== 'undefined' ? pushReminders.enabled : false,
+          lastDailyReminderDateKey: typeof pushReminders !== 'undefined' ? pushReminders.lastNotifiedDateKey : ''
         };
 
         const jsonStr = JSON.stringify(saveObj);
@@ -3866,6 +4268,10 @@
             }
             if (typeof data.weatherTimer === 'number' && data.weatherTimer > 0) {
               this.weatherTimer = Math.min(WEATHER_CYCLE_SECONDS, data.weatherTimer);
+            }
+            if (typeof pushReminders !== 'undefined') {
+              if (typeof data.dailyReminderEnabled === 'boolean') pushReminders.enabled = data.dailyReminderEnabled;
+              if (typeof data.lastDailyReminderDateKey === 'string') pushReminders.lastNotifiedDateKey = data.lastDailyReminderDateKey;
             }
 
             if (data.lastSaveTime) {
@@ -5606,6 +6012,9 @@
       if (now - state.lastSaveTime > 3000) {
         state.lastSaveTime = now;
         state.save();
+        if (typeof pushReminders !== 'undefined') {
+          pushReminders.checkForeground8AmReminder();
+        }
       }
 
       drawScene(ctx, dt);
@@ -7615,6 +8024,30 @@
               ✨ Test Sound &amp; Haptic Pulse
             </label>
           </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">🔔 Daily Goals Reminder (8:00 AM)</div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <div class="settings-label">Morning 8:00 AM Alerts</div>
+                <div class="settings-desc">Daily PWA reminder on Android &amp; Apple Home Screen apps to complete colony tasks</div>
+              </div>
+              <label id="settings-push-toggle-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="toggle-pill-btn ${pushReminders.enabled && pushReminders.getPermissionState() === 'granted' ? '' : 'off'}">
+                ${pushReminders.enabled && pushReminders.getPermissionState() === 'granted' ? '🔔 8 AM On' : '🔕 Off'}
+              </label>
+            </div>
+
+            <div id="settings-push-status" class="settings-status-box ${pushReminders.getStatusSummary().tone}">
+              ${pushReminders.getStatusSummary().text}
+            </div>
+
+            <div class="settings-btn-row">
+              <label id="settings-push-test-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="settings-test-btn">
+                🔔 Send Test Notification
+              </label>
+            </div>
+          </div>
         `;
 
         const muteBtn = settingsWrap.querySelector('#settings-mute-btn');
@@ -7684,6 +8117,26 @@
           });
         }
 
+        const pushToggleBtn = settingsWrap.querySelector('#settings-push-toggle-btn');
+        if (pushToggleBtn) {
+          pushToggleBtn.addEventListener('click', async () => {
+            sound.init();
+            if (pushReminders.enabled && pushReminders.getPermissionState() === 'granted') {
+              await pushReminders.disable();
+            } else {
+              await pushReminders.enable();
+            }
+          });
+        }
+
+        const pushTestBtn = settingsWrap.querySelector('#settings-push-test-btn');
+        if (pushTestBtn) {
+          pushTestBtn.addEventListener('click', async () => {
+            sound.init();
+            await pushReminders.sendTestReminder();
+          });
+        }
+
         container.appendChild(settingsWrap);
       }
 
@@ -7748,6 +8201,21 @@
       }
     }
 
+    function openDailyTabFromNotification() {
+      state.currentTab = 'daily';
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === 'daily');
+      });
+      const sheet = document.getElementById('bottom-sheet');
+      const pill = document.getElementById('collapsed-pill');
+      if (sheet) {
+        sheet.style.transform = '';
+        sheet.classList.remove('collapsed');
+      }
+      if (pill) pill.classList.add('hidden');
+      if (typeof updateSheetContent === 'function') updateSheetContent();
+    }
+
     let gameInitialized = false;
     function init() {
       if (gameInitialized) return;
@@ -7760,9 +8228,21 @@
         console.warn('Init load fallback:', e);
       }
       dailyManager.checkDailyReset();
+      try {
+        const params = new URLSearchParams(window.location.search || '');
+        if (params.get('tab') === 'daily') {
+          openDailyTabFromNotification();
+        }
+      } catch (_) {}
       syncActivePenguins();
       checkAchievements();
       updateSheetContent();
+      if (typeof pushReminders !== 'undefined') {
+        pushReminders.loadConfig().then(() => {
+          pushReminders.checkForeground8AmReminder();
+          if (state.currentTab === 'settings') updateSheetContent();
+        }).catch(() => {});
+      }
       requestAnimationFrame(gameLoop);
     }
 
@@ -7789,6 +8269,9 @@
         }
         if (typeof dailyManager !== 'undefined' && dailyManager.checkDailyReset) {
           dailyManager.checkDailyReset();
+        }
+        if (typeof pushReminders !== 'undefined') {
+          pushReminders.checkForeground8AmReminder();
         }
         if (backgroundedAt && typeof state !== 'undefined') {
           const elapsedSec = (Date.now() - backgroundedAt) / 1000;
@@ -7833,8 +8316,17 @@
         window.location.hostname === 'localhost' ||
         window.location.hostname === '127.0.0.1')
     ) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'OPEN_DAILY_TAB') {
+          openDailyTabFromNotification();
+        }
+      });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch((err) => {
+        navigator.serviceWorker.register('./sw.js').then(() => {
+          if (typeof pushReminders !== 'undefined') {
+            pushReminders.refreshSubscriptionState().catch(() => {});
+          }
+        }).catch((err) => {
           console.warn('Service worker registration skipped:', err);
         });
       });

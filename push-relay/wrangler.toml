@@ -1,0 +1,16 @@
+name = "penguin-push-relay"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[kv_namespaces]]
+binding = "PUSH_SUBSCRIPTIONS"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[vars]
+# Optional: restrict CORS to your GitHub Pages origin, e.g. "https://username.github.io"
+ALLOWED_ORIGIN = "*"
+# Must be a valid mailto: or https:// URL for Apple APNs Web Push
+VAPID_SUBJECT = "mailto:your-email@example.com"

@@ -1987,6 +1987,340 @@
       gap: 8px;
       align-items: center;
     }
+
+    /* SPEECH LOG TAB & ACCORDION */
+    .speech-log-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-bottom: 18px;
+    }
+
+    .speech-log-summary-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    .speech-log-summary-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+
+    .speech-log-summary-sub {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .speech-log-controls {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .speech-log-mini-btn {
+      background: rgba(56, 189, 248, 0.14);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #bae6fd;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 6px 9px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+    }
+
+    .speech-log-mini-btn:active {
+      transform: scale(0.95);
+    }
+
+    .speech-log-category {
+      background: rgba(15, 23, 42, 0.68);
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .speech-log-category.expanded {
+      border-color: rgba(56, 189, 248, 0.42);
+      background: rgba(15, 23, 42, 0.82);
+    }
+
+    .speech-log-cat-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 12px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      min-height: 54px;
+    }
+
+    .speech-log-cat-header:active {
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    .speech-log-cat-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      background: rgba(30, 58, 138, 0.38);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .speech-log-cat-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .speech-log-cat-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .speech-log-cat-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .speech-log-cat-sub {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .speech-log-count-pill {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.16);
+      color: #7dd3fc;
+      border: 1px solid rgba(56, 189, 248, 0.32);
+      flex-shrink: 0;
+    }
+
+    .speech-log-count-pill.empty {
+      background: rgba(100, 116, 139, 0.15);
+      color: #94a3b8;
+      border-color: rgba(100, 116, 139, 0.25);
+    }
+
+    .speech-log-chevron {
+      font-size: 14px;
+      color: #94a3b8;
+      width: 20px;
+      text-align: center;
+      transition: transform 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .speech-log-category.expanded .speech-log-chevron {
+      transform: rotate(90deg);
+      color: #38bdf8;
+    }
+
+    .speech-log-cat-body {
+      display: none;
+      flex-direction: column;
+      gap: 7px;
+      padding: 0 12px 12px 12px;
+      border-top: 1px solid rgba(148, 163, 184, 0.15);
+      padding-top: 10px;
+    }
+
+    .speech-log-category.expanded .speech-log-cat-body {
+      display: flex;
+    }
+
+    .speech-log-empty {
+      font-size: 11px;
+      color: #94a3b8;
+      font-style: italic;
+      padding: 6px 2px;
+      line-height: 1.4;
+    }
+
+    .speech-log-entry {
+      background: rgba(2, 12, 27, 0.58);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 12px;
+      padding: 9px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .speech-log-entry.is-fact {
+      border-left: 3px solid #38bdf8;
+    }
+
+    .speech-log-entry.is-trait {
+      border-left: 3px solid #fbbf24;
+    }
+
+    .speech-log-entry-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .speech-log-tag {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 8px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #7dd3fc;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .speech-log-time {
+      font-size: 10px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .speech-log-quote {
+      font-size: 12px;
+      line-height: 1.4;
+      color: #f1f5f9;
+    }
+
+    /* WHAT'S NEW LAUNCH POPUP */
+    #whats-new-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 58;
+      background: rgba(2, 8, 18, 0.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .whats-new-card {
+      width: 100%;
+      max-width: 400px;
+      max-height: 86vh;
+      overflow-y: auto;
+      background: var(--bg-card);
+      border: 2px solid var(--accent-cyan);
+      border-radius: 24px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 0 34px rgba(56, 189, 248, 0.32);
+    }
+
+    .whats-new-header {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .whats-new-badge {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: #020814;
+      background: linear-gradient(90deg, #38bdf8, #34d399);
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-bottom: 2px;
+    }
+
+    .whats-new-title {
+      font-size: 19px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+
+    .whats-new-sub {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .whats-new-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .whats-new-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 14px;
+      padding: 10px 11px;
+      text-align: left;
+    }
+
+    .whats-new-item-icon {
+      font-size: 20px;
+      line-height: 1.1;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .whats-new-item-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+
+    .whats-new-item-desc {
+      font-size: 11px;
+      color: #cbd5e1;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+
+    .whats-new-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 2px;
+    }
   </style>
 </head>
 <body>
@@ -2032,6 +2366,7 @@
         <label class="tab-btn active" role="button" tabindex="0" data-tab="penguins" data-ios-haptic-label="1">🐧 Penguins</label>
         <label class="tab-btn" role="button" tabindex="0" data-tab="tech" data-ios-haptic-label="1">🔬 Tech</label>
         <label class="tab-btn" role="button" tabindex="0" data-tab="daily" data-ios-haptic-label="1">🎯 Daily <span id="daily-tab-dot" class="tab-badge-dot" style="display:none;"></span></label>
+        <label class="tab-btn" role="button" tabindex="0" data-tab="log" data-ios-haptic-label="1">💬 Log <span id="log-tab-dot" class="tab-badge-dot" style="display:none;"></span></label>
         <label class="tab-btn" role="button" tabindex="0" data-tab="prestige" data-ios-haptic-label="1">✨ Prestige</label>
         <label class="tab-btn" role="button" tabindex="0" data-tab="stats" data-ios-haptic-label="1">📊 Stats</label>
         <label class="tab-btn" role="button" tabindex="0" data-tab="settings" data-ios-haptic-label="1">⚙️ Settings</label>
@@ -2119,6 +2454,21 @@
         <div style="font-size: 22px; font-weight: 900; color: var(--accent-gold);" id="offline-fish-val">+0 🐟</div>
       </div>
       <label class="prestige-btn" id="offline-claim-btn" role="button" tabindex="0" data-ios-haptic-label="1" style="width: 100%;">Claim Catch</label>
+    </div>
+  </div>
+
+  <!-- What's New Feature Announcement Modal -->
+  <div id="whats-new-modal" role="dialog" aria-modal="true" aria-labelledby="whats-new-title-text">
+    <div class="whats-new-card">
+      <div class="whats-new-header">
+        <span class="whats-new-badge" id="whats-new-version-badge">NEW UPDATE</span>
+        <div class="whats-new-title" id="whats-new-title-text">What's New in Glacial Empire</div>
+        <div class="whats-new-sub" id="whats-new-subtitle-text">Fresh expedition upgrades have arrived on the ice shelf!</div>
+      </div>
+      <div class="whats-new-list" id="whats-new-features-list"></div>
+      <div class="whats-new-actions">
+        <label class="prestige-btn" id="whats-new-dismiss-btn" role="button" tabindex="0" data-ios-haptic-label="1" style="width: 100%;">Awesome, Let's Play!</label>
+      </div>
     </div>
   </div>
 
@@ -2788,6 +3138,119 @@
     function rollRandomTraitId() {
       return PENGUIN_TRAITS[Math.floor(Math.random() * PENGUIN_TRAITS.length)].id;
     }
+
+    // Verified true penguin facts spoken in-character by penguins
+    const PENGUIN_TRUE_FACTS = {
+      general: [
+        'True fact: Our black-and-white tuxedo pattern is called countershading — it camouflages us from predators above and below!',
+        'True fact: Penguins have a special supraorbital gland above our eyes that filters salt from seawater so we can drink it safely!',
+        'True fact: Unlike flying birds with hollow bones, penguins have dense, solid bones that help us dive deeper underwater!',
+        'True fact: We spread waterproofing oil from a preen gland near our tails across tightly packed feathers to stay warm!',
+        'True fact: Penguins do not have teeth — backward-facing spines on our tongues and throats help us grip slippery fish!',
+        'True fact: Penguins leap out of the water in arcs called porpoising to take quick breaths without slowing down!',
+        'True fact: Once a year, penguins replace every single feather at once during a dry-land phase called a catastrophic molt!',
+        'True fact: Penguins actually have knees! They stay tucked cleanly inside our warm, feathered lower bodies.'
+      ],
+      adelie: [
+        'Adélie fact: We gift smooth, round pebbles when building our nests — and sometimes sneak extra stones from neighbors!',
+        'Adélie fact: Named in 1840 after Adèle Dumont d’Urville, we are one of the true Antarctic mainland breeding penguins!',
+        'Adélie fact: Adélie colonies follow the edge of shifting sea ice for thousands of kilometers each winter to reach sunlight!'
+      ],
+      gentoo: [
+        'Gentoo fact: Gentoos are the fastest underwater swimming birds on Earth, clocking speeds up to 22 mph (36 km/h)!',
+        'Gentoo fact: You can always recognize a Gentoo by the bright white patch across the top of our head and orange-red bill!',
+        'Gentoo fact: When snow gets deep, Gentoos tuck our flippers and toboggan belly-first to glide smoothly over ice!'
+      ],
+      chinstrap: [
+        'Chinstrap fact: That crisp black band under my chin looks like a tiny helmet strap, giving Chinstraps our name!',
+        'Chinstrap fact: Chinstrap penguins take thousands of tiny 4-second microsleeps a day while guarding our nests!',
+        'Chinstrap fact: Chinstraps are bold divers that plunge up to 70 meters deep hunting Antarctic krill and fish!'
+      ],
+      emperor: [
+        'Emperor fact: Emperors are the tallest living penguin species, standing up to 4 feet (1.2 meters) tall!',
+        'Emperor fact: Emperor dads balance a single egg on our feet under a warm brood pouch all through Antarctic winter!',
+        'Emperor fact: Emperor penguins can dive deeper than any other bird — over 500 meters (1,800 ft) on one breath!',
+        'Emperor fact: Emperor colonies huddle together in rotating shifts to share body heat against -40°C polar blizzards!'
+      ],
+      cyber: [
+        'Penguin science fact: Penguin plumage packs over 100 interlocking feathers per square inch to lock out icy water!',
+        'Hydrodynamic fact: Penguins swim using rigid wings as underwater hydrofoils, practically flying beneath the waves!',
+        'Bio-thermal fact: Counter-current heat exchange keeps blood warm inside our legs while our feet stand on sub-zero ice!'
+      ]
+    };
+
+    // In-character sayings tailored to each penguin's assigned trait
+    const PENGUIN_TRAIT_SAYINGS = {
+      optimistic: [
+        'Nothing beats a fresh polar breeze — +20% waddle speed ahead!',
+        'Even a whiteout blizzard feels bright when you waddle with a smile!',
+        'Best glacier day ever! Who wants to race to the fishing hole?',
+        'The snow is sparkling and the fish are practically waving at us!'
+      ],
+      lazy: [
+        '*Yawn*... Can we please move the fishing hole closer to the igloo?',
+        'Why sprint across the glacier when an 80% chill waddle gets you there too?',
+        'Go on ahead... gliding slowly is my top energy-saving strategy.',
+        'Honestly, taking a little snooze on this sunbeam sounds wonderful.'
+      ],
+      greedy: [
+        'Dibs on the fattest silvery cod hiding under that ice hole!',
+        'Count every fin twice — my pouch hauls +20% more fish per dive!',
+        'More fish, shinier scales, taller stacks inside the igloo vault!',
+        'No sharing this bucket — wait, maybe one extra sardine under each flipper.'
+      ],
+      energetic: [
+        'SPLASH TIME! Watch me dive and surface +25% faster than the ripples!',
+        'Zero hesitation — turbo flippers locked and ready for another plunge!',
+        'Just finished 50 flipper-jacks! Let us hit the freezing water right now!',
+        'Can not stop, will not stop! Quickest dive turnaround on the ice shelf!'
+      ],
+      focused: [
+        'Locking eyes on a silver school darting right beneath the ice...',
+        'Steady stride, calm breath, +15% precision catch every single dive.',
+        'Tune out the freezing gusts — track the ripples and strike true.',
+        'Careful aim always brings back heavier baskets to the colony depot.'
+      ],
+      thrifty: [
+        'Smart recruiting saves 10% fish upfront for bigger glacier upgrades!',
+        'Budget tip from ice HQ: bundle up, waste zero krill, grow steady!',
+        'Scored a cozy bunk in the igloo at a crisp colony discount!',
+        'Every single fish saved today builds tomorrow’s frosted empire!'
+      ]
+    };
+
+    // Ordered newest-first; bumping/adding a new release entry triggers the launch popup once per user
+    const APP_FEATURE_RELEASES = [
+      {
+        id: '2026-11-penguin-chatter-log',
+        version: 'v1.5',
+        title: "What's New in Glacial Empire",
+        subtitle: 'Your penguins have found their voices — plus new launch highlights!',
+        features: [
+          {
+            icon: '💬',
+            title: 'Penguin Speech Bubbles',
+            desc: 'Colony penguins now randomly speak above the ice, sharing true penguin facts and playful lines matching their personal traits!'
+          },
+          {
+            icon: '📜',
+            title: 'Categorized Penguin Log',
+            desc: 'Check the new 💬 Log tab in the menu to read every quote organized by penguin type with expandable & collapsible sections.'
+          },
+          {
+            icon: '🔔',
+            title: '8:00 AM Daily Push Reminders',
+            desc: 'Turn on morning reminders in Settings for Android & Apple Home Screen PWAs so you never miss daily rewards.'
+          },
+          {
+            icon: '🎉',
+            title: 'Update Announcements',
+            desc: 'You will now see a quick launch summary whenever brand-new features land on the glacier!'
+          }
+        ]
+      }
+    ];
+    const LATEST_FEATURE_RELEASE = APP_FEATURE_RELEASES[0];
 
     function pickRecruitedTrait(speciesId) {
       const pData = state && state.penguins && state.penguins[speciesId];
@@ -3833,6 +4296,61 @@
         // 5-Minute Cycling Weather System
         this.weatherIndex = 0;
         this.weatherTimer = WEATHER_CYCLE_SECONDS;
+
+        // Penguin Speech Log (categorized by species) & Feature Announcement Tracking
+        this.speechLog = {};
+        this.speechLogExpanded = {};
+        PENGUIN_SPECIES.forEach((sp, idx) => {
+          this.speechLog[sp.id] = [];
+          this.speechLogExpanded[sp.id] = idx === 0;
+        });
+        this.lastSeenFeatureReleaseId = '';
+      }
+
+      recordSpeechLog(speciesId, entry) {
+        if (!this.speechLog || typeof this.speechLog !== 'object') {
+          this.speechLog = {};
+        }
+        const safeSpeciesId = PENGUIN_SPECIES.some(s => s.id === speciesId) ? speciesId : 'adelie';
+        if (!Array.isArray(this.speechLog[safeSpeciesId])) {
+          this.speechLog[safeSpeciesId] = [];
+        }
+        const record = {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          speciesId: safeSpeciesId,
+          text: String(entry.text || ''),
+          category: entry.category === 'trait' ? 'trait' : 'fact',
+          traitId: entry.traitId || 'optimistic',
+          traitName: entry.traitName || 'Optimistic',
+          traitIcon: entry.traitIcon || '☀️',
+          traitColor: entry.traitColor || '#34d399',
+          timestamp: entry.timestamp || Date.now()
+        };
+        this.speechLog[safeSpeciesId].unshift(record);
+        if (this.speechLog[safeSpeciesId].length > 50) {
+          this.speechLog[safeSpeciesId].length = 50;
+        }
+        if (typeof dailyManager !== 'undefined' && dailyManager.track) {
+          // Safe no-op unless daily goal exists
+        }
+        if (this.currentTab === 'log' && typeof updateSheetContent === 'function') {
+          const container = document.getElementById('sheet-content-container');
+          const prevScroll = container ? container.scrollTop : 0;
+          updateSheetContent();
+          if (container) container.scrollTop = prevScroll;
+        } else {
+          const logDot = document.getElementById('log-tab-dot');
+          if (logDot) logDot.style.display = 'inline-block';
+        }
+        return record;
+      }
+
+      getTotalSpeechLogCount() {
+        if (!this.speechLog) return 0;
+        return PENGUIN_SPECIES.reduce((sum, sp) => {
+          const arr = this.speechLog[sp.id];
+          return sum + (Array.isArray(arr) ? arr.length : 0);
+        }, 0);
       }
 
       addCollectedPerk(perk) {
@@ -4153,6 +4671,9 @@
           highestDPS: this.highestDPS,
           weatherIndex: this.weatherIndex,
           weatherTimer: this.weatherTimer,
+          speechLog: this.speechLog,
+          speechLogExpanded: this.speechLogExpanded,
+          lastSeenFeatureReleaseId: this.lastSeenFeatureReleaseId,
           dailyReminderEnabled: typeof pushReminders !== 'undefined' ? pushReminders.enabled : false,
           lastDailyReminderDateKey: typeof pushReminders !== 'undefined' ? pushReminders.lastNotifiedDateKey : ''
         };
@@ -4272,6 +4793,25 @@
             if (typeof pushReminders !== 'undefined') {
               if (typeof data.dailyReminderEnabled === 'boolean') pushReminders.enabled = data.dailyReminderEnabled;
               if (typeof data.lastDailyReminderDateKey === 'string') pushReminders.lastNotifiedDateKey = data.lastDailyReminderDateKey;
+            }
+            if (data.speechLog && typeof data.speechLog === 'object') {
+              PENGUIN_SPECIES.forEach(sp => {
+                if (Array.isArray(data.speechLog[sp.id])) {
+                  this.speechLog[sp.id] = data.speechLog[sp.id].slice(0, 50);
+                } else {
+                  this.speechLog[sp.id] = [];
+                }
+              });
+            }
+            if (data.speechLogExpanded && typeof data.speechLogExpanded === 'object') {
+              PENGUIN_SPECIES.forEach(sp => {
+                if (typeof data.speechLogExpanded[sp.id] === 'boolean') {
+                  this.speechLogExpanded[sp.id] = data.speechLogExpanded[sp.id];
+                }
+              });
+            }
+            if (typeof data.lastSeenFeatureReleaseId === 'string') {
+              this.lastSeenFeatureReleaseId = data.lastSeenFeatureReleaseId;
             }
 
             if (data.lastSaveTime) {
@@ -5578,6 +6118,12 @@
         this.carriedFish = 0;
         this.slideEffectTimer = 0;
 
+        this.speechText = null;
+        this.speechCategory = 'fact';
+        this.speechTimer = 0;
+        this.speechDuration = 4.8;
+        this.nextSpeechCooldown = 2.0 + Math.random() * 8.0;
+
         this.initiatePathToFishingHole();
       }
 
@@ -5652,6 +6198,32 @@
         } else if (this.blinkTimer <= 0) {
           this.isBlinking = true;
           this.blinkTimer = 0.14;
+        }
+
+        if (this.speechTimer > 0) {
+          this.speechTimer = Math.max(0, this.speechTimer - dt);
+          if (this.speechTimer <= 0) {
+            this.speechText = null;
+          }
+        } else if (
+          this.state === 'NAVIGATE_TO_HOLE' ||
+          this.state === 'NAVIGATE_TO_DEPOT' ||
+          this.state === 'WAITING_NEARBY'
+        ) {
+          this.nextSpeechCooldown -= dt;
+          if (this.nextSpeechCooldown <= 0) {
+            const nowMs = Date.now();
+            const activeBubbleCount = activePenguins.filter(p => p.speechTimer > 0 && p.speechText).length;
+            const sinceLastGlobal = nowMs - lastGlobalPenguinSpeechAt;
+            const globalGapOk = lastGlobalPenguinSpeechAt === 0 || sinceLastGlobal >= 4500;
+            if (activeBubbleCount < 2 && globalGapOk) {
+              this.speakRandomLine();
+              lastGlobalPenguinSpeechAt = nowMs;
+              this.nextSpeechCooldown = 10.0 + Math.random() * 14.0;
+            } else {
+              this.nextSpeechCooldown = 2.5 + Math.random() * 4.5;
+            }
+          }
         }
 
         const traitSpeed = this.trait ? this.trait.speedMult : 1.0;
@@ -5910,8 +6482,180 @@
 
         ctx.restore();
       }
+
+      speakRandomLine(forcedCategory = null) {
+        const useTrait = forcedCategory === 'trait'
+          ? true
+          : (forcedCategory === 'fact' ? false : Math.random() < 0.5);
+        const tr = this.trait || getTraitDef('optimistic');
+
+        let chosenText = '';
+        let category = 'fact';
+
+        if (useTrait) {
+          const traitPool = PENGUIN_TRAIT_SAYINGS[tr.id] || PENGUIN_TRAIT_SAYINGS.optimistic;
+          const freshTraitPool = traitPool.filter(line => line !== this.lastSpokenLine);
+          const pool = freshTraitPool.length > 0 ? freshTraitPool : traitPool;
+          chosenText = pool[Math.floor(Math.random() * pool.length)];
+          category = 'trait';
+        } else {
+          const speciesFacts = PENGUIN_TRUE_FACTS[this.species.id] || [];
+          const generalFacts = PENGUIN_TRUE_FACTS.general || [];
+          const combinedFacts = speciesFacts.concat(generalFacts);
+          const freshFacts = combinedFacts.filter(line => line !== this.lastSpokenLine);
+          const pool = freshFacts.length > 0 ? freshFacts : combinedFacts;
+          chosenText = pool[Math.floor(Math.random() * pool.length)];
+          category = 'fact';
+        }
+
+        if (!chosenText) return null;
+
+        this.lastSpokenLine = chosenText;
+        this.speechText = chosenText;
+        this.speechCategory = category;
+        this.speechDuration = 5.0;
+        this.speechTimer = this.speechDuration;
+
+        const record = state.recordSpeechLog(this.species.id, {
+          text: chosenText,
+          category,
+          traitId: tr.id,
+          traitName: tr.name,
+          traitIcon: tr.icon,
+          traitColor: tr.color,
+          timestamp: Date.now()
+        });
+        return record;
+      }
+
+      drawSpeechBubble(ctx) {
+        if (!this.speechText || this.speechTimer <= 0 || this.state === 'FISHING') return;
+
+        const fadeAlpha = this.speechTimer < 0.55
+          ? Math.max(0, this.speechTimer / 0.55)
+          : Math.min(1, (this.speechDuration - this.speechTimer) * 4 + 0.15);
+        if (fadeAlpha <= 0.02) return;
+
+        const tr = this.trait || getTraitDef('optimistic');
+        const isTrait = this.speechCategory === 'trait';
+        const tagLabel = isTrait ? `${tr.icon} ${tr.name}` : '📘 Penguin Fact';
+        const accent = isTrait ? (tr.color || '#fbbf24') : '#0284c7';
+
+        ctx.save();
+        ctx.globalAlpha = fadeAlpha;
+        ctx.font = '600 10.5px "Segoe UI", system-ui, sans-serif';
+
+        const maxBubbleW = Math.min(192, Math.max(136, width * 0.48));
+        const padX = 9;
+        const padY = 6;
+        const headerH = 13;
+        const lineH = 13;
+        const maxTextW = maxBubbleW - padX * 2;
+
+        // Word-wrap quote lines
+        const words = String(this.speechText).split(' ');
+        const lines = [];
+        let currentLine = '';
+        for (let i = 0; i < words.length; i++) {
+          const testLine = currentLine ? `${currentLine} ${words[i]}` : words[i];
+          const testW = ctx.measureText ? ctx.measureText(testLine).width : testLine.length * 5.6;
+          if (testW > maxTextW && currentLine) {
+            lines.push(currentLine);
+            currentLine = words[i];
+          } else {
+            currentLine = testLine;
+          }
+        }
+        if (currentLine) lines.push(currentLine);
+
+        let widestLineW = ctx.measureText ? ctx.measureText(tagLabel).width + 8 : tagLabel.length * 6;
+        lines.forEach(line => {
+          const lw = ctx.measureText ? ctx.measureText(line).width : line.length * 5.6;
+          if (lw > widestLineW) widestLineW = lw;
+        });
+
+        const bubbleW = Math.min(maxBubbleW, Math.max(92, widestLineW + padX * 2));
+        const bubbleH = padY * 2 + headerH + lines.length * lineH;
+
+        const anchorX = this.x;
+        const anchorY = this.y - 25;
+        let boxX = anchorX - bubbleW / 2;
+        boxX = Math.max(8, Math.min(width - bubbleW - 8, boxX));
+        let boxY = anchorY - bubbleH - 8;
+        boxY = Math.max(66, boxY);
+
+        const tailTipX = Math.max(boxX + 12, Math.min(boxX + bubbleW - 12, anchorX));
+        const tailBaseLeft = Math.max(boxX + 10, tailTipX - 6);
+        const tailBaseRight = Math.min(boxX + bubbleW - 10, tailTipX + 6);
+
+        // Soft drop shadow
+        ctx.fillStyle = 'rgba(2, 8, 20, 0.28)';
+        drawRoundedRectPath(ctx, boxX + 1, boxY + 2, bubbleW, bubbleH, 10);
+        ctx.fill();
+
+        // Main speech bubble card + comic pointer tail
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.6;
+        drawRoundedRectPath(ctx, boxX, boxY, bubbleW, bubbleH, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Tail triangle pointing cleanly down toward penguin
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+        ctx.beginPath();
+        ctx.moveTo(tailBaseLeft, boxY + bubbleH - 1);
+        ctx.lineTo(tailTipX, boxY + bubbleH + 7);
+        ctx.lineTo(tailBaseRight, boxY + bubbleH - 1);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(tailBaseLeft, boxY + bubbleH);
+        ctx.lineTo(tailTipX, boxY + bubbleH + 7);
+        ctx.lineTo(tailBaseRight, boxY + bubbleH);
+        ctx.stroke();
+
+        // Category label (Fact or Trait name)
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = '800 9.5px "Segoe UI", system-ui, sans-serif';
+        ctx.fillStyle = accent;
+        ctx.fillText(tagLabel, boxX + padX, boxY + padY);
+
+        // Spoken quote text
+        ctx.font = '600 10.5px "Segoe UI", system-ui, sans-serif';
+        ctx.fillStyle = '#0f172a';
+        lines.forEach((line, idx) => {
+          ctx.fillText(line, boxX + padX, boxY + padY + headerH + idx * lineH);
+        });
+
+        ctx.restore();
+      }
     }
 
+    function drawRoundedRectPath(ctx, x, y, w, h, r) {
+      const radius = Math.min(r, w * 0.5, h * 0.5);
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(x, y, w, h, radius);
+      } else {
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+      }
+    }
+
+    let lastGlobalPenguinSpeechAt = 0;
     const activePenguins = [];
 
     function syncActivePenguins() {
@@ -6024,6 +6768,7 @@
       activePenguins.forEach(p => p.draw(ctx));
 
       drawBlizzardVisibilityOverlay(ctx, dt);
+      activePenguins.forEach(p => p.drawSpeechBubble(ctx));
       updateParticles(ctx, dt);
       updateHUD();
 
@@ -7119,7 +7864,59 @@
         }
         sound.playLevelUp();
         modal.style.display = 'none';
+        maybeShowWhatsNewModal();
       };
+    }
+
+    function maybeShowWhatsNewModal(forceOpen = false) {
+      if (typeof LATEST_FEATURE_RELEASE === 'undefined' || !LATEST_FEATURE_RELEASE) return false;
+      const modal = document.getElementById('whats-new-modal');
+      if (!modal) return false;
+
+      if (!forceOpen) {
+        if (state.lastSeenFeatureReleaseId === LATEST_FEATURE_RELEASE.id) return false;
+        const offlineModal = document.getElementById('offline-modal');
+        if (offlineModal && offlineModal.style.display === 'flex') {
+          return false; // Wait until player claims offline catch
+        }
+      }
+
+      const badgeEl = document.getElementById('whats-new-version-badge');
+      const titleEl = document.getElementById('whats-new-title-text');
+      const subEl = document.getElementById('whats-new-subtitle-text');
+      const listEl = document.getElementById('whats-new-features-list');
+
+      if (badgeEl) badgeEl.textContent = `NEW UPDATE • ${LATEST_FEATURE_RELEASE.version}`;
+      if (titleEl) titleEl.textContent = LATEST_FEATURE_RELEASE.title;
+      if (subEl) subEl.textContent = LATEST_FEATURE_RELEASE.subtitle;
+
+      if (listEl) {
+        listEl.innerHTML = LATEST_FEATURE_RELEASE.features.map(f => `
+          <div class="whats-new-item">
+            <div class="whats-new-item-icon">${f.icon}</div>
+            <div>
+              <div class="whats-new-item-title">${f.title}</div>
+              <div class="whats-new-item-desc">${f.desc}</div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      modal.style.display = 'flex';
+      sound.syncIosHapticDomState();
+
+      const dismissBtn = document.getElementById('whats-new-dismiss-btn');
+      if (dismissBtn) {
+        dismissBtn.onclick = () => {
+          sound.init();
+          sound.triggerHaptic('collect');
+          sound.playChirp();
+          state.lastSeenFeatureReleaseId = LATEST_FEATURE_RELEASE.id;
+          state.save();
+          modal.style.display = 'none';
+        };
+      }
+      return true;
     }
 
     // --- BOTTOM SHEET & UI TABS ---
@@ -7130,6 +7927,10 @@
           document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           state.currentTab = btn.getAttribute('data-tab');
+          if (state.currentTab === 'log') {
+            const logDot = document.getElementById('log-tab-dot');
+            if (logDot) logDot.style.display = 'none';
+          }
           updateSheetContent();
         });
       });
@@ -7960,6 +8761,129 @@
 
         container.appendChild(statsContainer);
 
+      } else if (state.currentTab === 'log') {
+        const logWrap = document.createElement('div');
+        logWrap.className = 'speech-log-container';
+
+        const totalQuotes = state.getTotalSpeechLogCount();
+        const summaryBar = document.createElement('div');
+        summaryBar.className = 'speech-log-summary-bar';
+        summaryBar.innerHTML = `
+          <div>
+            <div class="speech-log-summary-title">💬 Colony Chatter Log (${totalQuotes})</div>
+            <div class="speech-log-summary-sub">True penguin facts &amp; trait sayings organized by penguin species</div>
+          </div>
+          <div class="speech-log-controls">
+            <label id="log-expand-all-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="speech-log-mini-btn">Expand All</label>
+            <label id="log-collapse-all-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="speech-log-mini-btn">Collapse</label>
+          </div>
+        `;
+        logWrap.appendChild(summaryBar);
+
+        const expandAllBtn = summaryBar.querySelector('#log-expand-all-btn');
+        if (expandAllBtn) {
+          expandAllBtn.addEventListener('click', () => {
+            PENGUIN_SPECIES.forEach(sp => { state.speechLogExpanded[sp.id] = true; });
+            state.save();
+            updateSheetContent();
+          });
+        }
+        const collapseAllBtn = summaryBar.querySelector('#log-collapse-all-btn');
+        if (collapseAllBtn) {
+          collapseAllBtn.addEventListener('click', () => {
+            PENGUIN_SPECIES.forEach(sp => { state.speechLogExpanded[sp.id] = false; });
+            state.save();
+            updateSheetContent();
+          });
+        }
+
+        const escapeLogHtml = (str) => String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+
+        PENGUIN_SPECIES.forEach(sp => {
+          const entries = Array.isArray(state.speechLog && state.speechLog[sp.id]) ? state.speechLog[sp.id] : [];
+          const isExpanded = Boolean(state.speechLogExpanded && state.speechLogExpanded[sp.id]);
+          const ownedCount = (state.penguins[sp.id] && state.penguins[sp.id].count) ? state.penguins[sp.id].count : 0;
+          const spriteUrl = typeof getPenguinPortraitDataUrl === 'function' ? getPenguinPortraitDataUrl(sp.id) : null;
+          const avatarInner = spriteUrl
+            ? `<img src="${spriteUrl}" alt="${sp.name}" />`
+            : sp.avatar;
+
+          const catCard = document.createElement('div');
+          catCard.className = `speech-log-category ${isExpanded ? 'expanded' : ''}`;
+          catCard.setAttribute('data-species-log', sp.id);
+
+          let entriesHtml = '';
+          if (entries.length === 0) {
+            entriesHtml = `
+              <div class="speech-log-empty">
+                ${ownedCount > 0
+                  ? `${sp.name}s have not spoken yet. Keep watching them on the glacier!`
+                  : `Recruit a ${sp.name} in the Penguins tab to hear their facts & trait sayings!`}
+              </div>
+            `;
+          } else {
+            entriesHtml = entries.map(entry => {
+              const isTrait = entry.category === 'trait';
+              const tagBg = isTrait ? 'rgba(251, 191, 36, 0.14)' : 'rgba(56, 189, 248, 0.15)';
+              const tagColor = isTrait ? (entry.traitColor || '#fbbf24') : '#7dd3fc';
+              const tagBorder = isTrait ? (entry.traitColor || '#fbbf24') : '#38bdf8';
+              const tagText = isTrait
+                ? `${entry.traitIcon || '✨'} ${escapeLogHtml(entry.traitName || 'Trait')} Saying`
+                : '📘 True Penguin Fact';
+              const timeStr = new Date(entry.timestamp || Date.now()).toLocaleTimeString([], {
+                hour: 'numeric',
+                minute: '2-digit'
+              });
+              return `
+                <div class="speech-log-entry ${isTrait ? 'is-trait' : 'is-fact'}" style="border-left-color: ${tagBorder};">
+                  <div class="speech-log-entry-meta">
+                    <span class="speech-log-tag" style="background: ${tagBg}; color: ${tagColor}; border-color: ${tagBorder}55;">${tagText}</span>
+                    <span class="speech-log-time">${timeStr}</span>
+                  </div>
+                  <div class="speech-log-quote">“${escapeLogHtml(entry.text)}”</div>
+                </div>
+              `;
+            }).join('');
+          }
+
+          catCard.innerHTML = `
+            <label class="speech-log-cat-header" role="button" tabindex="0" aria-expanded="${isExpanded ? 'true' : 'false'}" data-ios-haptic-label="1">
+              <div class="speech-log-cat-avatar" style="border-color: ${sp.accentColor || '#38bdf8'}55;">
+                ${avatarInner}
+              </div>
+              <div class="speech-log-cat-info">
+                <div class="speech-log-cat-name">
+                  <span>${sp.name}</span>
+                </div>
+                <div class="speech-log-cat-sub">${ownedCount > 0 ? `${ownedCount} in colony` : 'Not recruited yet'}</div>
+              </div>
+              <span class="speech-log-count-pill ${entries.length === 0 ? 'empty' : ''}">${entries.length} ${entries.length === 1 ? 'note' : 'notes'}</span>
+              <span class="speech-log-chevron">▸</span>
+            </label>
+            <div class="speech-log-cat-body">
+              ${entriesHtml}
+            </div>
+          `;
+
+          const headerBtn = catCard.querySelector('.speech-log-cat-header');
+          if (headerBtn) {
+            headerBtn.addEventListener('click', () => {
+              const nextExpanded = !Boolean(state.speechLogExpanded[sp.id]);
+              state.speechLogExpanded[sp.id] = nextExpanded;
+              catCard.classList.toggle('expanded', nextExpanded);
+              headerBtn.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+              state.save();
+            });
+          }
+
+          logWrap.appendChild(catCard);
+        });
+
+        container.appendChild(logWrap);
+
       } else if (state.currentTab === 'settings') {
         const settingsWrap = document.createElement('div');
         settingsWrap.className = 'settings-container';
@@ -8045,6 +8969,16 @@
             <div class="settings-btn-row">
               <label id="settings-push-test-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="settings-test-btn">
                 🔔 Send Test Notification
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-card-header">🎉 Game Updates &amp; What's New</div>
+            <div class="settings-desc">Review highlights from the latest Glacial Empire update (${LATEST_FEATURE_RELEASE.version})</div>
+            <div class="settings-btn-row">
+              <label id="settings-whats-new-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="settings-test-btn">
+                ✨ View Latest Features
               </label>
             </div>
           </div>
@@ -8134,6 +9068,14 @@
           pushTestBtn.addEventListener('click', async () => {
             sound.init();
             await pushReminders.sendTestReminder();
+          });
+        }
+
+        const whatsNewBtn = settingsWrap.querySelector('#settings-whats-new-btn');
+        if (whatsNewBtn) {
+          whatsNewBtn.addEventListener('click', () => {
+            sound.init();
+            maybeShowWhatsNewModal(true);
           });
         }
 
@@ -8237,6 +9179,7 @@
       syncActivePenguins();
       checkAchievements();
       updateSheetContent();
+      maybeShowWhatsNewModal(false);
       if (typeof pushReminders !== 'undefined') {
         pushReminders.loadConfig().then(() => {
           pushReminders.checkForeground8AmReminder();

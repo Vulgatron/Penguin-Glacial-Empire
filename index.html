@@ -3129,6 +3129,8 @@
     ];
 
     const WEATHER_CYCLE_SECONDS = 300; // 5 minutes per weather state
+    const COLONY_SPEECH_INTERVAL_SECONDS = 300; // 5 minutes per colony between speakers
+    const COLONY_SPEECH_INTERVAL_MS = COLONY_SPEECH_INTERVAL_SECONDS * 1000;
     const WEATHER_TYPES = [
       { id: 'clear', name: 'Clear', icon: '☀️', yieldMult: 1.0, snowFactor: 0.1, windFactor: 0.25, fogFactor: 0.0, badgeColor: '#38bdf8', desc: 'Crisp polar skies with clear visibility.' },
       { id: 'light_snow', name: 'Light Snow', icon: '❄️', yieldMult: 1.0, snowFactor: 0.42, windFactor: 0.75, fogFactor: 0.08, badgeColor: '#93c5fd', desc: 'Gentle Antarctic snowfall drifting across the shelf.' },
@@ -4308,6 +4310,7 @@
           this.speechLog[sp.id] = [];
           this.speechLogExpanded[sp.id] = idx === 0;
         });
+        this.lastColonySpeechEndedAt = 0;
         this.lastSeenFeatureReleaseId = '';
       }
 
@@ -4677,6 +4680,7 @@
           weatherTimer: this.weatherTimer,
           speechLog: this.speechLog,
           speechLogExpanded: this.speechLogExpanded,
+          lastColonySpeechEndedAt: this.lastColonySpeechEndedAt,
           lastSeenFeatureReleaseId: this.lastSeenFeatureReleaseId,
           dailyReminderEnabled: typeof pushReminders !== 'undefined' ? pushReminders.enabled : false,
           lastDailyReminderDateKey: typeof pushReminders !== 'undefined' ? pushReminders.lastNotifiedDateKey : ''
@@ -4813,6 +4817,9 @@
                   this.speechLogExpanded[sp.id] = data.speechLogExpanded[sp.id];
                 }
               });
+            }
+            if (typeof data.lastColonySpeechEndedAt === 'number' && data.lastColonySpeechEndedAt >= 0) {
+              this.lastColonySpeechEndedAt = data.lastColonySpeechEndedAt;
             }
             if (typeof data.lastSeenFeatureReleaseId === 'string') {
               this.lastSeenFeatureReleaseId = data.lastSeenFeatureReleaseId;
@@ -6126,7 +6133,6 @@
         this.speechCategory = 'fact';
         this.speechTimer = 0;
         this.speechDuration = 15.0;
-        this.nextSpeechCooldown = 2.0 + Math.random() * 8.0;
         this.talkSide = 'left';
         this.talkSpotX = 0;
         this.talkSpotY = 0;
@@ -6215,31 +6221,16 @@
           if (this.speechTimer <= 0) {
             this.speechText = null;
             this.isStandingAtTalkSpot = false;
+            const endedAt = Date.now();
+            lastGlobalPenguinSpeechAt = endedAt;
+            state.lastColonySpeechEndedAt = endedAt;
+            state.save();
             if (this.state === 'TALKING_ON_SIDE') {
               if (this.carriedFish > 0) {
                 this.initiatePathToDepot();
               } else {
                 this.initiatePathToFishingHole();
               }
-            }
-          }
-        } else if (
-          this.state === 'NAVIGATE_TO_HOLE' ||
-          this.state === 'NAVIGATE_TO_DEPOT' ||
-          this.state === 'WAITING_NEARBY'
-        ) {
-          this.nextSpeechCooldown -= dt;
-          if (this.nextSpeechCooldown <= 0) {
-            const nowMs = Date.now();
-            const activeBubbleCount = activePenguins.filter(p => p.speechTimer > 0 && p.speechText).length;
-            const sinceLastGlobal = nowMs - lastGlobalPenguinSpeechAt;
-            const globalGapOk = lastGlobalPenguinSpeechAt === 0 || sinceLastGlobal >= 8000;
-            if (activeBubbleCount < 2 && globalGapOk) {
-              this.speakRandomLine();
-              lastGlobalPenguinSpeechAt = nowMs;
-              this.nextSpeechCooldown = 16.0 + Math.random() * 14.0;
-            } else {
-              this.nextSpeechCooldown = 3.0 + Math.random() * 5.0;
             }
           }
         }
@@ -6526,6 +6517,8 @@
       }
 
       speakRandomLine(forcedCategory = null) {
+        if (isAnyPenguinTalking(this)) return null;
+
         const useTrait = forcedCategory === 'trait'
           ? true
           : (forcedCategory === 'fact' ? false : Math.random() < 0.5);
@@ -6725,7 +6718,52 @@
     }
 
     let lastGlobalPenguinSpeechAt = 0;
+    let colonyInitialSpeechDelay = 10.0;
     const activePenguins = [];
+
+    function isAnyPenguinTalking(excludePenguin = null) {
+      return activePenguins.some(p =>
+        p !== excludePenguin &&
+        (p.state === 'TALKING_ON_SIDE' || (p.speechTimer > 0 && !!p.speechText))
+      );
+    }
+
+    function canColonySpeakNow(dt = 0) {
+      if (activePenguins.length === 0) return false;
+      if (isAnyPenguinTalking()) return false;
+      if (state.isAuroraModalOpen || state.isAuroraAlertActive) return false;
+
+      if (!state.lastColonySpeechEndedAt || state.lastColonySpeechEndedAt <= 0) {
+        colonyInitialSpeechDelay = Math.max(0, colonyInitialSpeechDelay - dt);
+        return colonyInitialSpeechDelay <= 0;
+      }
+
+      const elapsedMs = Date.now() - state.lastColonySpeechEndedAt;
+      if (elapsedMs < -60000) {
+        state.lastColonySpeechEndedAt = Date.now();
+        return false;
+      }
+      return elapsedMs >= COLONY_SPEECH_INTERVAL_MS;
+    }
+
+    function tryTriggerColonySpeech(dt = 0) {
+      if (!canColonySpeakNow(dt)) return null;
+      const eligible = activePenguins.filter(p =>
+        p.state === 'NAVIGATE_TO_HOLE' ||
+        p.state === 'NAVIGATE_TO_DEPOT' ||
+        p.state === 'WAITING_NEARBY'
+      );
+      if (eligible.length === 0) return null;
+      const chosen = eligible[Math.floor(Math.random() * eligible.length)];
+      const record = chosen.speakRandomLine();
+      if (record) {
+        const nowMs = Date.now();
+        lastGlobalPenguinSpeechAt = nowMs;
+        state.lastColonySpeechEndedAt = nowMs;
+        state.save();
+      }
+      return record;
+    }
 
     function syncActivePenguins() {
       let totalCount = 0;
@@ -6833,6 +6871,7 @@
       drawScene(ctx, dt);
 
       activePenguins.forEach(p => p.update(dt));
+      tryTriggerColonySpeech(dt);
       activePenguins.sort((a, b) => a.y - b.y);
       activePenguins.forEach(p => p.draw(ctx));
 

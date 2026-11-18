@@ -2184,6 +2184,10 @@
       border-left: 3px solid #38bdf8;
     }
 
+    .speech-log-entry.is-myth {
+      border-left: 3px solid #fb7185;
+    }
+
     .speech-log-entry.is-trait {
       border-left: 3px solid #fbbf24;
     }
@@ -3185,6 +3189,35 @@
       ]
     };
 
+    // Myth-busted penguin misconceptions paired with why each myth is incorrect
+    const PENGUIN_MYTH_BUSTERS = {
+      general: [
+        'Myth: "Penguins only live in freezing Antarctica." Incorrect: While several species breed on Antarctic ice, most penguins live along temperate coasts—and Galápagos penguins live right on the equator!',
+        'Myth: "Penguins do not have knees." Incorrect: Penguins actually have complete leg bones including femurs and knees, tucked neatly inside their feathered lower bodies for warmth and streamlining!',
+        'Myth: "Polar bears hunt penguins in the wild." Incorrect: Wild polar bears live only in the Arctic North and penguins live in the Southern Hemisphere, so the two never cross paths in nature!',
+        'Myth: "All penguins build nests out of snow and ice." Incorrect: Most species dig soil burrows, nest in coastal grass, or stack pebbles—and Emperors incubate eggs directly on their warm feet!',
+        'Myth: "Penguins mate with the same partner forever." Incorrect: While many penguins reunite at familiar nest sites, high "divorce" rates happen whenever mates miss nesting timing or lose chicks.',
+        'Myth: "Penguins are clumsy and slow everywhere." Incorrect: Penguins toboggan faster across snow than humans walk, climb steep rocky slopes, and rocket up to 6 feet out of the ocean onto ice!',
+        'Myth: "Penguins stay warm solely from thick body fat." Incorrect: Interlocking, oil-proofed feathers trap a thermal air barrier that provides over 80% of our insulation—blubber alone is not enough!',
+        'Myth: "Penguin wings are useless little stubs." Incorrect: Our stiff, flattened wings are underwater hydrofoils engineered for "flying" through ocean currents at high speed!'
+      ],
+      adelie: [
+        'Myth: "Adélie penguins only eat fish." Incorrect: Tiny Antarctic krill actually make up the majority of an Adélie’s summer diet alongside small polar silverfish!'
+      ],
+      gentoo: [
+        'Myth: "Gentoos always toboggan everywhere on land." Incorrect: Gentoos mostly waddle upright to protect their webbed feet and only slide belly-first when fresh snow or slick downhill ice speeds travel!'
+      ],
+      chinstrap: [
+        'Myth: "A Chinstrap’s black band is just random belly speckles." Incorrect: It is a crisp, genetically distinct facial strap stretching ear-to-ear beneath the throat that identifies our species!'
+      ],
+      emperor: [
+        'Myth: "Boss Emperors hoard the warm huddle center all winter." Incorrect: Emperor colonies rotate constantly in slow, wave-like steps so every bird takes equal turns inside and on the windy edge!'
+      ],
+      cyber: [
+        'Myth: "Penguins die of thirst if they drink ocean water." Incorrect: Specialized supraorbital glands above our eyes filter excess salt straight out of seawater and flush brine droplets through our beaks!'
+      ]
+    };
+
     // In-character sayings tailored to each penguin's assigned trait
     const PENGUIN_TRAIT_SAYINGS = {
       optimistic: [
@@ -3227,6 +3260,29 @@
 
     // Ordered newest-first; bumping/adding a new release entry triggers the launch popup once per user
     const APP_FEATURE_RELEASES = [
+      {
+        id: '2026-11-myth-busted-v16',
+        version: 'v1.6',
+        title: "What's New in Update 1.6",
+        subtitle: 'Myth-busted penguin facts & smoother idle rewards!',
+        features: [
+          {
+            icon: '🔍',
+            title: 'Myth Busted Penguin Facts',
+            desc: 'Penguins now bust popular penguin myths—stating the common misconception and explaining the real science behind why it is incorrect!'
+          },
+          {
+            icon: '📜',
+            title: 'Myth Busted Entries in Colony Log',
+            desc: 'Every busted myth is archived with a 🔍 Myth Busted tag inside each penguin species section in the 💬 Log tab.'
+          },
+          {
+            icon: '🐟',
+            title: 'Reliable Idle Catch Claim on Apple',
+            desc: 'Welcome Back idle rewards now stay open and saved safely until you tap Claim Catch—even if a PWA update arrives.'
+          }
+        ]
+      },
       {
         id: '2026-11-penguin-chatter-log',
         version: 'v1.5',
@@ -4323,11 +4379,14 @@
         if (!Array.isArray(this.speechLog[safeSpeciesId])) {
           this.speechLog[safeSpeciesId] = [];
         }
+        const normalizedCat = entry.category === 'trait'
+          ? 'trait'
+          : (entry.category === 'myth' ? 'myth' : 'fact');
         const record = {
           id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           speciesId: safeSpeciesId,
           text: String(entry.text || ''),
-          category: entry.category === 'trait' ? 'trait' : 'fact',
+          category: normalizedCat,
           traitId: entry.traitId || 'optimistic',
           traitName: entry.traitName || 'Optimistic',
           traitIcon: entry.traitIcon || '☀️',
@@ -6531,20 +6590,32 @@
       speakRandomLine(forcedCategory = null) {
         if (isAnyPenguinTalking(this)) return null;
 
-        const useTrait = forcedCategory === 'trait'
-          ? true
-          : (forcedCategory === 'fact' ? false : Math.random() < 0.5);
+        let targetCategory = 'fact';
+        if (forcedCategory === 'trait' || forcedCategory === 'myth' || forcedCategory === 'fact') {
+          targetCategory = forcedCategory;
+        } else {
+          const r = Math.random();
+          targetCategory = r < 0.34 ? 'trait' : (r < 0.67 ? 'myth' : 'fact');
+        }
         const tr = this.trait || getTraitDef('optimistic');
 
         let chosenText = '';
-        let category = 'fact';
+        let category = targetCategory;
 
-        if (useTrait) {
+        if (targetCategory === 'trait') {
           const traitPool = PENGUIN_TRAIT_SAYINGS[tr.id] || PENGUIN_TRAIT_SAYINGS.optimistic;
           const freshTraitPool = traitPool.filter(line => line !== this.lastSpokenLine);
           const pool = freshTraitPool.length > 0 ? freshTraitPool : traitPool;
           chosenText = pool[Math.floor(Math.random() * pool.length)];
           category = 'trait';
+        } else if (targetCategory === 'myth') {
+          const speciesMyths = PENGUIN_MYTH_BUSTERS[this.species.id] || [];
+          const generalMyths = PENGUIN_MYTH_BUSTERS.general || [];
+          const combinedMyths = speciesMyths.concat(generalMyths);
+          const freshMyths = combinedMyths.filter(line => line !== this.lastSpokenLine);
+          const pool = freshMyths.length > 0 ? freshMyths : combinedMyths;
+          chosenText = pool[Math.floor(Math.random() * pool.length)];
+          category = 'myth';
         } else {
           const speciesFacts = PENGUIN_TRUE_FACTS[this.species.id] || [];
           const generalFacts = PENGUIN_TRUE_FACTS.general || [];
@@ -6612,14 +6683,19 @@
 
         const tr = this.trait || getTraitDef('optimistic');
         const isTrait = this.speechCategory === 'trait';
-        const tagLabel = isTrait ? `${tr.icon} ${tr.name}` : '📘 Penguin Fact';
-        const accent = isTrait ? (tr.color || '#fbbf24') : '#0284c7';
+        const isMyth = this.speechCategory === 'myth';
+        const tagLabel = isTrait
+          ? `${tr.icon} ${tr.name}`
+          : (isMyth ? '🔍 Myth Busted!' : '📘 Penguin Fact');
+        const accent = isTrait
+          ? (tr.color || '#fbbf24')
+          : (isMyth ? '#e11d48' : '#0284c7');
 
         ctx.save();
         ctx.globalAlpha = fadeAlpha;
         ctx.font = '600 10.5px "Segoe UI", system-ui, sans-serif';
 
-        const maxBubbleW = Math.min(192, Math.max(136, width * 0.48));
+        const maxBubbleW = Math.min(isMyth ? 216 : 192, Math.max(140, width * 0.54));
         const padX = 9;
         const padY = 6;
         const headerH = 13;
@@ -8943,7 +9019,7 @@
         summaryBar.innerHTML = `
           <div>
             <div class="speech-log-summary-title">💬 Colony Chatter Log (${totalQuotes})</div>
-            <div class="speech-log-summary-sub">True penguin facts &amp; trait sayings organized by penguin species</div>
+            <div class="speech-log-summary-sub">True facts, myth busters &amp; trait sayings by penguin species</div>
           </div>
           <div class="speech-log-controls">
             <label id="log-expand-all-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="speech-log-mini-btn">Expand All</label>
@@ -8999,12 +9075,20 @@
           } else {
             entriesHtml = entries.map(entry => {
               const isTrait = entry.category === 'trait';
-              const tagBg = isTrait ? 'rgba(251, 191, 36, 0.14)' : 'rgba(56, 189, 248, 0.15)';
-              const tagColor = isTrait ? (entry.traitColor || '#fbbf24') : '#7dd3fc';
-              const tagBorder = isTrait ? (entry.traitColor || '#fbbf24') : '#38bdf8';
+              const isMyth = entry.category === 'myth';
+              const tagBg = isTrait
+                ? 'rgba(251, 191, 36, 0.14)'
+                : (isMyth ? 'rgba(251, 113, 133, 0.16)' : 'rgba(56, 189, 248, 0.15)');
+              const tagColor = isTrait
+                ? (entry.traitColor || '#fbbf24')
+                : (isMyth ? '#fda4af' : '#7dd3fc');
+              const tagBorder = isTrait
+                ? (entry.traitColor || '#fbbf24')
+                : (isMyth ? '#fb7185' : '#38bdf8');
               const tagText = isTrait
                 ? `${entry.traitIcon || '✨'} ${escapeLogHtml(entry.traitName || 'Trait')} Saying`
-                : '📘 True Penguin Fact';
+                : (isMyth ? '🔍 Myth Busted' : '📘 True Penguin Fact');
+              const entryKindClass = isTrait ? 'is-trait' : (isMyth ? 'is-myth' : 'is-fact');
               let timeStr = '';
               try {
                 timeStr = new Date(entry.timestamp || Date.now()).toLocaleTimeString([], {
@@ -9016,7 +9100,7 @@
                 timeStr = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
               }
               return `
-                <div class="speech-log-entry ${isTrait ? 'is-trait' : 'is-fact'}" style="border-left-color: ${tagBorder};">
+                <div class="speech-log-entry ${entryKindClass}" style="border-left-color: ${tagBorder};">
                   <div class="speech-log-entry-meta">
                     <span class="speech-log-tag" style="background: ${tagBg}; color: ${tagColor}; border-color: ${tagBorder}55;">${tagText}</span>
                     <span class="speech-log-time">${timeStr}</span>

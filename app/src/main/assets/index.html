@@ -147,6 +147,7 @@
       padding: 2px 6px;
       border-radius: 10px;
       margin-left: 2px;
+      white-space: nowrap;
     }
 
     /* Glacier Level Bar */
@@ -1469,7 +1470,7 @@
       border: 1px solid var(--border-highlight);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      padding: 8px 16px;
+      padding: 8px 14px;
       border-radius: 20px;
       font-size: 12px;
       font-weight: 700;
@@ -1477,17 +1478,30 @@
       z-index: 60;
       opacity: 0;
       pointer-events: none;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
       transition: transform 0.25s, opacity 0.25s;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
       display: flex;
       align-items: center;
       gap: 6px;
-      white-space: nowrap;
+      max-width: min(92vw, 390px);
+      white-space: normal;
+      text-align: left;
+      line-height: 1.3;
     }
 
     #toast-banner.show {
       opacity: 1;
+      pointer-events: auto;
+      cursor: grab;
       transform: translateX(-50%) translateY(0);
+    }
+
+    #toast-banner.show.dragging {
+      cursor: grabbing;
+      transition: none;
     }
 
     /* OFFLINE MODAL */
@@ -2346,7 +2360,7 @@
       <div class="fish-display" id="fish-display-box">
         <span class="fish-icon-anim">🐟</span>
         <span class="fish-amount" id="fish-count">0</span>
-        <span class="dps-tag" id="dps-count">+0/s</span>
+        <span class="dps-tag" id="dps-count">+0/min</span>
       </div>
     </div>
 
@@ -2394,7 +2408,7 @@
   <label id="collapsed-pill" class="hidden" role="button" tabindex="0" data-ios-haptic-label="1">
     <div class="pill-dps-badge">
       <span>🐟</span>
-      <span id="pill-dps">0/s</span>
+      <span id="pill-dps">0/min</span>
     </div>
     <span class="pill-affordable-count" id="pill-badge">0</span>
     <span class="pill-expand-icon">▲ Open Menu</span>
@@ -3258,56 +3272,23 @@
       ]
     };
 
-    // Ordered newest-first; bumping/adding a new release entry triggers the launch popup once per user
+    // Ordered newest-first; contains only the current update notice so launch alerts stay focused
     const APP_FEATURE_RELEASES = [
       {
-        id: '2026-11-myth-busted-v16',
-        version: 'v1.6',
-        title: "What's New in Update 1.6",
-        subtitle: 'Myth-busted penguin facts & smoother idle rewards!',
+        id: '2026-11-swipeable-banners-v161',
+        version: '1.6.1',
+        title: "What's New in Update 1.6.1",
+        subtitle: 'Quick quality-of-life improvements from player feedback!',
         features: [
           {
-            icon: '🔍',
-            title: 'Myth Busted Penguin Facts',
-            desc: 'Penguins now bust popular penguin myths—stating the common misconception and explaining the real science behind why it is incorrect!'
-          },
-          {
-            icon: '📜',
-            title: 'Myth Busted Entries in Colony Log',
-            desc: 'Every busted myth is archived with a 🔍 Myth Busted tag inside each penguin species section in the 💬 Log tab.'
+            icon: '👆',
+            title: 'Swipeable In-Game Banners',
+            desc: 'You can now swipe left, right, or up on any in-game notification banner to dismiss it immediately.'
           },
           {
             icon: '🐟',
-            title: 'Reliable Idle Catch Claim on Apple',
-            desc: 'Welcome Back idle rewards now stay open and saved safely until you tap Claim Catch—even if a PWA update arrives.'
-          }
-        ]
-      },
-      {
-        id: '2026-11-penguin-chatter-log',
-        version: 'v1.5',
-        title: "What's New in Glacial Empire",
-        subtitle: 'Your penguins have found their voices — plus new launch highlights!',
-        features: [
-          {
-            icon: '💬',
-            title: 'Penguin Speech Bubbles',
-            desc: 'Colony penguins now step off to the side for 15 seconds sharing true penguin facts and playful lines matching their personal traits!'
-          },
-          {
-            icon: '📜',
-            title: 'Categorized Penguin Log',
-            desc: 'Check the new 💬 Log tab in the menu to read every quote organized by penguin type with expandable & collapsible sections.'
-          },
-          {
-            icon: '🔔',
-            title: '8:00 AM Daily Push Reminders',
-            desc: 'Turn on morning reminders in Settings for Android & Apple Home Screen PWAs so you never miss daily rewards.'
-          },
-          {
-            icon: '🎉',
-            title: 'Update Announcements',
-            desc: 'You will now see a quick launch summary whenever brand-new features land on the glacier!'
+            title: 'Fish Caught Per Minute (/min)',
+            desc: 'Colony catch rates in the top HUD, collapsed pill, and Stats now display fish caught per minute instead of per second.'
           }
         ]
       }
@@ -8032,18 +8013,204 @@
       selectAuroraPerk(worstIndex, true);
     }
 
-    // --- TOAST NOTIFICATION ---
+    // --- TOAST NOTIFICATION (SWIPEABLE DISMISS) ---
     let toastTimeout = null;
-    function showToast(text, icon = '✨') {
+    let toastResetTimeout = null;
+    let toastSwipeInitialized = false;
+
+    function scheduleToastAutoHide(delayMs = 2800) {
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toastTimeout = null;
+        dismissToastBanner(0, 0);
+      }, delayMs);
+    }
+
+    function dismissToastBanner(exitDx = 0, exitDy = 0) {
+      if (toastTimeout) {
+        clearTimeout(toastTimeout);
+        toastTimeout = null;
+      }
+      if (toastResetTimeout) {
+        clearTimeout(toastResetTimeout);
+        toastResetTimeout = null;
+      }
       const banner = document.getElementById('toast-banner');
+      if (!banner) return;
+      banner.classList.remove('dragging');
+
+      if (exitDx !== 0 || exitDy !== 0) {
+        banner.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
+        banner.style.transform = `translateX(calc(-50% + ${exitDx}px)) translateY(${exitDy}px)`;
+        banner.style.opacity = '0';
+        banner.classList.remove('show');
+        toastResetTimeout = setTimeout(() => {
+          toastResetTimeout = null;
+          if (!banner.classList.contains('show')) {
+            banner.style.transition = '';
+            banner.style.transform = '';
+            banner.style.opacity = '';
+          }
+        }, 210);
+      } else {
+        banner.style.transition = '';
+        banner.style.transform = '';
+        banner.style.opacity = '';
+        banner.classList.remove('show');
+      }
+    }
+
+    function setupToastSwipeDismiss() {
+      if (toastSwipeInitialized) return;
+      const banner = document.getElementById('toast-banner');
+      if (!banner) return;
+      toastSwipeInitialized = true;
+
+      let activeSource = null;
+      let activePointerId = null;
+      let startX = 0;
+      let startY = 0;
+      let lastDx = 0;
+      let lastDy = 0;
+      let dragStartAt = 0;
+
+      const startDrag = (source, clientX, clientY, pointerId = null) => {
+        if (!banner.classList.contains('show')) return false;
+        activeSource = source;
+        activePointerId = pointerId;
+        startX = clientX;
+        startY = clientY;
+        lastDx = 0;
+        lastDy = 0;
+        dragStartAt = performance.now();
+        if (toastTimeout) {
+          clearTimeout(toastTimeout);
+          toastTimeout = null;
+        }
+        if (toastResetTimeout) {
+          clearTimeout(toastResetTimeout);
+          toastResetTimeout = null;
+        }
+        banner.classList.add('dragging');
+        banner.style.transition = 'none';
+        return true;
+      };
+
+      const moveDrag = (clientX, clientY) => {
+        if (!activeSource) return;
+        lastDx = clientX - startX;
+        const rawDy = clientY - startY;
+        // Free upward swipe, damped downward pull
+        lastDy = rawDy < 0 ? rawDy : Math.min(18, rawDy * 0.25);
+
+        const horizProgress = Math.min(1, Math.abs(lastDx) / 95);
+        const upProgress = lastDy < 0 ? Math.min(1, Math.abs(lastDy) / 48) : 0;
+        const opacity = Math.max(0.18, 1 - Math.max(horizProgress, upProgress) * 0.82);
+
+        banner.style.transform = `translateX(calc(-50% + ${lastDx}px)) translateY(${lastDy}px)`;
+        banner.style.opacity = String(opacity);
+      };
+
+      const endDrag = (cancelled = false) => {
+        if (!activeSource) return;
+        activeSource = null;
+        activePointerId = null;
+        banner.classList.remove('dragging');
+
+        const elapsed = Math.max(1, performance.now() - dragStartAt);
+        const vx = Math.abs(lastDx) / elapsed;
+        const vy = lastDy / elapsed;
+
+        const swipedHoriz = !cancelled && (Math.abs(lastDx) >= 44 || (Math.abs(lastDx) >= 18 && vx >= 0.32));
+        const swipedUp = !cancelled && (lastDy <= -22 || (lastDy <= -10 && vy <= -0.25));
+
+        if (swipedHoriz) {
+          const dir = lastDx >= 0 ? 1 : -1;
+          const exitX = dir * Math.max(180, (window.innerWidth || 360) * 0.65);
+          dismissToastBanner(exitX, lastDy);
+        } else if (swipedUp) {
+          dismissToastBanner(lastDx, -64);
+        } else {
+          banner.style.transition = '';
+          banner.style.transform = '';
+          banner.style.opacity = '';
+          if (banner.classList.contains('show')) {
+            scheduleToastAutoHide(2200);
+          }
+        }
+      };
+
+      banner.addEventListener('pointerdown', (e) => {
+        if (activeSource) return;
+        const pid = e.pointerId != null ? e.pointerId : 'mouse';
+        if (startDrag('pointer', e.clientX, e.clientY, pid) && banner.setPointerCapture && e.pointerId != null) {
+          try { banner.setPointerCapture(e.pointerId); } catch (_) {}
+        }
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        const pid = e.pointerId != null ? e.pointerId : 'mouse';
+        if (activeSource !== 'pointer' || pid !== activePointerId) return;
+        moveDrag(e.clientX, e.clientY);
+      }, { passive: true });
+
+      window.addEventListener('pointerup', (e) => {
+        const pid = e.pointerId != null ? e.pointerId : 'mouse';
+        if (activeSource !== 'pointer' || pid !== activePointerId) return;
+        if (banner.releasePointerCapture && e.pointerId != null) {
+          try { banner.releasePointerCapture(e.pointerId); } catch (_) {}
+        }
+        endDrag(false);
+      });
+
+      window.addEventListener('pointercancel', (e) => {
+        const pid = e.pointerId != null ? e.pointerId : 'mouse';
+        if (activeSource !== 'pointer' || pid !== activePointerId) return;
+        endDrag(true);
+      });
+
+      banner.addEventListener('touchstart', (e) => {
+        if (activeSource) return;
+        const t = e.touches && e.touches[0];
+        if (!t) return;
+        startDrag('touch', t.clientX, t.clientY, null);
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (activeSource !== 'touch') return;
+        const t = e.touches && e.touches[0];
+        if (!t) return;
+        moveDrag(t.clientX, t.clientY);
+      }, { passive: true });
+
+      window.addEventListener('touchend', () => {
+        if (activeSource !== 'touch') return;
+        endDrag(false);
+      }, { passive: true });
+
+      window.addEventListener('touchcancel', () => {
+        if (activeSource !== 'touch') return;
+        endDrag(true);
+      }, { passive: true });
+    }
+
+    function showToast(text, icon = '✨') {
+      setupToastSwipeDismiss();
+      const banner = document.getElementById('toast-banner');
+      if (!banner) return;
+      if (toastResetTimeout) {
+        clearTimeout(toastResetTimeout);
+        toastResetTimeout = null;
+      }
+      banner.classList.remove('dragging');
+      banner.style.transition = '';
+      banner.style.transform = '';
+      banner.style.opacity = '';
       document.getElementById('toast-icon').textContent = icon;
       document.getElementById('toast-text').textContent = text;
       banner.classList.add('show');
 
-      if (toastTimeout) clearTimeout(toastTimeout);
-      toastTimeout = setTimeout(() => {
-        banner.classList.remove('show');
-      }, 2800);
+      scheduleToastAutoHide(2800);
     }
 
     // --- OFFLINE PROGRESS MODAL ---
@@ -8539,7 +8706,7 @@
           </div>
           <div style="background: rgba(0,0,0,0.25); border-radius: 12px; padding: 10px;">
             <div style="font-size: 11px; color: #94a3b8;">Current Frost Essence</div>
-            <div class="prestige-stat-val">${state.prestigeShards} 💎 (+${currentMultiplierPct}% DPS)</div>
+            <div class="prestige-stat-val">${state.prestigeShards} 💎 (+${currentMultiplierPct}% Fish/min)</div>
           </div>
           <div style="background: rgba(0,0,0,0.25); border-radius: 12px; padding: 10px;">
             <div style="font-size: 11px; color: #94a3b8;">New Essence Gained on Rebirth</div>
@@ -8729,8 +8896,8 @@
               <div class="stat-card-val">${state.totalAuroraBlessingsClaimed || 0}</div>
             </div>
             <div class="stat-card">
-              <div class="stat-card-header">⚡ Peak DPS</div>
-              <div class="stat-card-val">+${formatNumber(state.highestDPS || state.dps)}/s</div>
+              <div class="stat-card-header">⚡ Peak Fish/min</div>
+              <div class="stat-card-val">+${formatNumber(Math.round((state.highestDPS || state.dps) * 60))}/min</div>
             </div>
           </div>
 
@@ -9351,7 +9518,7 @@
       state.calculateDPS();
 
       document.getElementById('fish-count').textContent = formatNumber(state.fish);
-      document.getElementById('dps-count').textContent = `+${formatNumber(state.dps)}/s`;
+      document.getElementById('dps-count').textContent = `+${formatNumber(Math.round(state.dps * 60))}/min`;
 
       const statsLevelEl = document.getElementById('stats-glacier-level');
       if (statsLevelEl) {
@@ -9380,7 +9547,7 @@
         weatherPill.classList.toggle('weather-blizzard', w.id === 'blizzard');
       }
 
-      document.getElementById('pill-dps').textContent = `${formatNumber(state.dps)}/s`;
+      document.getElementById('pill-dps').textContent = `${formatNumber(Math.round(state.dps * 60))}/min`;
 
       let affordableCount = 0;
       PENGUIN_SPECIES.forEach(sp => {

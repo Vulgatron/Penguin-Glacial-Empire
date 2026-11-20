@@ -1,4 +1,4 @@
-const CACHE_NAME = 'penguin-glacial-empire-v14';
+const CACHE_NAME = 'penguin-glacial-empire-v16';
 const CORE_ASSETS = [
   './',
   './index.html',

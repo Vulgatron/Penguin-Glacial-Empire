@@ -678,6 +678,105 @@
       text-align: center;
     }
 
+    .daily-streak-banner {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(234, 88, 12, 0.12) 55%, rgba(56, 189, 248, 0.12));
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      border-radius: 16px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .daily-streak-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .daily-streak-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .daily-streak-count {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fde68a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .daily-streak-sub {
+      font-size: 10px;
+      color: #e2e8f0;
+      line-height: 1.35;
+      opacity: 0.92;
+    }
+
+    .daily-streak-bonus-pill {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.24), rgba(251, 191, 36, 0.22));
+      border: 1px solid rgba(52, 211, 153, 0.55);
+      color: #6ee7b7;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 6px 10px;
+      border-radius: 12px;
+      text-align: right;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .daily-streak-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .daily-meta-chip {
+      font-size: 10px;
+      font-weight: 700;
+      color: #cbd5e1;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    .daily-tier-pill {
+      font-size: 9px;
+      font-weight: 800;
+      color: #bae6fd;
+      background: rgba(56, 189, 248, 0.16);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 1px 6px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .bonus-objective-card {
+      border-color: rgba(251, 191, 36, 0.5) !important;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(56, 189, 248, 0.08)) !important;
+    }
+
+    .bonus-objective-badge {
+      font-size: 9px;
+      font-weight: 800;
+      color: #fde68a;
+      background: rgba(245, 158, 11, 0.22);
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      padding: 1px 6px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
     .btn-in-progress {
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.12);
@@ -3275,20 +3374,20 @@
     // Ordered newest-first; contains only the current update notice so launch alerts stay focused
     const APP_FEATURE_RELEASES = [
       {
-        id: '2026-11-swipeable-banners-v161',
-        version: '1.6.1',
-        title: "What's New in Update 1.6.1",
-        subtitle: 'Quick quality-of-life improvements from player feedback!',
+        id: '2026-11-daily-streak-scaling-v162',
+        version: '1.6.2',
+        title: "What's New in Update 1.6.2",
+        subtitle: 'Build consecutive daily streaks and take on scaling colony goals!',
         features: [
           {
-            icon: '👆',
-            title: 'Swipeable In-Game Banners',
-            desc: 'You can now swipe left, right, or up on any in-game notification banner to dismiss it immediately.'
+            icon: '🔥',
+            title: 'Daily Streak Counter & Permanent Fish Bonus',
+            desc: 'Complete daily goals on consecutive days in the Daily tab to grow your streak and earn a permanent +2% fish bonus per consecutive day across all runs and rebirths.'
           },
           {
-            icon: '🐟',
-            title: 'Fish Caught Per Minute (/min)',
-            desc: 'Colony catch rates in the top HUD, collapsed pill, and Stats now display fish caught per minute instead of per second.'
+            icon: '📈',
+            title: 'Scaling Daily Goals & Bonus Challenges',
+            desc: 'Daily objectives now scale up in targets and rewards as you complete goals, plus endless scaled Bonus Challenges unlock after finishing all 5 daily tasks!'
           }
         ]
       }
@@ -3408,6 +3507,13 @@
     class DailyObjectivesManager {
       constructor() {
         this.dateKey = this.getCycleDateKey();
+        this.streakCount = 0;
+        this.bestStreak = 0;
+        this.lastStreakDateKey = '';
+        this.permanentFishBonusPct = 0;
+        this.totalGoalsCompleted = 0;
+        this.dailyBonusCleared = 0;
+        this.bonusObjective = null;
         this.objectives = this.getDefaultObjectives(this.dateKey);
       }
 
@@ -3418,6 +3524,37 @@
         const m = String(shifted.getMonth() + 1).padStart(2, '0');
         const d = String(shifted.getDate()).padStart(2, '0');
         return `${y}-${m}-${d}`;
+      }
+
+      shiftCycleDateKey(dateKey, deltaDays = 0) {
+        const parts = String(dateKey || '').split('-').map(n => parseInt(n, 10));
+        if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) {
+          return '';
+        }
+        const dt = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + deltaDays));
+        const y = dt.getUTCFullYear();
+        const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(dt.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+
+      getPreviousCycleDateKey(dateKey = this.dateKey) {
+        return this.shiftCycleDateKey(dateKey, -1);
+      }
+
+      isConsecutiveCycleDay(prevKey, nextKey) {
+        if (!prevKey || !nextKey) return false;
+        return this.shiftCycleDateKey(prevKey, 1) === nextKey;
+      }
+
+      syncStreakStatusForCycle(currentKey = this.dateKey) {
+        if (
+          this.lastStreakDateKey &&
+          this.lastStreakDateKey !== currentKey &&
+          !this.isConsecutiveCycleDay(this.lastStreakDateKey, currentKey)
+        ) {
+          this.streakCount = 0;
+        }
       }
 
       getTimeUntilNextResetText(nowMs = Date.now()) {
@@ -3450,8 +3587,106 @@
         };
       }
 
-      getDefaultObjectives(dateKey = this.dateKey) {
-        const templatesByCategory = [
+      getGoalScaleTier(completedCount = this.totalGoalsCompleted) {
+        const completed = Math.max(0, Number(completedCount) || 0);
+        return 1 + Math.floor(completed / 3);
+      }
+
+      getGoalScaleMultiplier(completedCount = this.totalGoalsCompleted) {
+        const completed = Math.max(0, Number(completedCount) || 0);
+        return 1 + completed * 0.15;
+      }
+
+      formatGoalCount(num) {
+        if (typeof formatNumber === 'function') {
+          return formatNumber(num);
+        }
+        return Number(num || 0).toLocaleString();
+      }
+
+      formatObjectiveDesc(type, target, fallback = '') {
+        const fmt = this.formatGoalCount(target);
+        switch (type) {
+          case 'slides':
+            return `Perform ${fmt} belly slide${target === 1 ? '' : 's'} across ice sheets`;
+          case 'collect_fish':
+            return `Collect ${fmt} fish from diving, hauls, or tapping`;
+          case 'taps':
+            return `Tap the ice shelf or cheer penguins ${fmt} time${target === 1 ? '' : 's'}`;
+          case 'penguin_taps':
+            return `Cheer directly on ${fmt} penguin${target === 1 ? '' : 's'} on the ice`;
+          case 'dives':
+            return `Complete ${fmt} dive${target === 1 ? '' : 's'} at fishing holes`;
+          case 'aurora':
+            return `Claim ${fmt} Aurora Blessing event${target === 1 ? '' : 's'}`;
+          case 'recruits':
+            return `Recruit ${fmt} new penguin${target === 1 ? '' : 's'} to the squad`;
+          case 'tech_upgrades':
+            return `Research ${fmt} Glacier Tech upgrade${target === 1 ? '' : 's'}`;
+          case 'blizzard_fish':
+            return `Gather ${fmt} fish during a Blizzard storm`;
+          default:
+            return fallback;
+        }
+      }
+
+      scaleObjectiveTemplate(template, completedCount = this.totalGoalsCompleted, options = {}) {
+        const completed = Math.max(0, Number(completedCount) || 0);
+        const tier = this.getGoalScaleTier(completed);
+
+        const fishTargetMult = 1 + completed * 0.25 + Math.pow(completed, 1.25) * 0.08;
+        const actionTargetMult = 1 + Math.min(4.0, completed * 0.12);
+        const rewardFishMult = 1 + completed * 0.30 + Math.pow(completed, 1.25) * 0.10;
+
+        let scaledTarget = template.target;
+        if (template.type === 'collect_fish' || template.type === 'blizzard_fish') {
+          const raw = template.target * fishTargetMult;
+          const step = raw >= 20000 ? 500 : (raw >= 5000 ? 100 : 50);
+          scaledTarget = Math.max(template.target, Math.round(raw / step) * step);
+        } else if (
+          template.type === 'taps' ||
+          template.type === 'penguin_taps' ||
+          template.type === 'dives' ||
+          template.type === 'slides'
+        ) {
+          scaledTarget = Math.max(template.target, Math.round(template.target * actionTargetMult));
+        } else if (template.type === 'recruits' || template.type === 'tech_upgrades') {
+          scaledTarget = Math.min(template.target + 8, template.target + Math.floor(completed / 4));
+        } else if (template.type === 'aurora') {
+          scaledTarget = Math.min(5, template.target + Math.floor(completed / 8));
+        }
+
+        let scaledRewardAmount = template.rewardAmount;
+        let rewardLabel = template.rewardLabel;
+        if (template.rewardType === 'fish') {
+          const rawReward = template.rewardAmount * rewardFishMult;
+          const rStep = rawReward >= 10000 ? 250 : (rawReward >= 2000 ? 50 : 25);
+          scaledRewardAmount = Math.max(template.rewardAmount, Math.round(rawReward / rStep) * rStep);
+          rewardLabel = `+${this.formatGoalCount(scaledRewardAmount)} 🐟 Fish`;
+        } else if (template.rewardType === 'shards') {
+          scaledRewardAmount = Math.min(5, template.rewardAmount + Math.floor(completed / 6));
+          rewardLabel = `+${scaledRewardAmount} 💎 Frost Essence`;
+        }
+
+        const desc = this.formatObjectiveDesc(template.type, scaledTarget, template.desc);
+
+        return {
+          ...template,
+          id: options.id || template.id,
+          title: options.title || template.title,
+          target: scaledTarget,
+          desc,
+          rewardAmount: scaledRewardAmount,
+          rewardLabel,
+          scaleTier: tier,
+          isBonus: Boolean(options.isBonus),
+          progress: 0,
+          claimed: false
+        };
+      }
+
+      getTemplateCategories() {
+        return [
           [
             { id: 'obj_slides_5', type: 'slides', title: 'Glacial Sledder', desc: 'Perform 5 belly slides across ice sheets', icon: '🛷', target: 5, rewardType: 'fish', rewardAmount: 300, rewardLabel: '+300 🐟 Fish' },
             { id: 'obj_slides_14', type: 'slides', title: 'Belly-Slide Blitz', desc: 'Perform 14 belly slides across ice sheets', icon: '🛷', target: 14, rewardType: 'fish', rewardAmount: 850, rewardLabel: '+850 🐟 Fish' }
@@ -3489,12 +3724,16 @@
             { id: 'obj_blizzard_300', type: 'blizzard_fish', title: 'Storm Harvester', desc: 'Gather 300 fish during a Blizzard storm', icon: '🌨️', target: 300, rewardType: 'fish', rewardAmount: 950, rewardLabel: '+950 🐟 Fish' }
           ]
         ];
+      }
 
+      getDefaultObjectives(dateKey = this.dateKey, completedCount = this.totalGoalsCompleted) {
+        const templatesByCategory = this.getTemplateCategories();
         const rng = this.createSeededRng(this.hashDateKey(dateKey));
+
         // Pick one variant per category, then deterministically shuffle and select 5 distinct daily goals.
         const candidates = templatesByCategory.map(variants => {
           const picked = variants[Math.floor(rng() * variants.length)];
-          return { ...picked, progress: 0, claimed: false };
+          return this.scaleObjectiveTemplate(picked, completedCount);
         });
 
         for (let i = candidates.length - 1; i > 0; i--) {
@@ -3515,11 +3754,37 @@
         return selected;
       }
 
+      createScaledBonusObjective() {
+        const activeCategories = this.getTemplateCategories().filter(variants =>
+          ['slides', 'collect_fish', 'taps', 'penguin_taps', 'dives'].includes(variants[0].type)
+        );
+        const pool = activeCategories.flat();
+        const seed = this.hashDateKey(`${this.dateKey}_bonus_${this.dailyBonusCleared}_${this.totalGoalsCompleted}`);
+        const rng = this.createSeededRng(seed);
+        const picked = pool[Math.floor(rng() * pool.length)] || pool[0];
+        const bonusNum = (this.dailyBonusCleared || 0) + 1;
+        return this.scaleObjectiveTemplate(picked, this.totalGoalsCompleted, {
+          id: `bonus_${this.dateKey}_${bonusNum}_${this.totalGoalsCompleted}`,
+          title: `${picked.title} (Bonus #${bonusNum})`,
+          isBonus: true
+        });
+      }
+
+      ensureBonusObjectiveState() {
+        const allDailyClaimed = Array.isArray(this.objectives) && this.objectives.length > 0 && this.objectives.every(o => o.claimed);
+        if (allDailyClaimed && !this.bonusObjective) {
+          this.bonusObjective = this.createScaledBonusObjective();
+        }
+      }
+
       checkDailyReset(nowMs = Date.now()) {
         const currentKey = this.getCycleDateKey(nowMs);
+        this.syncStreakStatusForCycle(currentKey);
         if (this.dateKey !== currentKey) {
           this.dateKey = currentKey;
-          this.objectives = this.getDefaultObjectives(currentKey);
+          this.dailyBonusCleared = 0;
+          this.bonusObjective = null;
+          this.objectives = this.getDefaultObjectives(currentKey, this.totalGoalsCompleted);
           if (typeof state !== 'undefined' && state && typeof state.save === 'function') {
             state.save();
             if (state.currentTab === 'daily' && typeof updateSheetContent === 'function') {
@@ -3537,46 +3802,95 @@
       track(type, amount = 1) {
         this.checkDailyReset();
         let updated = false;
-        this.objectives.forEach(obj => {
+        const targets = Array.isArray(this.objectives) ? [...this.objectives] : [];
+        if (this.bonusObjective && !this.bonusObjective.claimed) {
+          targets.push(this.bonusObjective);
+        }
+        targets.forEach(obj => {
           if (obj.type === type && !obj.claimed) {
             if (obj.progress < obj.target) {
               obj.progress = Math.min(obj.target, obj.progress + amount);
               updated = true;
               if (obj.progress >= obj.target) {
-                showToast(`🎯 Objective Ready: "${obj.title}"!`, '🎁');
-                sound.playChirp();
+                if (typeof showToast === 'function') {
+                  showToast(`🎯 Objective Ready: "${obj.title}"!`, '🎁');
+                }
+                if (typeof sound !== 'undefined' && sound.playChirp) sound.playChirp();
               }
             }
           }
         });
-        if (updated && state.currentTab === 'daily') {
+        if (updated && typeof state !== 'undefined' && state && state.currentTab === 'daily' && typeof updateSheetContent === 'function') {
           updateSheetContent();
         }
       }
 
-      claim(id) {
-        const obj = this.objectives.find(o => o.id === id);
-        if (!obj || obj.claimed || obj.progress < obj.target) return;
+      claim(id, nowMs = Date.now()) {
+        let obj = this.objectives.find(o => o.id === id);
+        if (!obj && this.bonusObjective && this.bonusObjective.id === id) {
+          obj = this.bonusObjective;
+        }
+        if (!obj || obj.claimed || obj.progress < obj.target) return false;
 
         obj.claimed = true;
-        sound.playLevelUp();
+        this.totalGoalsCompleted = (this.totalGoalsCompleted || 0) + 1;
+        if (typeof sound !== 'undefined' && sound.playLevelUp) sound.playLevelUp();
+
+        const cycleKey = this.dateKey || this.getCycleDateKey(nowMs);
+        this.syncStreakStatusForCycle(cycleKey);
+
+        let streakToast = '';
+        if (this.lastStreakDateKey !== cycleKey) {
+          const isConsecutive = this.isConsecutiveCycleDay(this.lastStreakDateKey, cycleKey);
+          if (isConsecutive) {
+            this.streakCount = (this.streakCount || 0) + 1;
+            const bonusGain = 2;
+            this.permanentFishBonusPct = (this.permanentFishBonusPct || 0) + bonusGain;
+            streakToast = `🔥 ${this.streakCount}-Day Streak! +${bonusGain}% Permanent Fish Bonus (+${this.permanentFishBonusPct}% total)!`;
+          } else {
+            this.streakCount = 1;
+            streakToast = '🔥 1-Day Streak started! Complete a goal tomorrow for +2% Permanent Fish!';
+          }
+          this.lastStreakDateKey = cycleKey;
+          if (this.streakCount > (this.bestStreak || 0)) {
+            this.bestStreak = this.streakCount;
+          }
+        }
 
         if (obj.rewardType === 'fish') {
           state.addFish(obj.rewardAmount);
-          sound.triggerHaptic('collect');
+          if (typeof sound !== 'undefined' && sound.triggerHaptic) sound.triggerHaptic('collect');
         } else if (obj.rewardType === 'shards') {
           state.prestigeShards += obj.rewardAmount;
           state.totalEssenceEarned = (state.totalEssenceEarned || 0) + obj.rewardAmount;
-          sound.triggerHaptic('collect');
+          if (typeof sound !== 'undefined' && sound.triggerHaptic) sound.triggerHaptic('collect');
         }
 
-        showToast(`🎁 Claimed ${obj.rewardLabel}!`);
-        state.save();
-        updateSheetContent();
+        if (obj.isBonus) {
+          this.dailyBonusCleared = (this.dailyBonusCleared || 0) + 1;
+          this.bonusObjective = this.createScaledBonusObjective();
+        } else {
+          this.ensureBonusObjectiveState();
+        }
+
+        if (typeof state !== 'undefined' && state) {
+          if (typeof state.calculateDPS === 'function') state.calculateDPS();
+          if (typeof state.save === 'function') state.save();
+        }
+        if (typeof showToast === 'function') {
+          showToast(streakToast || `🎁 Claimed ${obj.rewardLabel}!`);
+        }
+        if (typeof updateSheetContent === 'function') updateSheetContent();
+        if (typeof updateHUD === 'function') updateHUD();
+        return true;
       }
 
       getClaimableCount() {
-        return this.objectives.filter(o => !o.claimed && o.progress >= o.target).length;
+        let count = this.objectives.filter(o => !o.claimed && o.progress >= o.target).length;
+        if (this.bonusObjective && !this.bonusObjective.claimed && this.bonusObjective.progress >= this.bonusObjective.target) {
+          count += 1;
+        }
+        return count;
       }
     }
 
@@ -4540,6 +4854,13 @@
         return 1 + ((this.glacierLevel - 1) * 0.05);
       }
 
+      getDailyStreakFishMultiplier() {
+        const pct = (typeof dailyManager !== 'undefined' && dailyManager && typeof dailyManager.permanentFishBonusPct === 'number')
+          ? dailyManager.permanentFishBonusPct
+          : 0;
+        return 1 + Math.max(0, pct) / 100;
+      }
+
       getCurrentWeather() {
         return WEATHER_TYPES[this.weatherIndex] || WEATHER_TYPES[0];
       }
@@ -4570,11 +4891,12 @@
         const krillBonus = 1 + (this.tech.bioluminescent_krill * 0.5);
         const prestige = this.getPrestigeMultiplier();
         const levelBonus = this.getGlacierLevelMultiplier();
+        const streakBonus = this.getDailyStreakFishMultiplier();
         const frenzy = this.frenzyTimer > 0 ? 3 : 1;
         const supernova = this.supernovaTimer > 0 ? 4 : 1;
         const polarSurge = this.polarSurgeTimer > 0 ? 2 : 1;
         const weatherMult = this.getWeatherYieldMultiplier();
-        return Math.floor(base * krillBonus * prestige * levelBonus * frenzy * supernova * polarSurge * weatherMult * this.clickMult);
+        return Math.floor(base * krillBonus * prestige * levelBonus * streakBonus * frenzy * supernova * polarSurge * weatherMult * this.clickMult);
       }
 
       getSpeciesTraitAverages(speciesId) {
@@ -4628,7 +4950,8 @@
         });
 
         const weatherMult = this.getWeatherYieldMultiplier();
-        this.dps = total * prestige * levelBonus * cryoBonus * frenzy * supernova * polarSurge * weatherMult;
+        const streakBonus = this.getDailyStreakFishMultiplier();
+        this.dps = total * prestige * levelBonus * streakBonus * cryoBonus * frenzy * supernova * polarSurge * weatherMult;
         if (this.dps > this.highestDPS) {
           this.highestDPS = this.dps;
         }
@@ -4706,7 +5029,14 @@
           lastSaveTime: Date.now(),
           dailyObjectives: {
             dateKey: dailyManager.dateKey,
-            objectives: dailyManager.objectives
+            objectives: dailyManager.objectives,
+            streakCount: dailyManager.streakCount,
+            bestStreak: dailyManager.bestStreak,
+            lastStreakDateKey: dailyManager.lastStreakDateKey,
+            permanentFishBonusPct: dailyManager.permanentFishBonusPct,
+            totalGoalsCompleted: dailyManager.totalGoalsCompleted,
+            dailyBonusCleared: dailyManager.dailyBonusCleared,
+            bonusObjective: dailyManager.bonusObjective
           },
           totalRebirths: this.totalRebirths,
           totalEssenceEarned: this.totalEssenceEarned,
@@ -4819,12 +5149,35 @@
             }
 
             const currentDailyKey = dailyManager.getCycleDateKey();
-            if (data.dailyObjectives && data.dailyObjectives.dateKey === currentDailyKey && Array.isArray(data.dailyObjectives.objectives)) {
+            const savedDaily = data.dailyObjectives || {};
+            dailyManager.streakCount = (typeof savedDaily.streakCount === 'number' && savedDaily.streakCount >= 0) ? savedDaily.streakCount : 0;
+            dailyManager.bestStreak = (typeof savedDaily.bestStreak === 'number' && savedDaily.bestStreak >= 0)
+              ? Math.max(dailyManager.streakCount, savedDaily.bestStreak)
+              : dailyManager.streakCount;
+            dailyManager.lastStreakDateKey = (typeof savedDaily.lastStreakDateKey === 'string') ? savedDaily.lastStreakDateKey : '';
+            dailyManager.permanentFishBonusPct = (typeof savedDaily.permanentFishBonusPct === 'number' && savedDaily.permanentFishBonusPct >= 0)
+              ? savedDaily.permanentFishBonusPct
+              : 0;
+            dailyManager.totalGoalsCompleted = (typeof savedDaily.totalGoalsCompleted === 'number' && savedDaily.totalGoalsCompleted >= 0)
+              ? savedDaily.totalGoalsCompleted
+              : 0;
+            dailyManager.syncStreakStatusForCycle(currentDailyKey);
+
+            if (savedDaily.dateKey === currentDailyKey && Array.isArray(savedDaily.objectives)) {
               dailyManager.dateKey = currentDailyKey;
-              dailyManager.objectives = data.dailyObjectives.objectives;
+              dailyManager.objectives = savedDaily.objectives;
+              dailyManager.dailyBonusCleared = (typeof savedDaily.dailyBonusCleared === 'number' && savedDaily.dailyBonusCleared >= 0)
+                ? savedDaily.dailyBonusCleared
+                : 0;
+              dailyManager.bonusObjective = (savedDaily.bonusObjective && typeof savedDaily.bonusObjective === 'object')
+                ? savedDaily.bonusObjective
+                : null;
+              dailyManager.ensureBonusObjectiveState();
             } else {
               dailyManager.dateKey = currentDailyKey;
-              dailyManager.objectives = dailyManager.getDefaultObjectives(currentDailyKey);
+              dailyManager.dailyBonusCleared = 0;
+              dailyManager.bonusObjective = null;
+              dailyManager.objectives = dailyManager.getDefaultObjectives(currentDailyKey, dailyManager.totalGoalsCompleted);
             }
 
             this.totalAuroraBlessingsClaimed = data.totalAuroraBlessingsClaimed || 0;
@@ -6456,7 +6809,8 @@
               const supernova = state.supernovaTimer > 0 ? 4 : 1;
               const polarSurge = state.polarSurgeTimer > 0 ? 2 : 1;
               const weatherMult = state.getWeatherYieldMultiplier();
-              const totalBanked = Math.floor(this.carriedFish * cryoBonus * state.getPrestigeMultiplier() * frenzy * supernova * polarSurge * weatherMult);
+              const streakBonus = state.getDailyStreakFishMultiplier();
+              const totalBanked = Math.floor(this.carriedFish * cryoBonus * state.getPrestigeMultiplier() * streakBonus * frenzy * supernova * polarSurge * weatherMult);
 
               state.addFish(totalBanked);
               sound.playPlink();
@@ -8615,6 +8969,7 @@
 
       } else if (state.currentTab === 'daily') {
         dailyManager.checkDailyReset();
+        dailyManager.ensureBonusObjectiveState();
 
         const completedCount = dailyManager.objectives.filter(o => o.claimed).length;
         const totalCount = dailyManager.objectives.length;
@@ -8631,11 +8986,47 @@
         `;
         container.appendChild(banner);
 
-        dailyManager.objectives.forEach(obj => {
+        const streakCount = dailyManager.streakCount || 0;
+        const bestStreak = dailyManager.bestStreak || 0;
+        const permanentBonusPct = dailyManager.permanentFishBonusPct || 0;
+        const totalGoalsCompleted = dailyManager.totalGoalsCompleted || 0;
+        const scaleTier = dailyManager.getGoalScaleTier(totalGoalsCompleted);
+        const scaleMultPct = Math.round((dailyManager.getGoalScaleMultiplier(totalGoalsCompleted) - 1) * 100);
+        const todaySecured = dailyManager.lastStreakDateKey === dailyManager.dateKey;
+
+        let streakSubtitle = 'Complete goals on consecutive days to start a streak & earn permanent fish!';
+        if (todaySecured) {
+          streakSubtitle = 'Today\'s streak secured ✓ • Next consecutive day grants +2% permanent fish!';
+        } else if (streakCount > 0) {
+          streakSubtitle = `Claim any goal today to hit ${streakCount + 1} days & earn +2% permanent fish!`;
+        }
+
+        const streakBanner = document.createElement('div');
+        streakBanner.className = 'daily-streak-banner';
+        streakBanner.innerHTML = `
+          <div class="daily-streak-top">
+            <div class="daily-streak-title-wrap">
+              <div class="daily-streak-count">
+                <span>🔥 ${streakCount > 0 ? `${streakCount}-Day Streak` : 'Daily Streak: 0 Days'}</span>
+                ${todaySecured ? '<span class="daily-tier-pill" style="color:#6ee7b7;border-color:rgba(52,211,153,0.45);background:rgba(16,185,129,0.18);">Secured Today ✓</span>' : ''}
+              </div>
+              <div class="daily-streak-sub">${streakSubtitle}</div>
+            </div>
+            <div class="daily-streak-bonus-pill">+${permanentBonusPct}%<br><span style="font-size:9px;opacity:0.9;">Permanent Fish</span></div>
+          </div>
+          <div class="daily-streak-meta-row">
+            <span class="daily-meta-chip">🏆 Best: ${bestStreak}d</span>
+            <span class="daily-meta-chip">📈 Goal Tier ${scaleTier} (+${scaleMultPct}% scale)</span>
+            <span class="daily-meta-chip">🎯 ${totalGoalsCompleted} Completed</span>
+          </div>
+        `;
+        container.appendChild(streakBanner);
+
+        const renderObjectiveCard = (obj) => {
           const card = document.createElement('div');
           const isDone = obj.claimed;
           const isReady = !obj.claimed && obj.progress >= obj.target;
-          card.className = `roster-card ${isReady ? 'completed-objective' : ''}`;
+          card.className = `roster-card ${isReady ? 'completed-objective' : ''} ${obj.isBonus ? 'bonus-objective-card' : ''}`;
 
           const progressPct = Math.min(100, (obj.progress / obj.target) * 100);
 
@@ -8648,11 +9039,16 @@
             buttonHtml = `<button class="btn-in-progress" disabled>In Progress</button>`;
           }
 
+          const tierBadgeHtml = obj.isBonus
+            ? `<span class="bonus-objective-badge">Bonus • Tier ${obj.scaleTier || scaleTier}</span>`
+            : `<span class="daily-tier-pill">Tier ${obj.scaleTier || 1}</span>`;
+
           card.innerHTML = `
             <div class="penguin-avatar">${obj.icon}</div>
             <div class="roster-info">
-              <div class="roster-name-row">
+              <div class="roster-name-row" style="flex-wrap: wrap;">
                 <span class="roster-name">${obj.title}</span>
+                ${tierBadgeHtml}
                 <span class="roster-level">${obj.rewardLabel}</span>
               </div>
               <div class="roster-desc">${obj.desc}</div>
@@ -8679,7 +9075,13 @@
           }
 
           container.appendChild(card);
-        });
+        };
+
+        if (dailyManager.bonusObjective) {
+          renderObjectiveCard(dailyManager.bonusObjective);
+        }
+
+        dailyManager.objectives.forEach(renderObjectiveCard);
 
       } else if (state.currentTab === 'prestige') {
         const pendingShards = state.getPendingPrestigeShards();
@@ -8970,6 +9372,10 @@
             <div class="stat-card">
               <div class="stat-card-header">⚡ Waddle Speed</div>
               <div class="stat-card-val" style="color: #fbbf24;">+${Math.round((state.perkWalkSpeedMult - 1) * 100)}%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">🔥 Daily Streak Bonus</div>
+              <div class="stat-card-val" style="color: #fde68a;">+${dailyManager.permanentFishBonusPct || 0}% (${dailyManager.streakCount || 0}d)</div>
             </div>
             <div class="stat-card">
               <div class="stat-card-header">${state.getCurrentWeather().icon} Polar Weather</div>

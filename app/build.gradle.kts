@@ -16,8 +16,8 @@ android {
     applicationId = "com.aistudio.penguinglacialempire.wknpza"
     minSdk = 24
     targetSdk = 36
-    versionCode = 12
-    versionName = "1.8.1"
+    versionCode = 13
+    versionName = "2.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

@@ -51,6 +51,7 @@ class WebViewSecurityAndStorageTest {
   fun `WebViewSecurityPolicy validates trusted local asset URLs and blocks unsafe schemes or traversal`() {
     assertTrue(WebViewSecurityPolicy.isTrustedAppUrl(WebViewSecurityPolicy.APP_ENTRY_URL))
     assertTrue(WebViewSecurityPolicy.isTrustedAppUrl("https://appassets.androidplatform.net/assets/js/economy.js"))
+    assertTrue(WebViewSecurityPolicy.isTrustedAppUrl("https://appassets.androidplatform.net/assets/styles/game.css"))
 
     assertFalse(WebViewSecurityPolicy.isTrustedAppUrl("file:///android_asset/index.html"))
     assertFalse(WebViewSecurityPolicy.isTrustedAppUrl("http://appassets.androidplatform.net/assets/index.html"))
@@ -240,6 +241,50 @@ class WebViewSecurityAndStorageTest {
     assertFalse(File(context.filesDir, SaveStorageManager.BACKUP_FILENAME).exists())
     assertFalse(File(context.filesDir, SaveStorageManager.LAST_GOOD_FILENAME).exists())
     storage.shutdown()
+  }
+
+  @Test
+  fun `SaveStorageManager cleans up orphaned temp files from interrupted writes without damaging valid saves`() {
+    val storage = SaveStorageManager(context)
+    val validSave = """{"saveVersion":2,"fish":3210,"glacierLevel":4}"""
+    assertTrue(storage.saveSync(validSave))
+
+    val staleBackupTmp = File(context.filesDir, "${SaveStorageManager.BACKUP_FILENAME}.tmp")
+    val staleLastGoodTmp = File(context.filesDir, "${SaveStorageManager.LAST_GOOD_FILENAME}.tmp")
+    staleBackupTmp.writeText("{partial-write")
+    staleLastGoodTmp.writeText("{partial-write")
+    assertTrue(staleBackupTmp.exists())
+    assertTrue(staleLastGoodTmp.exists())
+
+    val loaded = storage.loadSaveDetailed()
+    assertEquals(validSave, loaded.data)
+    assertFalse(loaded.recovered)
+    assertFalse(staleBackupTmp.exists())
+    assertFalse(staleLastGoodTmp.exists())
+    storage.shutdown()
+  }
+
+  @Test
+  fun `HardenedWebViewClient handles renderer process crashes cleanly via onRenderProcessGone`() {
+    var crashHandledCount = 0
+    val assetLoader = WebViewAssetLoader.Builder()
+      .setDomain(WebViewSecurityPolicy.APP_ASSETS_HOST)
+      .addPathHandler(
+        WebViewSecurityPolicy.APP_ASSETS_PREFIX,
+        WebViewAssetLoader.AssetsPathHandler(context)
+      )
+      .build()
+
+    val client = MainActivity.HardenedWebViewClient(
+      assetLoader = assetLoader,
+      onCommittedUrlChanged = {},
+      onOpenExternalUrl = {},
+      onRendererCrash = { crashHandledCount += 1 }
+    )
+    val webView = WebView(context)
+    assertTrue(client.onRenderProcessGone(webView, null))
+    assertEquals(1, crashHandledCount)
+    webView.destroy()
   }
 
   @Test

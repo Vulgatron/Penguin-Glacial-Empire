@@ -1,0 +1,171 @@
+/* ============================================================================
+   Penguin Glacial Empire — Responsive UI, Contrast & Accessibility Polish
+   Canonical modular stylesheet (auto-synced to Android assets & PWA cache)
+   ============================================================================ */
+
+/* Strengthen muted secondary text contrast on translucent dark glacial cards */
+:root {
+  --text-sub: #b6c7dc;
+}
+
+/* Consistent interactive feedback & touch-target ergonomics */
+.top-btn,
+.weather-pill,
+.tab-btn,
+.buy-mult-btn,
+.buy-btn,
+.claim-goal-btn,
+.claim-all-btn,
+.toggle-pill-btn,
+.settings-test-btn,
+.settings-danger-btn,
+.prestige-btn,
+.factory-reset-cancel-btn,
+.factory-reset-confirm-btn {
+  transition: transform 0.12s ease, opacity 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.top-btn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.weather-pill {
+  min-height: 44px;
+}
+
+.tab-btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.buy-mult-btn {
+  min-width: 46px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.buy-btn,
+.toggle-pill-btn,
+.settings-test-btn,
+.settings-danger-btn,
+.factory-reset-cancel-btn,
+.factory-reset-confirm-btn {
+  min-height: 44px;
+}
+
+.buy-btn.is-disabled,
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.buy-btn:not(.is-disabled):active,
+.tab-btn:active,
+.buy-mult-btn:active,
+.weather-pill:active,
+.top-btn:active,
+.toggle-pill-btn:active,
+.prestige-btn:active,
+#collapsed-pill:active {
+  transform: scale(0.96);
+}
+
+/* Crisp high-contrast focus visibility for keyboard / D-pad / Switch Access */
+button:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+input:focus-visible {
+  outline: 2px solid #7dd3fc;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25);
+}
+
+/* Small-screen portrait readability & spacing (<= 380px wide phones & foldables) */
+@media (max-width: 380px) {
+  #top-bar {
+    padding: 8px 10px;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+    gap: 6px;
+  }
+
+  .hud-group {
+    gap: 6px;
+  }
+
+  .fish-display {
+    padding: 5px 10px;
+    gap: 5px;
+  }
+
+  .fish-amount {
+    font-size: 15px;
+  }
+
+  .dps-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .weather-pill {
+    padding: 5px 9px;
+    font-size: 11px;
+  }
+
+  .sheet-header {
+    padding: 6px 10px 8px;
+  }
+
+  .tab-btn {
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .roster-card {
+    padding: 10px;
+    gap: 9px;
+  }
+
+  .buy-btn {
+    min-width: 84px;
+    padding: 8px 8px;
+  }
+
+  .offline-card,
+  .whats-new-card,
+  .factory-reset-card {
+    width: calc(100vw - 24px);
+    padding: 18px 14px;
+  }
+}
+
+/* Compact landscape viewports (<= 520px tall) — keep modals scrollable without clipping */
+@media (max-height: 520px) {
+  .offline-card,
+  .whats-new-card,
+  .factory-reset-card,
+  .aurora-modal-card {
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
+}
+
+/* Reduced-motion accessibility preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+
+  .fish-icon-anim,
+  .splash-aurora-ribbon,
+  .splash-float-left,
+  .splash-float-right {
+    animation: none !important;
+  }
+}

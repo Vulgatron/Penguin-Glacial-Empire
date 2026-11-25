@@ -13,6 +13,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -45,7 +46,8 @@ class MainActivity : ComponentActivity() {
   internal class HardenedWebViewClient(
     private val assetLoader: WebViewAssetLoader,
     private val onCommittedUrlChanged: (String) -> Unit,
-    private val onOpenExternalUrl: (Uri) -> Unit
+    private val onOpenExternalUrl: (Uri) -> Unit,
+    private val onRendererCrash: () -> Unit = {}
   ) : WebViewClient() {
 
     override fun shouldInterceptRequest(
@@ -98,6 +100,11 @@ class MainActivity : ComponentActivity() {
       if (!url.isNullOrBlank()) {
         onCommittedUrlChanged(url)
       }
+    }
+
+    override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+      onRendererCrash()
+      return true
     }
 
     private fun blockedResponse(): WebResourceResponse {
@@ -294,10 +301,15 @@ class MainActivity : ComponentActivity() {
   }
 
   private fun requestImmediateSaveFlush() {
-    webView?.evaluateJavascript(
-      "if (typeof window.flushGameSaveNow === 'function') { window.flushGameSaveNow(); } else if (typeof state !== 'undefined' && state.save) { state.save({ immediate: true, sync: true }); }",
-      null
-    )
+    runCatching {
+      val activeWebView = webView
+      if (activeWebView != null && !isDestroyed) {
+        activeWebView.evaluateJavascript(
+          "if (typeof window.flushGameSaveNow === 'function') { window.flushGameSaveNow(); } else if (typeof state !== 'undefined' && state.save) { state.save({ immediate: true, sync: true }); }",
+          null
+        )
+      }
+    }
     storageManager.flush(1500L)
   }
 
@@ -358,7 +370,15 @@ class MainActivity : ComponentActivity() {
             webViewClient = HardenedWebViewClient(
               assetLoader = assetLoader,
               onCommittedUrlChanged = { committed -> currentCommittedUrl = committed },
-              onOpenExternalUrl = { uri -> openExternalInSystemBrowser(uri) }
+              onOpenExternalUrl = { uri -> openExternalInSystemBrowser(uri) },
+              onRendererCrash = {
+                storageManager.flush(1000L)
+                if (!isFinishing && !isDestroyed) {
+                  runOnUiThread {
+                    runCatching { recreate() }
+                  }
+                }
+              }
             )
 
             currentCommittedUrl = WebViewSecurityPolicy.APP_ENTRY_URL

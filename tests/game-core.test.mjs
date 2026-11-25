@@ -8,19 +8,35 @@ const require = createRequire(import.meta.url);
 const Economy = require('../js/economy.js');
 const DailySystem = require('../js/daily-system.js');
 const SaveSystem = require('../js/save-system.js');
-const PushClient = require('../js/push-client.js');
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
-test('Economy: number formatting handles normal, large, negative, and non-finite values', () => {
+test('Economy: number formatting handles normal, rollover boundaries, large HUD units, negative, and non-finite values', () => {
   assert.equal(Economy.formatNumber(0), '0');
   assert.equal(Economy.formatNumber(999), '999');
   assert.equal(Economy.formatNumber(1500), '1.5K');
+  assert.equal(Economy.formatNumber(999_949), '999.9K');
+  assert.equal(Economy.formatNumber(999_950), '1.0M');
+  assert.equal(Economy.formatNumber(999_999), '1.0M');
   assert.equal(Economy.formatNumber(2_500_000), '2.5M');
   assert.equal(Economy.formatNumber(-1200), '-1.2K');
   assert.equal(Economy.formatNumber(NaN), '0');
   assert.equal(Economy.formatNumber(Infinity), '0');
   assert.match(Economy.formatNumber(1e45), /e\+45$/i);
+
+  // Overflow-safe HUD formatter covers full unit table, rollovers, scientific fallback, and non-finite inputs
+  assert.equal(Economy.formatHudFish(0), '0');
+  assert.equal(Economy.formatHudFish(999), '999');
+  assert.equal(Economy.formatHudFish(1_500), '1,500');
+  assert.equal(Economy.formatHudFish(12_500), '12.50K');
+  assert.equal(Economy.formatHudFish(999_999), '1.00M');
+  assert.equal(Economy.formatHudFish(1e27), '1.00Oc');
+  assert.equal(Economy.formatHudFish(1e33), '1.00Dc');
+  assert.match(Economy.formatHudFish(1e45), /e\+45$/i);
+  assert.equal(Economy.formatHudFish(NaN), '0');
+  assert.equal(Economy.formatHudFish(Infinity), '0');
+  assert.equal(Economy.formatHudFish(-Infinity), '0');
+  assert.equal(Economy.MAX_GLACIER_LEVEL, 10000);
 });
 
 test('Economy: penguin & tech cost calculations preserve formulas and clamp overflow safely', () => {
@@ -281,9 +297,36 @@ test('SaveSystem: migrates legacy v0 saves, sanitizes corrupt values/NaN/prototy
   assert.equal(zeroPenguins.data.fish, 0);
   assert.equal(zeroPenguins.data.penguins.adelie.count, 1);
   assert.ok(zeroPenguins.repairs.includes('starter_penguin'));
+
+  // Legacy saves containing removed push-notification fields migrate cleanly without re-emitting them
+  const legacyWithPushFields = SaveSystem.sanitizeSaveData({
+    saveVersion: 2,
+    fish: 750,
+    lifetimeFish: 1000,
+    runFish: 1000,
+    glacierLevel: 2,
+    dailyReminderEnabled: true,
+    lastDailyReminderDateKey: '2026-05-14',
+    penguins: { adelie: { count: 3, level: 1, nextTrait: 'optimistic', traitCounts: { optimistic: 3 } } }
+  }, {}, now);
+  assert.equal(legacyWithPushFields.data.fish, 750);
+  assert.equal('dailyReminderEnabled' in legacyWithPushFields.data, false);
+  assert.equal('lastDailyReminderDateKey' in legacyWithPushFields.data, false);
+
+  // Forward-version save preserves known fields safely and flags futureVersionDetected
+  const futureSave = SaveSystem.sanitizeSaveData({
+    saveVersion: 99,
+    fish: 4200,
+    lifetimeFish: 5000,
+    runFish: 5000,
+    glacierLevel: 3,
+    penguins: { adelie: { count: 4, level: 1, nextTrait: 'optimistic', traitCounts: { optimistic: 4 } } }
+  }, {}, now);
+  assert.equal(futureSave.futureVersionDetected, true);
+  assert.equal(futureSave.data.fish, 4200);
 });
 
-test('SaveSystem: backup recovery on corrupted primary and non-destructive unrecoverable detection', () => {
+test('SaveSystem: multi-slot backup recovery on corrupted primary/backup and non-destructive unrecoverable detection', () => {
   const validBackup = JSON.stringify({
     saveVersion: 2,
     fish: 9999,
@@ -302,6 +345,19 @@ test('SaveSystem: backup recovery on corrupted primary and non-destructive unrec
   assert.equal(recovered.recoveredFromBackup, true);
   assert.equal(recovered.data.fish, 9999);
   assert.equal(recovered.corruptedPayload, '{truncated-corrupt-json');
+
+  // If both native primary and web primary are corrupt, extraBackups (web backup slot) still recovers cleanly
+  const recoveredThirdSlot = SaveSystem.parseAndRecoverSave({
+    primaryRaw: '{corrupt-native',
+    backupRaw: '{corrupt-web-primary',
+    extraBackups: [validBackup],
+    nowMs: 1_760_000_000_000
+  });
+  assert.equal(recoveredThirdSlot.status, 'recovered');
+  assert.equal(recoveredThirdSlot.source, 'fallback_1');
+  assert.equal(recoveredThirdSlot.recoveredFromBackup, true);
+  assert.equal(recoveredThirdSlot.data.fish, 9999);
+  assert.equal(recoveredThirdSlot.corruptedPayload, '{corrupt-native');
 
   // Unrecoverable corruption without backup MUST NOT silently return empty fresh state
   const unrecoverable = SaveSystem.parseAndRecoverSave({
@@ -352,84 +408,64 @@ test('SaveSystem: persistence controller skips unchanged state, throttles routin
   assert.equal(writes.length, 2);
 });
 
-test('PushClient: distinguishes Android WebView local origin from hosted Web PWA and validates config', () => {
-  assert.equal(
-    PushClient.isLocalAndroidWebViewHost({ protocol: 'https:', hostname: 'appassets.androidplatform.net' }, false),
-    true
-  );
-  assert.equal(
-    PushClient.isHostedWebPwa({ protocol: 'https:', hostname: 'appassets.androidplatform.net' }, false),
-    false
-  );
-  assert.equal(
-    PushClient.isHostedWebPwa({ protocol: 'https:', hostname: 'glacial-empire.example.com' }, true),
-    false
-  );
-  assert.equal(
-    PushClient.isHostedWebPwa({ protocol: 'https:', hostname: 'glacial-empire.example.com' }, false),
-    true
-  );
+test('Push notification removal invariants: zero push files, handlers, UI, config, or permissions remain', () => {
+  const removedPaths = [
+    'push-relay',
+    'push-config.json',
+    'js/push-client.js',
+    'tests/push-relay.test.mjs',
+    'app/src/main/assets/push-config.json',
+    'app/src/main/assets/js/push-client.js'
+  ];
+  for (const rel of removedPaths) {
+    assert.equal(fs.existsSync(path.join(ROOT, rel)), false, `Expected removed push artifact to be absent: ${rel}`);
+  }
 
-  // Unconfigured default push-config.json
-  const emptyCheck = PushClient.validatePushConfig({
-    vapidPublicKey: '',
-    subscribeApiUrl: '',
-    unsubscribeApiUrl: '',
-    defaultReminderHour: 8,
-    defaultReminderMinute: 0
-  });
-  assert.equal(emptyCheck.configured, false);
-  assert.equal(emptyCheck.partiallyConfigured, false);
+  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+  const manifest = fs.readFileSync(path.join(ROOT, 'manifest.webmanifest'), 'utf8');
+  const androidManifest = fs.readFileSync(path.join(ROOT, 'app/src/main/AndroidManifest.xml'), 'utf8');
 
-  // Rejects non-HTTPS subscribe URL
-  const badUrl = PushClient.validatePushConfig({
-    vapidPublicKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U',
-    subscribeApiUrl: 'http://insecure.example.com/subscribe'
-  });
-  assert.equal(badUrl.configured, false);
-  assert.equal(badUrl.partiallyConfigured, true);
-  assert.ok(badUrl.issues.includes('invalid_subscribe_url'));
+  const forbiddenPatterns = [
+    /push-client\.js/i,
+    /push-config\.json/i,
+    /DailyPushReminderManager/,
+    /Notification\.requestPermission/,
+    /PushManager/,
+    /pushsubscriptionchange/,
+    /notificationclick/,
+    /SHOW_LOCAL_NOTIFICATION/,
+    /OPEN_DAILY_TAB/,
+    /dailyReminderEnabled/,
+    /POST_NOTIFICATIONS/
+  ];
 
-  // Valid config passes
-  const good = PushClient.validatePushConfig({
-    vapidPublicKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U',
-    subscribeApiUrl: 'https://relay.example.com/subscribe',
-    unsubscribeApiUrl: 'https://relay.example.com/unsubscribe',
-    defaultReminderHour: 8,
-    defaultReminderMinute: 30
-  });
-  assert.equal(good.configured, true);
-  assert.equal(PushClient.formatReminderTime(8, 30), '8:30 AM');
-
-  // 15-minute window respects reminderMinute
-  assert.equal(PushClient.matchesReminderWindow({ currentHour: 8, currentMinute: 30, targetHour: 8, targetMinute: 30 }), true);
-  assert.equal(PushClient.matchesReminderWindow({ currentHour: 8, currentMinute: 44, targetHour: 8, targetMinute: 30 }), true);
-  assert.equal(PushClient.matchesReminderWindow({ currentHour: 8, currentMinute: 45, targetHour: 8, targetMinute: 30 }), false);
-  assert.equal(PushClient.matchesReminderWindow({ currentHour: 0, currentMinute: 5, targetHour: 23, targetMinute: 55 }), true);
-
-  // Foreground trigger respects reminderMinute and prevents duplicate same-day trigger
-  const at815 = new Date(2026, 4, 15, 8, 15, 0).getTime();
-  const at831 = new Date(2026, 4, 15, 8, 31, 0).getTime();
-  assert.equal(PushClient.shouldTriggerForegroundReminder({
-    enabled: true, permission: 'granted', nowMs: at815,
-    reminderHour: 8, reminderMinute: 30, lastNotifiedDateKey: '', cycleKey: '2026-05-15'
-  }), false);
-  assert.equal(PushClient.shouldTriggerForegroundReminder({
-    enabled: true, permission: 'granted', nowMs: at831,
-    reminderHour: 8, reminderMinute: 30, lastNotifiedDateKey: '', cycleKey: '2026-05-15'
-  }), true);
-  assert.equal(PushClient.shouldTriggerForegroundReminder({
-    enabled: true, permission: 'granted', nowMs: at831,
-    reminderHour: 8, reminderMinute: 30, lastNotifiedDateKey: '2026-05-15', cycleKey: '2026-05-15'
-  }), false);
+  for (const [label, content] of [
+    ['index.html', html],
+    ['sw.js', sw],
+    ['manifest.webmanifest', manifest],
+    ['AndroidManifest.xml', androidManifest]
+  ]) {
+    for (const pattern of forbiddenPatterns) {
+      assert.doesNotMatch(content, pattern, `Unexpected push reference ${pattern} in ${label}`);
+    }
+  }
 });
 
-test('Integration invariants: viewport zoom policy preserved, splash-to-offline sequencing, no SW forced reload', () => {
+test('Integration invariants: viewport zoom policy, modular CSS, offline PWA caching, splash-to-offline sequencing, and asset sync parity', () => {
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
 
   // Explicit exclusion: keep user-scalable=no intact
   assert.match(html, /<meta\s+name="viewport"[^>]*user-scalable=no/i);
+
+  // Modular stylesheet linked and precached by offline service worker
+  assert.match(html, /<link\s+rel="stylesheet"\s+href="\.\/styles\/game\.css"/);
+  assert.match(sw, /'\.\/styles\/game\.css'/);
+  assert.match(sw, /'\.\/js\/economy\.js'/);
+  assert.match(sw, /'\.\/js\/daily-system\.js'/);
+  assert.match(sw, /'\.\/js\/save-system\.js'/);
+  assert.match(sw, /'\.\/manifest\.webmanifest'/);
 
   // Splash-to-idle-fish flash fix: pre-mounts modal before splash fade-out
   assert.match(html, /onBeforeFadeOut/);
@@ -453,4 +489,24 @@ test('Integration invariants: viewport zoom policy preserved, splash-to-offline 
   assert.match(html, /getVisibleGlacierBottomY/);
   assert.match(html, /computeGoldenFishCooldownStep/);
   assert.match(html, /goldenFishTimerSec:\s*state\.goldenFishTimer/);
+
+  // Canonical web assets match synced Android assets byte-for-byte
+  const syncedFiles = [
+    'index.html',
+    'styles/game.css',
+    'js/economy.js',
+    'js/daily-system.js',
+    'js/save-system.js',
+    'manifest.webmanifest'
+  ];
+  for (const rel of syncedFiles) {
+    const rootContent = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    const assetPath = path.join(ROOT, 'app/src/main/assets', rel);
+    assert.equal(fs.existsSync(assetPath), true, `Expected synced Android asset: ${rel}`);
+    assert.equal(
+      fs.readFileSync(assetPath, 'utf8'),
+      rootContent,
+      `Synced Android asset diverged from canonical root file: ${rel}`
+    );
+  }
 });

@@ -10,6 +10,7 @@
 
   const MAX_SAFE_RESOURCE = 1e300;
   const MAX_COUNT = 1e7;
+  const MAX_GLACIER_LEVEL = 10000;
   const OFFLINE_BASE_RATE = 2 / 3;
   const OFFLINE_FULL_CAP_SECONDS = 24 * 3600;       // 24 hours at full offline rate (2/3 DPS)
   const OFFLINE_MAX_SECONDS = 7 * 24 * 3600;        // 7-day absolute ceiling
@@ -52,13 +53,40 @@
     if (!Number.isFinite(n)) return '0';
     if (n < 0) return '-' + formatNumber(-n);
     if (n < 1000) return Math.floor(n).toLocaleString('en-US');
-    const uIdx = Math.floor(Math.log10(n) / 3) - 1;
+    let uIdx = Math.floor(Math.log10(n) / 3) - 1;
     if (uIdx < 0) return Math.floor(n).toLocaleString('en-US');
     if (uIdx >= NUMBER_UNITS.length) {
       return n.toExponential(2);
     }
-    const formatted = (n / Math.pow(10, (uIdx + 1) * 3)).toFixed(1);
-    return formatted + NUMBER_UNITS[uIdx];
+    let scaled = n / Math.pow(10, (uIdx + 1) * 3);
+    if (Number(scaled.toFixed(1)) >= 1000) {
+      uIdx += 1;
+      if (uIdx >= NUMBER_UNITS.length) {
+        return n.toExponential(2);
+      }
+      scaled = n / Math.pow(10, (uIdx + 1) * 3);
+    }
+    return scaled.toFixed(1) + NUMBER_UNITS[uIdx];
+  }
+
+  function formatHudFish(num) {
+    const n = typeof num === 'number' ? num : Number(num);
+    if (!Number.isFinite(n) || n <= 0) return '0';
+    if (n < 10000) return Math.floor(n).toLocaleString('en-US');
+    let uIdx = Math.floor(Math.log10(n) / 3) - 1;
+    if (uIdx < 0) return Math.floor(n).toLocaleString('en-US');
+    if (uIdx >= NUMBER_UNITS.length) {
+      return n.toExponential(2);
+    }
+    let scaled = n / Math.pow(10, (uIdx + 1) * 3);
+    if (Number(scaled.toFixed(2)) >= 1000) {
+      uIdx += 1;
+      if (uIdx >= NUMBER_UNITS.length) {
+        return n.toExponential(2);
+      }
+      scaled = n / Math.pow(10, (uIdx + 1) * 3);
+    }
+    return scaled.toFixed(2) + NUMBER_UNITS[uIdx];
   }
 
   function calculateLevelRequirement(glacierLevel) {
@@ -348,6 +376,7 @@
   return {
     MAX_SAFE_RESOURCE,
     MAX_COUNT,
+    MAX_GLACIER_LEVEL,
     OFFLINE_BASE_RATE,
     OFFLINE_FULL_CAP_SECONDS,
     OFFLINE_MAX_SECONDS,
@@ -364,6 +393,7 @@
     sanitizeInteger,
     safeAddResource,
     formatNumber,
+    formatHudFish,
     calculateLevelRequirement,
     calculatePendingPrestigeShards,
     calculatePrestigeMultiplier,

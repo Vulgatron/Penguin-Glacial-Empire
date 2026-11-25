@@ -22,6 +22,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Lilita+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles/game.css">
   <style>
     :root {
       --bg-dark: #061121;
@@ -2384,28 +2385,6 @@
       transform: scale(0.96);
     }
 
-    .settings-status-box {
-      background: rgba(15, 23, 42, 0.55);
-      border: 1px solid rgba(148, 163, 184, 0.28);
-      border-radius: 12px;
-      padding: 9px 11px;
-      font-size: 11px;
-      line-height: 1.4;
-      color: #cbd5e1;
-    }
-
-    .settings-status-box.ok {
-      border-color: rgba(52, 211, 153, 0.45);
-      background: rgba(16, 185, 129, 0.12);
-      color: #a7f3d0;
-    }
-
-    .settings-status-box.warn {
-      border-color: rgba(251, 191, 36, 0.45);
-      background: rgba(245, 158, 11, 0.12);
-      color: #fde68a;
-    }
-
     .settings-btn-row {
       display: flex;
       flex-wrap: wrap;
@@ -3811,44 +3790,44 @@
         <span>✨</span>
         <span id="aurora-countdown">90s</span>
       </div>
-      <button class="weather-pill" id="weather-pill" title="Current Polar Weather">
-        <span id="weather-icon">☀️</span>
+      <button class="weather-pill" id="weather-pill" type="button" title="Current Polar Weather" aria-label="Current polar weather details">
+        <span id="weather-icon" aria-hidden="true">☀️</span>
         <span id="weather-label">Clear</span>
       </button>
-      <button class="top-btn" id="info-btn" title="Game Info">ℹ️</button>
+      <button class="top-btn" id="info-btn" type="button" title="Game Info" aria-label="Game controls and tips">ℹ️</button>
     </div>
   </div>
 
   <!-- Collapsible Bottom Drawer -->
-  <div id="bottom-sheet">
-    <div id="sheet-drag-handle" class="sheet-drag-handle" role="button" aria-label="Pull down to close menu">
+  <div id="bottom-sheet" aria-label="Colony management menu">
+    <div id="sheet-drag-handle" class="sheet-drag-handle" role="button" tabindex="0" aria-expanded="true" aria-label="Drag up for full screen or down to close menu">
       <div class="sheet-handle-bar"></div>
     </div>
     <div class="sheet-header">
-      <div class="sheet-tabs">
-        <label class="tab-btn active" role="button" tabindex="0" data-tab="penguins" data-ios-haptic-label="1">🐧 Penguins</label>
-        <label class="tab-btn" role="button" tabindex="0" data-tab="tech" data-ios-haptic-label="1">🔬 Tech</label>
-        <label class="tab-btn" role="button" tabindex="0" data-tab="daily" data-ios-haptic-label="1">🎯 Daily <span id="daily-tab-dot" class="tab-badge-dot" style="display:none;"></span></label>
-        <label class="tab-btn" role="button" tabindex="0" data-tab="log" data-ios-haptic-label="1">💬 Log <span id="log-tab-dot" class="tab-badge-dot" style="display:none;"></span></label>
-        <label class="tab-btn" role="button" tabindex="0" data-tab="prestige" data-ios-haptic-label="1">✨ Prestige</label>
-        <label class="tab-btn" role="button" tabindex="0" data-tab="stats" data-ios-haptic-label="1">📊 Stats</label>
-        <label class="tab-btn" role="button" tabindex="0" data-tab="settings" data-ios-haptic-label="1">⚙️ Settings</label>
+      <div class="sheet-tabs" role="tablist" aria-label="Colony menu sections">
+        <label class="tab-btn active" role="tab" aria-selected="true" tabindex="0" data-tab="penguins" data-ios-haptic-label="1">🐧 Penguins</label>
+        <label class="tab-btn" role="tab" aria-selected="false" tabindex="0" data-tab="tech" data-ios-haptic-label="1">🔬 Tech</label>
+        <label class="tab-btn" role="tab" aria-selected="false" tabindex="0" data-tab="daily" data-ios-haptic-label="1">🎯 Daily <span id="daily-tab-dot" class="tab-badge-dot" style="display:none;"></span></label>
+        <label class="tab-btn" role="tab" aria-selected="false" tabindex="0" data-tab="log" data-ios-haptic-label="1">💬 Log <span id="log-tab-dot" class="tab-badge-dot" style="display:none;"></span></label>
+        <label class="tab-btn" role="tab" aria-selected="false" tabindex="0" data-tab="prestige" data-ios-haptic-label="1">✨ Prestige</label>
+        <label class="tab-btn" role="tab" aria-selected="false" tabindex="0" data-tab="stats" data-ios-haptic-label="1">📊 Stats</label>
+        <label class="tab-btn" role="tab" aria-selected="false" tabindex="0" data-tab="settings" data-ios-haptic-label="1">⚙️ Settings</label>
       </div>
       <div class="header-actions" id="header-actions-box">
-        <label class="buy-mult-btn" id="buy-mult-toggle" role="button" tabindex="0" data-ios-haptic-label="1">1x</label>
+        <label class="buy-mult-btn" id="buy-mult-toggle" role="button" tabindex="0" aria-label="Purchase quantity multiplier" data-ios-haptic-label="1">1x</label>
       </div>
     </div>
 
     <!-- Tab Contents -->
-    <div class="sheet-content" id="sheet-content-container">
+    <div class="sheet-content" id="sheet-content-container" role="tabpanel">
       <!-- Injected dynamically via JS -->
     </div>
   </div>
 
   <!-- Floating Action Pill (Shown when Sheet is Collapsed) -->
-  <label id="collapsed-pill" class="hidden" role="button" tabindex="0" data-ios-haptic-label="1">
+  <label id="collapsed-pill" class="hidden" role="button" tabindex="0" aria-label="Open colony menu" data-ios-haptic-label="1">
     <div class="pill-dps-badge">
-      <span>🐟</span>
+      <span aria-hidden="true">🐟</span>
       <span id="pill-dps">0/min</span>
     </div>
     <span class="pill-affordable-count" id="pill-badge">0</span>
@@ -3867,10 +3846,10 @@
   </div>
 
   <!-- Fullscreen Aurora Blessing RNG Modal -->
-  <div id="aurora-modal">
+  <div id="aurora-modal" role="dialog" aria-modal="true" aria-labelledby="aurora-modal-title">
     <div class="aurora-modal-card" id="aurora-modal-card">
       <div class="aurora-header-banner">
-        <div class="aurora-title">✨ Aurora Blessing ✨</div>
+        <div class="aurora-title" id="aurora-modal-title">✨ Aurora Blessing ✨</div>
         <div class="aurora-subtitle">Select a celestial perk before the cosmic winds shift!</div>
       </div>
 
@@ -3914,7 +3893,7 @@
         While you were resting, your loyal penguin colony kept diving through the ice sheets!
       </p>
       <div style="background: rgba(56, 189, 248, 0.15); border: 1px solid var(--accent-cyan); border-radius: 16px; padding: 12px; width: 100%;">
-        <div id="offline-rate-caption" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Fish Banked (1/3 Idle Reduction • Up to 24h Full + 7d Cap)</div>
+        <div id="offline-rate-caption" style="font-size: 11px; color: #cbd5e1; margin-bottom: 4px;">Fish Banked (1/3 Idle Reduction • Up to 24h Full + 7d Cap)</div>
         <div style="font-size: 22px; font-weight: 900; color: var(--accent-gold);" id="offline-fish-val">+0 🐟</div>
       </div>
       <label class="prestige-btn" id="offline-claim-btn" role="button" tabindex="0" data-ios-haptic-label="1" style="width: 100%; touch-action: manipulation;">Claim Catch</label>
@@ -3939,7 +3918,7 @@
   <!-- Factory Reset 2-Step Confirmation Modal -->
   <div id="factory-reset-modal" role="dialog" aria-modal="true" aria-labelledby="factory-reset-title">
     <div class="factory-reset-card">
-      <div style="font-size: 38px;">⚠️</div>
+      <div style="font-size: 38px;" aria-hidden="true">⚠️</div>
       <div id="factory-reset-title" style="font-size: 18px; font-weight: 900; color: #fecaca;">Factory Reset Colony?</div>
       <div id="factory-reset-desc" style="font-size: 12px; color: #e2e8f0; line-height: 1.45;">
         This will permanently erase <strong>all progress</strong> — including fish, penguins, Glacier Tech, Frost Essence, Daily Streaks, perks, achievements, and chatter logs — and restart from a brand-new colony.
@@ -3957,7 +3936,7 @@
   </div>
 
   <!-- In-Viewport iOS Taptic Engine Switch Trigger (iOS 17.4+ / 18.4+ / 26 Safari, PWA & WebKit) -->
-  <div id="ios-haptic-container" style="position:fixed;bottom:2px;right:2px;opacity:0.015;pointer-events:none;z-index:1;margin:0;padding:0;">
+  <div id="ios-haptic-container" aria-hidden="true" style="position:fixed;bottom:2px;right:2px;opacity:0.015;pointer-events:none;z-index:1;margin:0;padding:0;">
     <input type="checkbox" id="ios-haptic-switch" switch tabindex="-1" style="margin:0;pointer-events:none;" />
     <label id="ios-haptic-label" for="ios-haptic-switch" style="display:inline-block;min-width:2px;min-height:2px;"></label>
   </div>
@@ -3965,7 +3944,6 @@
   <script src="./js/economy.js"></script>
   <script src="./js/daily-system.js"></script>
   <script src="./js/save-system.js"></script>
-  <script src="./js/push-client.js"></script>
   <script>
     /* ==========================================================================
        PENGUIN GLACIAL EMPIRE - ENGINE & GAME LOGIC
@@ -3973,7 +3951,6 @@
     const CoreEconomy = (window.GlacialCore && window.GlacialCore.Economy) || null;
     const CoreDaily = (window.GlacialCore && window.GlacialCore.DailySystem) || null;
     const CoreSave = (window.GlacialCore && window.GlacialCore.SaveSystem) || null;
-    const CorePush = (window.GlacialCore && window.GlacialCore.PushClient) || null;
     const prefersReducedMotion = () =>
       Boolean(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -5023,12 +5000,13 @@
     }
 
     function formatHudFish(num) {
-      const val = Math.max(0, Number(num) || 0);
-      if (val < 10000) return Math.floor(val).toLocaleString();
-      const units = ['K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp'];
-      const uIdx = Math.floor(Math.log10(val) / 3) - 1;
-      const scaled = val / Math.pow(10, (uIdx + 1) * 3);
-      return scaled.toFixed(2) + (units[uIdx] || '');
+      if (CoreEconomy && typeof CoreEconomy.formatHudFish === 'function') {
+        return CoreEconomy.formatHudFish(num);
+      }
+      const val = Number(num);
+      if (!Number.isFinite(val) || val <= 0) return '0';
+      if (val < 10000) return Math.floor(val).toLocaleString('en-US');
+      return formatNumber(val);
     }
 
     function pickRecruitedTrait(speciesId) {
@@ -5606,435 +5584,6 @@
     }
 
     const dailyManager = new DailyObjectivesManager();
-
-    // =========================================================================
-    // DAILY 8:00 AM PWA PUSH REMINDER MANAGER (Android & Apple iOS)
-    // =========================================================================
-    class DailyPushReminderManager {
-      constructor() {
-        this.enabled = false;
-        this.lastNotifiedDateKey = '';
-        this.pushSubscribed = false;
-        this.configLoaded = false;
-        this.config = {
-          vapidPublicKey: '',
-          subscribeApiUrl: '',
-          unsubscribeApiUrl: '',
-          defaultReminderHour: 8,
-          defaultReminderMinute: 0
-        };
-        this._lastCheckMs = 0;
-      }
-
-      isHostedOverWeb() {
-        if (typeof window === 'undefined' || !window.location) return false;
-        const hasNativeBridge = Boolean(window.AndroidBridge);
-        if (CorePush) {
-          return CorePush.isHostedWebPwa(window.location, hasNativeBridge);
-        }
-        if (hasNativeBridge) return false;
-        const proto = window.location.protocol;
-        const host = window.location.hostname;
-        if (host === 'appassets.androidplatform.net') return false;
-        return proto === 'https:' || host === 'localhost' || host === '127.0.0.1';
-      }
-
-      isIOSDevice() {
-        if (typeof navigator === 'undefined') return false;
-        const ua = navigator.userAgent || '';
-        const platform = navigator.platform || '';
-        const maxTouch = navigator.maxTouchPoints || 0;
-        return /iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && maxTouch > 1);
-      }
-
-      isStandalonePWA() {
-        if (typeof window === 'undefined') return false;
-        if (typeof navigator !== 'undefined' && navigator.standalone === true) return true;
-        if (typeof window.matchMedia === 'function') {
-          try {
-            return window.matchMedia('(display-mode: standalone)').matches;
-          } catch (_) {
-            return false;
-          }
-        }
-        return false;
-      }
-
-      needsIOSHomeScreenInstall() {
-        return this.isIOSDevice() && !this.isStandalonePWA();
-      }
-
-      supportsNotifications() {
-        return (
-          this.isHostedOverWeb() &&
-          typeof window !== 'undefined' &&
-          'Notification' in window &&
-          typeof navigator !== 'undefined' &&
-          'serviceWorker' in navigator
-        );
-      }
-
-      supportsWebPush() {
-        return this.supportsNotifications() && 'PushManager' in window;
-      }
-
-      getPermissionState() {
-        if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
-        return Notification.permission || 'default';
-      }
-
-      hasRelayConfigured() {
-        if (CorePush) {
-          return CorePush.validatePushConfig(this.config).configured;
-        }
-        return Boolean(
-          this.config &&
-          typeof this.config.vapidPublicKey === 'string' &&
-          this.config.vapidPublicKey.trim().length > 10 &&
-          typeof this.config.subscribeApiUrl === 'string' &&
-          this.config.subscribeApiUrl.trim().startsWith('https://')
-        );
-      }
-
-      getConfigDiagnostics() {
-        if (CorePush) {
-          return CorePush.validatePushConfig(this.config);
-        }
-        return { configured: this.hasRelayConfigured(), partiallyConfigured: false, issues: [], config: this.config };
-      }
-
-      getFormattedReminderTime() {
-        const h = this.config ? this.config.defaultReminderHour : 8;
-        const m = this.config ? this.config.defaultReminderMinute : 0;
-        if (CorePush) return CorePush.formatReminderTime(h, m);
-        return `${h}:${String(m || 0).padStart(2, '0')}`;
-      }
-
-      urlBase64ToUint8Array(base64String) {
-        const clean = String(base64String || '').trim();
-        const padding = '='.repeat((4 - (clean.length % 4)) % 4);
-        const base64 = (clean + padding).replace(/-/g, '+').replace(/_/g, '/');
-        const raw = atob(base64);
-        const output = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) {
-          output[i] = raw.charCodeAt(i);
-        }
-        return output;
-      }
-
-      async loadConfig() {
-        if (this.configLoaded || !this.isHostedOverWeb() || typeof fetch !== 'function') return;
-        this.configLoaded = true;
-        try {
-          const res = await fetch('./push-config.json', { cache: 'no-store' });
-          if (res && res.ok) {
-            const parsed = await res.json();
-            if (parsed && typeof parsed === 'object') {
-              const merged = Object.assign({}, this.config, parsed);
-              this.config = CorePush ? CorePush.validatePushConfig(merged).config : merged;
-            }
-          }
-        } catch (err) {
-          this.lastError = 'Unable to load push-config.json';
-        }
-        await this.refreshSubscriptionState();
-      }
-
-      async refreshSubscriptionState() {
-        if (!this.supportsWebPush()) {
-          this.pushSubscribed = false;
-          return;
-        }
-        try {
-          const reg = await navigator.serviceWorker.ready;
-          if (reg && reg.pushManager) {
-            const sub = await reg.pushManager.getSubscription();
-            this.pushSubscribed = Boolean(sub);
-          }
-        } catch (_) {
-          this.pushSubscribed = false;
-        }
-      }
-
-      getStatusSummary() {
-        if (!this.isHostedOverWeb()) {
-          return {
-            tone: 'normal',
-            text: '📱 Running offline/inside native wrapper. 8:00 AM Web Push activates when opened from your GitHub Pages HTTPS URL on Android or iOS.'
-          };
-        }
-        if (this.needsIOSHomeScreenInstall()) {
-          return {
-            tone: 'warn',
-            text: '🍎 iPhone/iPad step: Tap Share → Add to Home Screen, then launch Glacial Empire from your Home Screen icon to enable Apple Push Notifications (iOS 16.4+).'
-          };
-        }
-        if (!this.supportsNotifications()) {
-          return {
-            tone: 'warn',
-            text: '⚠️ This browser does not expose Web Notifications / Service Worker support.'
-          };
-        }
-
-        const perm = this.getPermissionState();
-        if (perm === 'denied') {
-          return {
-            tone: 'warn',
-            text: '🚫 Notifications are blocked in your device/browser settings. Allow notifications for Glacial Empire to receive 8:00 AM reminders.'
-          };
-        }
-
-        const timeLabel = this.getFormattedReminderTime();
-        const diag = this.getConfigDiagnostics();
-
-        if (this.enabled && perm === 'granted') {
-          if (this.pushSubscribed && diag.configured) {
-            return {
-              tone: 'ok',
-              text: `✅ ${timeLabel} Web Push Active! Your device is subscribed to daily colony task reminders even when the app is closed.`
-            };
-          }
-          if (!diag.configured) {
-            return {
-              tone: 'warn',
-              text: diag.partiallyConfigured
-                ? `⚠️ Push relay configuration is incomplete (${diag.issues.join(', ')}). Check push-config.json; open-app ${timeLabel} reminders remain active.`
-                : `⏰ Background push relay is not configured yet (open-app ${timeLabel} reminders remain active). Deploy push-relay/ & fill push-config.json for closed-app delivery.`
-            };
-          }
-          return {
-            tone: 'warn',
-            text: `🔔 Permission granted. Tap Re-Sync Push to finish registering this device with your ${timeLabel} push relay.`
-          };
-        }
-
-        if (!diag.configured) {
-          return {
-            tone: 'normal',
-            text: `Get open-app daily goal reminders at ${timeLabel}. Background push while closed activates once push-config.json is configured with your deployed relay.`
-          };
-        }
-
-        return {
-          tone: 'normal',
-          text: `Get reminded at ${timeLabel} local time whenever new Daily Goals are waiting. Works on Android & Apple Home Screen PWAs (iOS 16.4+).`
-        };
-      }
-
-      async subscribeToPushRelay() {
-        if (!this.supportsWebPush() || !this.hasRelayConfigured()) return false;
-        try {
-          const reg = await navigator.serviceWorker.ready;
-          if (!reg || !reg.pushManager) return false;
-
-          let sub = await reg.pushManager.getSubscription();
-          if (!sub) {
-            sub = await reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: this.urlBase64ToUint8Array(this.config.vapidPublicKey)
-            });
-          }
-
-          const timeZone = (typeof Intl !== 'undefined' && Intl.DateTimeFormat)
-            ? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
-            : 'UTC';
-
-          const resp = await fetch(this.config.subscribeApiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              subscription: sub.toJSON(),
-              timeZone,
-              tzOffsetMinutes: -new Date().getTimezoneOffset(),
-              reminderHour: typeof this.config.defaultReminderHour === 'number' ? this.config.defaultReminderHour : 8,
-              reminderMinute: typeof this.config.defaultReminderMinute === 'number' ? this.config.defaultReminderMinute : 0,
-              app: 'penguin-glacial-empire'
-            })
-          });
-
-          this.pushSubscribed = Boolean(resp && resp.ok);
-          this.lastError = this.pushSubscribed ? '' : `Relay returned HTTP ${resp ? resp.status : 'network_error'}`;
-          return this.pushSubscribed;
-        } catch (err) {
-          this.pushSubscribed = false;
-          this.lastError = err && err.message ? err.message : 'Push relay subscription failed';
-          return false;
-        }
-      }
-
-      async enable() {
-        await this.loadConfig();
-
-        if (!this.isHostedOverWeb()) {
-          showToast('🌐 Open the GitHub Pages HTTPS link on iOS/Android to enable PWA push reminders.', '🔔', { category: 'system' });
-          return false;
-        }
-        if (this.needsIOSHomeScreenInstall()) {
-          showToast('🍎 On iPhone/iPad, tap Share → Add to Home Screen first to enable Apple Push.', '📲', { category: 'system' });
-          return false;
-        }
-        if (!this.supportsNotifications()) {
-          showToast('⚠️ Notifications are not supported on this browser.', '⚠️', { category: 'system' });
-          return false;
-        }
-
-        try {
-          const perm = await Notification.requestPermission();
-          if (perm !== 'granted') {
-            this.enabled = false;
-            if (typeof state !== 'undefined' && state.save) state.save();
-            showToast(perm === 'denied'
-              ? '🚫 Notifications blocked. Enable them in browser/iOS Settings.'
-              : '🔔 Notification permission dismissed.', '🔔', { category: 'system' });
-            if (typeof updateSheetContent === 'function') updateSheetContent();
-            return false;
-          }
-
-          this.enabled = true;
-          if (this.hasRelayConfigured() && this.supportsWebPush()) {
-            const ok = await this.subscribeToPushRelay();
-            showToast(ok
-              ? '🔔 8:00 AM Daily Push Reminders enabled!'
-              : '⚠️ Permission granted, but push relay registration failed.', '🔔', { category: 'system' });
-          } else {
-            showToast('⏰ 8:00 AM Reminders armed (add push-config.json relay for background delivery)!', '🔔', { category: 'system' });
-          }
-          if (typeof state !== 'undefined' && state.save) state.save();
-          if (typeof updateSheetContent === 'function') updateSheetContent();
-          return true;
-        } catch (err) {
-          showToast('⚠️ Could not enable notifications: ' + (err && err.message ? err.message : 'Error'), '⚠️', { category: 'system' });
-          if (typeof updateSheetContent === 'function') updateSheetContent();
-          return false;
-        }
-      }
-
-      async disable() {
-        this.enabled = false;
-        try {
-          if (this.supportsWebPush()) {
-            const reg = await navigator.serviceWorker.ready;
-            const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
-            if (sub) {
-              if (this.config && this.config.unsubscribeApiUrl && typeof fetch === 'function') {
-                await fetch(this.config.unsubscribeApiUrl, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ endpoint: sub.endpoint })
-                }).catch(() => {});
-              }
-              await sub.unsubscribe().catch(() => {});
-            }
-          }
-        } catch (_) {
-          // Ignore cleanup errors
-        }
-        this.pushSubscribed = false;
-        if (typeof state !== 'undefined' && state.save) state.save();
-        showToast('🔕 Daily 8:00 AM Reminders turned off.', '🔕', { category: 'system' });
-        if (typeof updateSheetContent === 'function') updateSheetContent();
-      }
-
-      async showNotificationNow(title, body, tag = 'daily-goals-reminder') {
-        if (!this.supportsNotifications() || this.getPermissionState() !== 'granted') return false;
-        try {
-          const reg = await navigator.serviceWorker.ready;
-          if (reg && typeof reg.showNotification === 'function') {
-            await reg.showNotification(title, {
-              body,
-              icon: './icons/icon-192.png',
-              badge: './icons/icon-192.png',
-              tag,
-              renotify: true,
-              data: { url: './?tab=daily', tab: 'daily' }
-            });
-            return true;
-          }
-          if (reg && reg.active) {
-            reg.active.postMessage({ type: 'SHOW_LOCAL_NOTIFICATION', title, body, tag });
-            return true;
-          }
-        } catch (_) {
-          // Fallback below
-        }
-        try {
-          new Notification(title, { body, icon: './icons/icon-192.png', tag });
-          return true;
-        } catch (_) {
-          return false;
-        }
-      }
-
-      async sendTestReminder() {
-        await this.loadConfig();
-        if (this.needsIOSHomeScreenInstall()) {
-          showToast('🍎 Install to Home Screen on iOS first to test Apple notifications.', '📲', { category: 'system' });
-          return false;
-        }
-        if (!this.supportsNotifications()) {
-          showToast('🌐 Test notifications require the HTTPS PWA.', '🔔', { category: 'system' });
-          return false;
-        }
-        if (this.getPermissionState() !== 'granted') {
-          const ok = await this.enable();
-          if (!ok) return false;
-        }
-        const pending = dailyManager.objectives.filter(o => !o.claimed).length;
-        const sent = await this.showNotificationNow(
-          '🎯 Daily Goals Reminder — Glacial Empire',
-          pending > 0
-            ? `Good morning! ${pending} daily colony goal${pending === 1 ? ' is' : 's are'} ready to complete.`
-            : 'All daily goals for this cycle are claimed! Check back at 3:00 AM.',
-          'daily-goals-test'
-        );
-        showToast(sent ? '🔔 Test reminder notification dispatched!' : '⚠️ Unable to display OS notification here.', '🔔', { category: 'system' });
-        return sent;
-      }
-
-      checkForeground8AmReminder(nowMs = Date.now()) {
-        if (!this.enabled || this.getPermissionState() !== 'granted') return false;
-        if (nowMs - this._lastCheckMs < 25000) return false;
-        this._lastCheckMs = nowMs;
-
-        const reminderHour = typeof this.config.defaultReminderHour === 'number' ? this.config.defaultReminderHour : 8;
-        const reminderMinute = typeof this.config.defaultReminderMinute === 'number' ? this.config.defaultReminderMinute : 0;
-        const cycleKey = dailyManager.getCycleDateKey(nowMs);
-
-        const shouldFire = CorePush
-          ? CorePush.shouldTriggerForegroundReminder({
-              enabled: this.enabled,
-              permission: this.getPermissionState(),
-              nowMs,
-              reminderHour,
-              reminderMinute,
-              lastNotifiedDateKey: this.lastNotifiedDateKey,
-              cycleKey
-            })
-          : (() => {
-              const now = new Date(nowMs);
-              return (now.getHours() * 60 + now.getMinutes()) >= (reminderHour * 60 + reminderMinute) &&
-                this.lastNotifiedDateKey !== cycleKey;
-            })();
-
-        if (!shouldFire) return false;
-
-        const remainingCount = dailyManager.objectives.filter(o => !o.claimed).length;
-        this.lastNotifiedDateKey = cycleKey;
-        if (typeof state !== 'undefined' && state.save) state.save({ immediate: true });
-
-        if (remainingCount > 0) {
-          this.showNotificationNow(
-            '🎯 Daily Goals Ready — Glacial Empire',
-            `It's past ${this.getFormattedReminderTime()}! ${remainingCount} colony goal${remainingCount === 1 ? ' is' : 's are'} waiting for rewards.`,
-            'daily-goals-reminder'
-          );
-          return true;
-        }
-        return false;
-      }
-    }
-
-    const pushReminders = new DailyPushReminderManager();
 
     // Helper functions for Statistics
     function formatPlaytime(ms) {
@@ -6693,7 +6242,11 @@
         const supernova = this.supernovaTimer > 0 ? 4 : 1;
         const polarSurge = this.polarSurgeTimer > 0 ? 2 : 1;
         const weatherMult = this.getWeatherYieldMultiplier();
-        return Math.floor(base * krillBonus * prestige * levelBonus * streakBonus * synergies.allFishMult * frenzy * supernova * polarSurge * weatherMult * this.clickMult);
+        const rawClick = base * krillBonus * prestige * levelBonus * streakBonus * synergies.allFishMult * frenzy * supernova * polarSurge * weatherMult * this.clickMult;
+        if (CoreEconomy) {
+          return Math.max(1, Math.floor(CoreEconomy.sanitizeFiniteNumber(rawClick, 1, 1, CoreEconomy.MAX_SAFE_RESOURCE)));
+        }
+        return Math.max(1, Number.isFinite(rawClick) ? Math.floor(rawClick) : 1);
       }
 
       getSpeciesTraitAverages(speciesId) {
@@ -6821,7 +6374,9 @@
           }
         });
 
-        this.dps = total;
+        this.dps = CoreEconomy
+          ? CoreEconomy.sanitizeFiniteNumber(total, 0, 0, CoreEconomy.MAX_SAFE_RESOURCE)
+          : (Number.isFinite(total) && total > 0 ? total : 0);
         if (this.dps > this.highestDPS) {
           this.highestDPS = this.dps;
         }
@@ -6870,10 +6425,11 @@
           dailyManager.track('blizzard_fish', safeAmt);
         }
 
+        const maxGlacierLevel = CoreEconomy ? CoreEconomy.MAX_GLACIER_LEVEL : 10000;
         let levelsGained = 0;
         let req = this.getLevelReq();
-        while (this.levelFish >= req && levelsGained < 10) {
-          this.levelFish -= req;
+        while (this.glacierLevel < maxGlacierLevel && this.levelFish >= req && levelsGained < 10) {
+          this.levelFish = Math.max(0, this.levelFish - req);
           this.glacierLevel++;
           levelsGained++;
           req = this.getLevelReq();
@@ -6942,9 +6498,7 @@
           lastColonySpeechEndedAt: this.lastColonySpeechEndedAt,
           pendingOfflineFish: this.pendingOfflineFish,
           lastSeenFeatureReleaseId: this.lastSeenFeatureReleaseId,
-          disableRoutineToasts: Boolean(this.disableRoutineToasts),
-          dailyReminderEnabled: typeof pushReminders !== 'undefined' ? pushReminders.enabled : false,
-          lastDailyReminderDateKey: typeof pushReminders !== 'undefined' ? pushReminders.lastNotifiedDateKey : ''
+          disableRoutineToasts: Boolean(this.disableRoutineToasts)
         };
       }
 
@@ -6969,10 +6523,13 @@
             console.warn('Native AndroidBridge save failed:', e);
           }
 
-          // 2. Secondary: Save to localStorage primary + known-good backup slot
+          // 2. Secondary: Save to localStorage primary + known-good backup slot (only promote valid JSON)
           try {
             const prevPrimary = localStorage.getItem(primaryKey);
-            if (prevPrimary && prevPrimary.startsWith('{') && prevPrimary.endsWith('}')) {
+            const prevValid = CoreSave
+              ? CoreSave.tryParseSaveObject(prevPrimary).ok
+              : Boolean(prevPrimary && prevPrimary.startsWith('{') && prevPrimary.endsWith('}'));
+            if (prevValid) {
               localStorage.setItem(backupKey, prevPrimary);
             }
             localStorage.setItem(primaryKey, jsonStr);
@@ -7041,6 +6598,9 @@
           const backupRaw = (nativeRaw && webPrimaryRaw && webPrimaryRaw !== nativeRaw)
             ? webPrimaryRaw
             : webBackupRaw;
+          const extraBackups = (nativeRaw && webPrimaryRaw && webPrimaryRaw !== nativeRaw && webBackupRaw)
+            ? [webBackupRaw]
+            : [];
 
           const schemaDefs = {
             speciesIds: PENGUIN_SPECIES.map(s => s.id),
@@ -7053,7 +6613,7 @@
           const nowMs = Date.now();
           let recovered = null;
           if (CoreSave) {
-            recovered = CoreSave.parseAndRecoverSave({ primaryRaw, backupRaw, schemaDefs, nowMs });
+            recovered = CoreSave.parseAndRecoverSave({ primaryRaw, backupRaw, extraBackups, schemaDefs, nowMs });
           } else if (primaryRaw) {
             recovered = { status: 'ok', data: JSON.parse(primaryRaw), recoveredFromBackup: false };
           } else {
@@ -7148,10 +6708,6 @@
           }
           if (typeof data.weatherTimer === 'number' && data.weatherTimer > 0) {
             this.weatherTimer = Math.min(WEATHER_CYCLE_SECONDS, data.weatherTimer);
-          }
-          if (typeof pushReminders !== 'undefined') {
-            if (typeof data.dailyReminderEnabled === 'boolean') pushReminders.enabled = data.dailyReminderEnabled;
-            if (typeof data.lastDailyReminderDateKey === 'string') pushReminders.lastNotifiedDateKey = data.lastDailyReminderDateKey;
           }
           if (data.speechLog && typeof data.speechLog === 'object') {
             PENGUIN_SPECIES.forEach(sp => {
@@ -10152,9 +9708,6 @@
         lastAutoSavePerfNow = now;
         state.lastSaveTime = Date.now();
         state.save({ routine: true });
-        if (typeof pushReminders !== 'undefined') {
-          pushReminders.checkForeground8AmReminder();
-        }
       }
 
       drawScene(ctx, dt);
@@ -12951,6 +12504,7 @@
     }
 
     function performFactoryReset() {
+      if (state.isFactoryResetting) return;
       state.isFactoryResetting = true;
       closeFactoryResetModal();
 
@@ -12983,6 +12537,7 @@
     }
 
     function openFactoryResetModal() {
+      if (state.isFactoryResetting) return;
       const modal = document.getElementById('factory-reset-modal');
       const step2Box = document.getElementById('factory-reset-step2-box');
       const inputEl = document.getElementById('factory-reset-confirm-input');
@@ -13025,7 +12580,9 @@
       }
       if (execBtn) {
         execBtn.onclick = () => {
+          if (state.isFactoryResetting) return;
           if (!inputEl || inputEl.value.trim().toUpperCase() !== 'RESET') return;
+          execBtn.disabled = true;
           performFactoryReset();
         };
       }
@@ -13071,23 +12628,37 @@
         sheet.classList.remove('expanded');
         sheet.classList.add('collapsed');
         if (pill) pill.classList.remove('hidden');
+        if (dragHandle) {
+          dragHandle.setAttribute('aria-expanded', 'false');
+          dragHandle.setAttribute('aria-label', 'Menu collapsed');
+        }
       } else if (nextState === 'expanded') {
         sheet.classList.remove('collapsed');
         sheet.classList.add('expanded');
         if (pill) pill.classList.add('hidden');
-        if (dragHandle) dragHandle.setAttribute('aria-label', 'Drag down to shrink or close menu');
+        if (dragHandle) {
+          dragHandle.setAttribute('aria-expanded', 'true');
+          dragHandle.setAttribute('aria-label', 'Drag down to shrink or close menu');
+        }
       } else {
         sheet.classList.remove('collapsed', 'expanded');
         if (pill) pill.classList.add('hidden');
-        if (dragHandle) dragHandle.setAttribute('aria-label', 'Drag up for full screen or down to close menu');
+        if (dragHandle) {
+          dragHandle.setAttribute('aria-expanded', 'true');
+          dragHandle.setAttribute('aria-label', 'Drag up for full screen or down to close menu');
+        }
       }
     }
 
     function setupUIEvents() {
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+          });
           btn.classList.add('active');
+          btn.setAttribute('aria-selected', 'true');
           state.currentTab = btn.getAttribute('data-tab');
           if (state.currentTab === 'log') {
             const logDot = document.getElementById('log-tab-dot');
@@ -14305,30 +13876,6 @@
           </div>
 
           <div class="settings-card">
-            <div class="settings-card-header">🔔 Daily Goals Reminder (8:00 AM)</div>
-
-            <div class="settings-row">
-              <div class="settings-row-info">
-                <div class="settings-label">Morning 8:00 AM Alerts</div>
-                <div class="settings-desc">Daily PWA reminder on Android &amp; Apple Home Screen apps to complete colony tasks</div>
-              </div>
-              <label id="settings-push-toggle-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="toggle-pill-btn ${pushReminders.enabled && pushReminders.getPermissionState() === 'granted' ? '' : 'off'}">
-                ${pushReminders.enabled && pushReminders.getPermissionState() === 'granted' ? '🔔 8 AM On' : '🔕 Off'}
-              </label>
-            </div>
-
-            <div id="settings-push-status" class="settings-status-box ${pushReminders.getStatusSummary().tone}">
-              ${pushReminders.getStatusSummary().text}
-            </div>
-
-            <div class="settings-btn-row">
-              <label id="settings-push-test-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="settings-test-btn">
-                🔔 Send Test Notification
-              </label>
-            </div>
-          </div>
-
-          <div class="settings-card">
             <div class="settings-card-header">💬 In-Game Toast Banners</div>
 
             <div class="settings-row">
@@ -14430,26 +13977,6 @@
           });
         }
 
-        const pushToggleBtn = settingsWrap.querySelector('#settings-push-toggle-btn');
-        if (pushToggleBtn) {
-          pushToggleBtn.addEventListener('click', async () => {
-            sound.init();
-            if (pushReminders.enabled && pushReminders.getPermissionState() === 'granted') {
-              await pushReminders.disable();
-            } else {
-              await pushReminders.enable();
-            }
-          });
-        }
-
-        const pushTestBtn = settingsWrap.querySelector('#settings-push-test-btn');
-        if (pushTestBtn) {
-          pushTestBtn.addEventListener('click', async () => {
-            sound.init();
-            await pushReminders.sendTestReminder();
-          });
-        }
-
         const toastFilterBtn = settingsWrap.querySelector('#settings-toast-filter-btn');
         if (toastFilterBtn) {
           toastFilterBtn.addEventListener('click', () => {
@@ -14459,7 +13986,7 @@
             showToast(
               state.disableRoutineToasts
                 ? '🎯 Routine toasts hidden — Goals & Weather alerts stay on.'
-                : '🔔 All toast notifications enabled.',
+                : '🔔 All in-game toast banners enabled.',
               state.disableRoutineToasts ? '🎯' : '🔔',
               { category: 'system' }
             );
@@ -14549,17 +14076,6 @@
       if (dailyDot) {
         dailyDot.style.display = claimableCount > 0 ? 'inline-block' : 'none';
       }
-    }
-
-    function openDailyTabFromNotification() {
-      state.currentTab = 'daily';
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-tab') === 'daily');
-      });
-      if (sheetSnapState === 'collapsed') {
-        setBottomSheetState('default');
-      }
-      if (typeof updateSheetContent === 'function') updateSheetContent();
     }
 
     // =========================================================================
@@ -14843,12 +14359,6 @@
       }
       displayedFish = Math.max(0, Number(state.fish) || 0);
       dailyManager.checkDailyReset();
-      try {
-        const params = new URLSearchParams(window.location.search || '');
-        if (params.get('tab') === 'daily') {
-          openDailyTabFromNotification();
-        }
-      } catch (_) {}
       syncActivePenguins();
       checkAchievements();
       updateSheetContent();
@@ -14881,12 +14391,6 @@
         }
       );
 
-      if (typeof pushReminders !== 'undefined') {
-        pushReminders.loadConfig().then(() => {
-          pushReminders.checkForeground8AmReminder();
-          if (state.currentTab === 'settings') updateSheetContent();
-        }).catch(() => {});
-      }
       requestAnimationFrame(gameLoop);
     }
 
@@ -14914,9 +14418,6 @@
         }
         if (typeof dailyManager !== 'undefined' && dailyManager.checkDailyReset) {
           dailyManager.checkDailyReset();
-        }
-        if (typeof pushReminders !== 'undefined') {
-          pushReminders.checkForeground8AmReminder();
         }
         if (typeof state !== 'undefined') {
           const resumeNow = Date.now();
@@ -14975,13 +14476,13 @@
     }, { passive: true, once: true });
 
     // Register Offline Service Worker ONLY when hosted as a web PWA (never inside Android WebViewAssetLoader)
-    const isHostedWebForSw = CorePush
-      ? CorePush.isHostedWebPwa(window.location, Boolean(window.AndroidBridge))
-      : (!window.AndroidBridge &&
-          window.location.hostname !== 'appassets.androidplatform.net' &&
-          (window.location.protocol === 'https:' ||
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1'));
+    const isHostedWebForSw = (
+      !window.AndroidBridge &&
+      window.location.hostname !== 'appassets.androidplatform.net' &&
+      (window.location.protocol === 'https:' ||
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1')
+    );
 
     // Keep no-op flushPendingSwReload so claiming idle fish NEVER unexpectedly reloads the page
     // or replays the launch splash screen mid-session. Updates apply cleanly on next launch.
@@ -14991,12 +14492,6 @@
 
     if ('serviceWorker' in navigator && isHostedWebForSw) {
       let activeSwReg = null;
-
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'OPEN_DAILY_TAB') {
-          openDailyTabFromNotification();
-        }
-      });
 
       window.addEventListener('visibilitychange', () => {
         if (!document.hidden && activeSwReg && typeof activeSwReg.update === 'function') {
@@ -15009,9 +14504,6 @@
           activeSwReg = reg;
           if (reg && typeof reg.update === 'function') {
             reg.update().catch(() => {});
-          }
-          if (typeof pushReminders !== 'undefined') {
-            pushReminders.refreshSubscriptionState().catch(() => {});
           }
         }).catch((err) => {
           console.warn('Service worker registration skipped:', err);

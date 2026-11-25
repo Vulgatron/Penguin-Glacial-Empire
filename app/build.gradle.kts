@@ -145,12 +145,56 @@ dependencies {
 }
 
 // Automatically sync canonical root web assets into Android assets before building so
-// PWA and Android WebView never drift out of sync.
-val syncWebAssets by tasks.registering(Copy::class) {
+// PWA and Android WebView never drift out of sync. Uses Gradle Sync to prune deleted files
+// (such as removed push files) and guards against silently overwriting newer manual edits.
+val syncWebAssets by tasks.registering(Sync::class) {
   group = "build"
-  description = "Sync canonical root web files (HTML, modular JS, manifest, push config, icons) into Android assets"
+  description = "Sync canonical root web files (HTML, CSS, modular JS, manifest, icons) into Android assets"
+  val canonicalRootDir = rootDir
+  val targetAssetsDir = file("${projectDir}/src/main/assets")
+  val forceSync = providers.gradleProperty("forceSyncWebAssets").orNull == "true"
+
+  doFirst {
+    if (!forceSync && targetAssetsDir.exists()) {
+      val trackedPairs = mutableListOf<Pair<File, File>>()
+      listOf("index.html", "manifest.webmanifest").forEach { name ->
+        trackedPairs.add(File(canonicalRootDir, name) to File(targetAssetsDir, name))
+      }
+      listOf("styles" to "css", "js" to "js").forEach { (dirName, ext) ->
+        val srcSub = File(canonicalRootDir, dirName)
+        if (srcSub.isDirectory) {
+          srcSub.walkTopDown()
+            .filter { it.isFile && it.extension.equals(ext, ignoreCase = true) }
+            .forEach { srcFile ->
+              val rel = srcFile.relativeTo(srcSub).path
+              trackedPairs.add(srcFile to File(targetAssetsDir, "$dirName/$rel"))
+            }
+        }
+      }
+      val newerConflicts = trackedPairs.filter { (srcFile, dstFile) ->
+        srcFile.exists() &&
+          dstFile.exists() &&
+          dstFile.lastModified() > srcFile.lastModified() + 2000L &&
+          !srcFile.readBytes().contentEquals(dstFile.readBytes())
+      }
+      if (newerConflicts.isNotEmpty()) {
+        val list = newerConflicts.joinToString("\n") { (_, dst) ->
+          "  - ${dst.relativeTo(canonicalRootDir).path}"
+        }
+        throw GradleException(
+          "Refusing to silently overwrite newer edits in app/src/main/assets:\n$list\n" +
+            "Edit the canonical root web files instead, or pass -PforceSyncWebAssets=true to overwrite."
+        )
+      }
+    }
+  }
+
   from(rootDir) {
-    include("index.html", "manifest.webmanifest", "push-config.json")
+    include("index.html", "manifest.webmanifest")
+  }
+  from(file("${rootDir}/styles")) {
+    into("styles")
+    include("**/*.css")
   }
   from(file("${rootDir}/js")) {
     into("js")
@@ -160,7 +204,7 @@ val syncWebAssets by tasks.registering(Copy::class) {
     into("icons")
     include("**/*")
   }
-  into(file("${projectDir}/src/main/assets"))
+  into(targetAssetsDir)
 }
 
 tasks.named("preBuild") {

@@ -95,11 +95,15 @@
       version = 2;
     }
 
-    copy.saveVersion = CURRENT_SAVE_VERSION;
+    const futureVersionDetected = originalVersion > CURRENT_SAVE_VERSION;
+    if (!futureVersionDetected) {
+      copy.saveVersion = CURRENT_SAVE_VERSION;
+    }
     return {
       data: copy,
       migratedFrom: originalVersion,
-      migrated: originalVersion < CURRENT_SAVE_VERSION
+      migrated: originalVersion < CURRENT_SAVE_VERSION,
+      futureVersionDetected
     };
   }
 
@@ -331,14 +335,11 @@
         lastSeenFeatureReleaseId: typeof src.lastSeenFeatureReleaseId === 'string'
           ? src.lastSeenFeatureReleaseId.slice(0, 80)
           : '',
-        disableRoutineToasts: Boolean(src.disableRoutineToasts),
-        dailyReminderEnabled: Boolean(src.dailyReminderEnabled),
-        lastDailyReminderDateKey: typeof src.lastDailyReminderDateKey === 'string'
-          ? src.lastDailyReminderDateKey.slice(0, 32)
-          : ''
+        disableRoutineToasts: Boolean(src.disableRoutineToasts)
       },
       migratedFrom: migrated.migratedFrom,
       migrated: migrated.migrated,
+      futureVersionDetected: Boolean(migrated.futureVersionDetected),
       repairs,
       futureClockDetected
     };
@@ -359,62 +360,66 @@
   }
 
   /**
-   * Parses and validates primary save with automatic fallback to known-good backup on corruption.
+   * Parses and validates primary save with ordered fallback across primary, backup, and any
+   * additional backup slots (e.g. native storage -> web primary -> web backup) on corruption.
    */
-  function parseAndRecoverSave({ primaryRaw = null, backupRaw = null, schemaDefs = {}, nowMs = Date.now() }) {
-    const hasPrimary = typeof primaryRaw === 'string' && primaryRaw.trim().length > 0;
-    const hasBackup = typeof backupRaw === 'string' && backupRaw.trim().length > 0;
+  function parseAndRecoverSave({
+    primaryRaw = null,
+    backupRaw = null,
+    extraBackups = [],
+    schemaDefs = {},
+    nowMs = Date.now()
+  }) {
+    const orderedSlots = [
+      { source: 'primary', raw: primaryRaw },
+      { source: 'backup', raw: backupRaw }
+    ];
+    if (Array.isArray(extraBackups)) {
+      extraBackups.forEach((raw, idx) => {
+        orderedSlots.push({ source: `fallback_${idx + 1}`, raw });
+      });
+    }
 
-    if (hasPrimary) {
-      const parsed = tryParseSaveObject(primaryRaw);
-      if (parsed.ok) {
-        const sanitized = sanitizeSaveData(parsed.value, schemaDefs, nowMs);
-        return {
-          status: 'ok',
-          source: 'primary',
-          recoveredFromBackup: false,
-          corruptedPayload: null,
-          ...sanitized
-        };
+    let sawAnyNonEmpty = false;
+    let firstCorruptedPayload = null;
+
+    for (const slot of orderedSlots) {
+      if (typeof slot.raw !== 'string' || slot.raw.trim().length === 0) {
+        continue;
       }
-      // Primary was corrupted — try backup before failing
-      if (hasBackup) {
-        const parsedBackup = tryParseSaveObject(backupRaw);
-        if (parsedBackup.ok) {
-          const sanitized = sanitizeSaveData(parsedBackup.value, schemaDefs, nowMs);
+      sawAnyNonEmpty = true;
+      const parsed = tryParseSaveObject(slot.raw);
+      if (parsed.ok) {
+        try {
+          const sanitized = sanitizeSaveData(parsed.value, schemaDefs, nowMs);
+          const isPrimary = slot.source === 'primary';
           return {
-            status: 'recovered',
-            source: 'backup',
-            recoveredFromBackup: true,
-            corruptedPayload: primaryRaw,
+            status: isPrimary ? 'ok' : 'recovered',
+            source: slot.source,
+            recoveredFromBackup: !isPrimary,
+            corruptedPayload: firstCorruptedPayload,
             ...sanitized
           };
+        } catch (_) {
+          if (!firstCorruptedPayload) firstCorruptedPayload = slot.raw;
         }
+      } else if (!firstCorruptedPayload) {
+        firstCorruptedPayload = slot.raw;
       }
+    }
+
+    if (sawAnyNonEmpty) {
       return {
         status: 'corrupted_unrecoverable',
         source: 'none',
         recoveredFromBackup: false,
-        corruptedPayload: primaryRaw,
+        corruptedPayload: firstCorruptedPayload,
         data: null,
         migratedFrom: null,
         migrated: false,
+        futureVersionDetected: false,
         repairs: ['corrupted_save']
       };
-    }
-
-    if (hasBackup) {
-      const parsedBackup = tryParseSaveObject(backupRaw);
-      if (parsedBackup.ok) {
-        const sanitized = sanitizeSaveData(parsedBackup.value, schemaDefs, nowMs);
-        return {
-          status: 'recovered',
-          source: 'backup',
-          recoveredFromBackup: true,
-          corruptedPayload: null,
-          ...sanitized
-        };
-      }
     }
 
     return {
@@ -425,6 +430,7 @@
       data: null,
       migratedFrom: null,
       migrated: false,
+      futureVersionDetected: false,
       repairs: []
     };
   }

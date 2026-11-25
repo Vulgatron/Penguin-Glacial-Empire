@@ -193,6 +193,7 @@ class SaveStorageManager(
   fun loadSaveDetailed(): LoadResult {
     // Ensure any pending queued writes finish before reading
     flush(1000L)
+    cleanupStaleTempFiles()
 
     var sawCorruptedPrimary = false
 
@@ -261,6 +262,7 @@ class SaveStorageManager(
       runCatching { if (backupFile.exists()) backupFile.delete() }
       runCatching { if (lastGoodFile.exists()) lastGoodFile.delete() }
       runCatching { if (quarantineFile.exists()) quarantineFile.delete() }
+      cleanupStaleTempFiles()
       prefCleared
     }
     return if (isShutdown.get()) {
@@ -307,6 +309,17 @@ class SaveStorageManager(
     if (!file.exists() || !file.isFile) return null
     if (file.length() <= 0 || file.length() > WebViewSecurityPolicy.MAX_SAVE_PAYLOAD_BYTES * 2L) return null
     return runCatching { file.readText(StandardCharsets.UTF_8) }.getOrNull()
+  }
+
+  internal fun cleanupStaleTempFiles() {
+    listOf(backupFile, lastGoodFile, quarantineFile).forEach { target ->
+      runCatching {
+        val staleTmp = File(target.parentFile ?: appContext.filesDir, "${target.name}.tmp")
+        if (staleTmp.exists() && staleTmp.isFile) {
+          staleTmp.delete()
+        }
+      }
+    }
   }
 
   private fun writeFileAtomically(target: File, content: String) {

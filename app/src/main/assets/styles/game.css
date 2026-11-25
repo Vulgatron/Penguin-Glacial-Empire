@@ -21,7 +21,9 @@
 .settings-danger-btn,
 .prestige-btn,
 .factory-reset-cancel-btn,
-.factory-reset-confirm-btn {
+.factory-reset-confirm-btn,
+.rebirth-confirm-cancel-btn,
+.rebirth-confirm-execute-btn {
   transition: transform 0.12s ease, opacity 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
@@ -54,7 +56,9 @@
 .settings-test-btn,
 .settings-danger-btn,
 .factory-reset-cancel-btn,
-.factory-reset-confirm-btn {
+.factory-reset-confirm-btn,
+.rebirth-confirm-cancel-btn,
+.rebirth-confirm-execute-btn {
   min-height: 44px;
 }
 
@@ -137,7 +141,8 @@ input:focus-visible {
 
   .offline-card,
   .whats-new-card,
-  .factory-reset-card {
+  .factory-reset-card,
+  .rebirth-confirm-card {
     width: calc(100vw - 24px);
     padding: 18px 14px;
   }
@@ -148,6 +153,7 @@ input:focus-visible {
   .offline-card,
   .whats-new-card,
   .factory-reset-card,
+  .rebirth-confirm-card,
   .aurora-modal-card {
     max-height: calc(100dvh - 24px);
     overflow-y: auto;
@@ -191,14 +197,16 @@ input:focus-visible {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.glacier-section-header {
+.glacier-section-header,
+.glacier-card-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
 }
 
-.glacier-section-title {
+.glacier-section-title,
+.glacier-card-title {
   font-size: 14px;
   font-weight: 800;
   color: #f8fafc;
@@ -214,7 +222,9 @@ input:focus-visible {
   line-height: 1.35;
 }
 
-.glacier-pill-badge {
+.glacier-pill-badge,
+.glacier-cosmetic-pill,
+.glacier-holes-pill {
   font-size: 10px;
   font-weight: 800;
   color: #bae6fd;
@@ -224,6 +234,12 @@ input:focus-visible {
   border-radius: 999px;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.glacier-cosmetic-pill {
+  color: #e9d5ff;
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(192, 132, 252, 0.45);
 }
 
 .glacier-reset-note {
@@ -247,7 +263,8 @@ input:focus-visible {
   gap: 12px;
 }
 
-.castle-preview-svg-wrap {
+.castle-preview-svg-wrap,
+.castle-preview-svg-box {
   width: 118px;
   height: 82px;
   flex-shrink: 0;
@@ -260,7 +277,8 @@ input:focus-visible {
   justify-content: center;
 }
 
-.castle-preview-svg-wrap svg {
+.castle-preview-svg-wrap svg,
+.castle-preview-svg-box svg {
   width: 100%;
   height: 100%;
   display: block;
@@ -284,6 +302,13 @@ input:focus-visible {
   font-size: 11px;
   color: #cbd5e1;
   line-height: 1.35;
+}
+
+.castle-tier-note {
+  font-size: 10px;
+  color: #93c5fd;
+  line-height: 1.35;
+  margin-top: 2px;
 }
 
 .castle-cosmetic-tag {
@@ -315,6 +340,53 @@ input:focus-visible {
   background: rgba(16, 44, 78, 0.78);
 }
 
+.castle-upgrade-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.castle-upgrade-next {
+  font-size: 12px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.castle-upgrade-sub {
+  font-size: 10.5px;
+  color: var(--text-sub);
+  line-height: 1.35;
+}
+
+.castle-maxed-banner {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(56, 189, 248, 0.16));
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #fde68a;
+  text-align: center;
+}
+
+.castle-themes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #e2e8f0;
+  padding-top: 2px;
+}
+
+.castle-themes-sub {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
 .castle-theme-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -339,17 +411,19 @@ input:focus-visible {
   transform: scale(0.96);
 }
 
-.castle-theme-swatch.is-equipped {
+.castle-theme-swatch.is-equipped,
+.castle-theme-swatch.is-active {
   border-color: #34d399;
   background: rgba(16, 185, 129, 0.16);
   box-shadow: 0 0 12px rgba(52, 211, 153, 0.24);
 }
 
-.castle-theme-swatch.is-unlocked:not(.is-equipped) {
+.castle-theme-swatch.is-unlocked:not(.is-equipped):not(.is-active) {
   border-color: rgba(125, 211, 252, 0.45);
 }
 
-.castle-theme-swatch.is-locked.can-afford {
+.castle-theme-swatch.is-locked.can-afford,
+.castle-theme-swatch.can-afford:not(.is-unlocked) {
   border-color: rgba(251, 191, 36, 0.55);
   background: rgba(45, 36, 18, 0.55);
 }
@@ -390,11 +464,28 @@ input:focus-visible {
   color: #94a3b8;
 }
 
-.castle-theme-swatch.is-equipped .castle-swatch-status {
+.castle-theme-swatch.is-equipped .castle-swatch-status,
+.castle-theme-swatch.is-active .castle-swatch-status {
   color: #6ee7b7;
 }
 
-.castle-theme-swatch.is-locked.can-afford .castle-swatch-status {
+.castle-theme-swatch.can-afford .castle-swatch-status {
+  color: #fde68a;
+}
+
+.hole-capacity-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: #e2e8f0;
+}
+
+.hole-reset-hint {
+  font-size: 10px;
+  font-weight: 700;
   color: #fde68a;
 }
 
@@ -430,31 +521,79 @@ input:focus-visible {
   padding: 9px 11px;
 }
 
-.hole-item-row.is-active {
+.hole-item-row.is-active,
+.hole-item-row.is-open {
   border-color: rgba(52, 211, 153, 0.42);
   background: rgba(14, 42, 54, 0.62);
 }
 
-.hole-item-row.is-next.can-afford {
+.hole-item-row.is-next.can-afford,
+.hole-item-row.can-afford {
   border-color: rgba(56, 189, 248, 0.6);
   background: rgba(18, 48, 84, 0.8);
 }
 
-.hole-status-chip {
-  font-size: 10px;
-  font-weight: 800;
-  padding: 4px 9px;
-  border-radius: 999px;
-  white-space: nowrap;
+.hole-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.hole-status-chip.active {
+.hole-item-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.hole-item-desc {
+  font-size: 10.5px;
+  color: var(--text-sub);
+  line-height: 1.32;
+}
+
+.hole-tag {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.hole-tag.starter {
+  color: #bae6fd;
+  background: rgba(56, 189, 248, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.hole-tag.open {
   color: #6ee7b7;
   background: rgba(16, 185, 129, 0.2);
   border: 1px solid rgba(52, 211, 153, 0.45);
 }
 
-.hole-status-chip.locked {
+.hole-status-chip,
+.hole-status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+}
+
+.hole-status-chip.locked,
+.hole-status-badge.locked {
   color: #94a3b8;
   background: rgba(100, 116, 139, 0.18);
   border: 1px solid rgba(148, 163, 184, 0.28);
@@ -465,7 +604,8 @@ input:focus-visible {
     flex-direction: column;
     align-items: stretch;
   }
-  .castle-preview-svg-wrap {
+  .castle-preview-svg-wrap,
+  .castle-preview-svg-box {
     width: 100%;
     height: 92px;
   }

@@ -264,6 +264,12 @@ class MainActivity : ComponentActivity() {
           else factoryModal.style.display = 'none';
           return true;
         }
+        const rebirthModal = document.getElementById('rebirth-confirm-modal');
+        if (rebirthModal && rebirthModal.style.display === 'flex') {
+          if (typeof closeRebirthConfirmModal === 'function') closeRebirthConfirmModal();
+          else rebirthModal.style.display = 'none';
+          return true;
+        }
         const whatsNewModal = document.getElementById('whats-new-modal');
         if (whatsNewModal && whatsNewModal.style.display === 'flex') {
           const dismissBtn = document.getElementById('whats-new-dismiss-btn');

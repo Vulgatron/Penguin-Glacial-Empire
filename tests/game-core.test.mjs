@@ -729,13 +729,32 @@ test('Integration invariants: viewport zoom policy, modular CSS, offline PWA cac
   assert.match(html, /<script\s+src="\.\/js\/launch-splash\.js"/);
   assert.doesNotMatch(html, /<style>/i, 'Inline <style> block should be fully extracted into styles/*.css');
 
-  // Version 2.5 consistency across HTML, Android Gradle, and README
+  // Version 2.5.1 consistency across HTML, Android Gradle, and README
   const gradleKts = fs.readFileSync(path.join(ROOT, 'app/build.gradle.kts'), 'utf8');
   const readmeMd = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
-  assert.match(html, /id="splash-version-label"[^>]*>v2\.5</);
-  assert.match(html, /version:\s*'2\.5'/);
-  assert.match(gradleKts, /versionName\s*=\s*"2\.5"/);
-  assert.match(readmeMd, /Penguin Glacial Empire \(v2\.5\)/);
+  assert.match(html, /id="splash-version-label"[^>]*>v2\.5\.1</);
+  assert.match(html, /version:\s*'2\.5\.1'/);
+  assert.match(gradleKts, /versionName\s*=\s*"2\.5\.1"/);
+  assert.match(gradleKts, /versionCode\s*=\s*15/);
+  assert.match(readmeMd, /Penguin Glacial Empire \(v2\.5\.1\)/);
+
+  // Themed Glacial Rebirth modal replaces native browser confirm()
+  assert.match(html, /id="rebirth-confirm-modal"/);
+  assert.match(html, /function openRebirthConfirmModal\(\)/);
+  assert.doesNotMatch(html, /if\s*\(\s*confirm\s*\(\s*promptMsg\s*\)\s*\)/);
+
+  // Android WebView Prestige cutscene artifact-free invariants
+  const cutsceneJs = fs.readFileSync(path.join(ROOT, 'js/prestige-cutscene.js'), 'utf8');
+  const splashCutsceneCss = fs.readFileSync(path.join(ROOT, 'styles/splash-cutscene.css'), 'utf8');
+  const prestigeCssStart = splashCutsceneCss.indexOf('#prestige-cutscene-overlay');
+  const prestigeCssBlock = splashCutsceneCss.slice(prestigeCssStart);
+  assert.doesNotMatch(cutsceneJs, /feGaussianBlur/, 'SVG feGaussianBlur causes Android WebView box-clipping artifacts');
+  assert.doesNotMatch(cutsceneJs, /heroEmperor\.style\.filter/, 'CSS drop-shadow on animated SVG <g> causes Android ghosting artifacts');
+  assert.doesNotMatch(cutsceneJs, /camEl\.style\.filter/, 'Per-frame CSS filter on transformed camera causes Android tile tearing');
+  assert.doesNotMatch(cutsceneJs, /overlay\.style\.clipPath/, 'Animated clip-path exit wipe causes Android stencil artifacts');
+  assert.doesNotMatch(prestigeCssBlock, /backdrop-filter/, 'backdrop-filter inside 60fps cutscene causes Android compositing artifacts');
+  assert.doesNotMatch(prestigeCssBlock, /overflow:\s*visible/, 'overflow: visible on cutscene SVGs causes edge smear on Android');
+  assert.doesNotMatch(prestigeCssBlock, /background-clip:\s*text/, 'transparent background-clip text + drop-shadow glitches on Android WebView');
 
   // Non-blocking Google Fonts to prevent launch blank screen on slow/offline networks
   assert.match(html, /fonts\.googleapis\.com[^>]*media="print"/);
@@ -822,6 +841,7 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   const makeEl = (id = '') => ({
     id,
     style: {},
+    children: [],
     classList: {
       _s: new Set(),
       add(c) { this._s.add(c); },
@@ -846,7 +866,7 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
     removeEventListener: noop,
     querySelector: () => makeEl(),
     querySelectorAll: () => [],
-    appendChild: noop,
+    appendChild(child) { this.children.push(child); return child; },
     removeChild: noop,
     focus: noop,
     click: noop,
@@ -941,9 +961,9 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   const inlineScript = html.match(/<script>([\s\S]*?)<\/script>/)[1];
   vm.runInContext(inlineScript, ctx, { filename: 'index.html' });
 
-  // Splash started and updates version to v2.5
+  // Splash started and updates version to v2.5.1
   assert.equal(rafs.length >= 2, true, 'Expected splash and gameLoop rAF callbacks');
-  assert.equal(getEl('splash-version-label').textContent, 'v2.5');
+  assert.equal(getEl('splash-version-label').textContent, 'v2.5.1');
 
   // Complete splash screen
   const splashRaf = rafs[0];
@@ -960,4 +980,34 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   sandbox.paradeController.countdownSec = 0.01;
   gameRaf(1040);
   assert.equal(sandbox.paradeController.isActive(), true);
+
+  // Verify Glacier tab renders cleanly with all 6 themes & 6 fishing holes (zero crash, zero 'undefined')
+  const sheetContent = getEl('sheet-content-container');
+  sheetContent.children = [];
+  vm.runInContext(`
+    state.currentTab = 'glacier';
+    updateSheetContent();
+  `, ctx);
+  assert.equal(sheetContent.children.length, 1, 'Expected glacier-tab-container appended to sheet-content-container');
+  const glacierWrap = sheetContent.children[0];
+  assert.equal(glacierWrap.children.length, 2, 'Expected Ice Castle card and Fishing Holes card');
+  const castleHtml = glacierWrap.children[0].innerHTML;
+  const holesHtml = glacierWrap.children[1].innerHTML;
+  assert.match(castleHtml, /Igloo to Ice Castle/);
+  assert.match(castleHtml, /Obsidian Frost/);
+  assert.doesNotMatch(castleHtml, /undefined/);
+  assert.match(holesHtml, /Ice Fishing Holes/);
+  assert.match(holesHtml, /Deep Abyssal Rift/);
+  assert.match(holesHtml, /\+10 diving slots/);
+  assert.doesNotMatch(holesHtml, /undefined/);
+
+  // Verify themed Glacial Rebirth modal opens cleanly and dismisses via Android Back button
+  vm.runInContext(`
+    state.runFish = 1_500_000;
+    openRebirthConfirmModal();
+  `, ctx);
+  assert.equal(getEl('rebirth-confirm-modal').style.display, 'flex');
+  assert.match(getEl('rebirth-confirm-essence-val').textContent, /^\+\d+ 💎$/);
+  assert.equal(sandbox.handleAndroidBackButton(), true);
+  assert.equal(getEl('rebirth-confirm-modal').style.display, 'none');
 });

@@ -1,4 +1,4 @@
-# Penguin Glacial Empire (v2.5)
+# Penguin Glacial Empire (v2.5.1)
 
 An incremental/idle penguin colony game built with HTML5 Canvas, CSS, modular JavaScript, Progressive Web App (PWA) offline support, and a hardened Android WebView wrapper in Kotlin.
 

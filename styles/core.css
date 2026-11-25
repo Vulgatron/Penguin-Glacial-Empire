@@ -1898,6 +1898,125 @@ canvas {
   cursor: not-allowed;
 }
 
+/* GLACIAL REBIRTH (PRESTIGE) CONFIRMATION MODAL */
+#rebirth-confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 78;
+  background: rgba(5, 8, 18, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: max(20px, env(safe-area-inset-top, 20px)) 20px max(20px, env(safe-area-inset-bottom, 20px));
+}
+
+.rebirth-confirm-card {
+  width: 100%;
+  max-width: 380px;
+  background: linear-gradient(160deg, rgba(24, 14, 48, 0.96), rgba(10, 22, 46, 0.97));
+  border: 2px solid rgba(168, 85, 247, 0.68);
+  border-radius: 24px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+  box-shadow: 0 0 36px rgba(168, 85, 247, 0.35), 0 0 18px rgba(56, 189, 248, 0.22);
+}
+
+.rebirth-confirm-reward-box {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(56, 189, 248, 0.15));
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rebirth-confirm-reward-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.rebirth-confirm-reward-val {
+  font-size: 20px;
+  font-weight: 900;
+  color: #e9d5ff;
+}
+
+.rebirth-confirm-reward-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7dd3fc;
+}
+
+.rebirth-confirm-summary {
+  background: rgba(2, 8, 23, 0.56);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  padding: 11px 12px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11.5px;
+  line-height: 1.42;
+  color: #cbd5e1;
+}
+
+.rebirth-confirm-preserved-pill {
+  background: rgba(251, 191, 36, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.38);
+  border-radius: 10px;
+  padding: 7px 10px;
+  color: #fde68a;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.38;
+}
+
+.rebirth-confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.rebirth-confirm-cancel-btn {
+  flex: 1;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #e2e8f0;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rebirth-confirm-execute-btn {
+  flex: 1.25;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  border: 1px solid rgba(216, 180, 254, 0.65);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.42);
+}
+
+.rebirth-confirm-cancel-btn:active,
+.rebirth-confirm-execute-btn:active {
+  transform: scale(0.96);
+}
+
 /* OFFLINE MODAL */
 #offline-modal {
   position: fixed;

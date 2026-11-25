@@ -323,16 +323,18 @@
                 <stop offset="0%" stop-color="#bae6fd" stop-opacity="0.34" />
                 <stop offset="100%" stop-color="#030c1c" stop-opacity="0.98" />
               </linearGradient>
-              <linearGradient id="${prefix}Aurora1" x1="0" y1="0" x2="1" y2="0">
+              <linearGradient id="${prefix}Aurora1" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="#10b981" stop-opacity="0" />
-                <stop offset="28%" stop-color="#34d399" stop-opacity="0.72" />
-                <stop offset="64%" stop-color="#38bdf8" stop-opacity="0.68" />
+                <stop offset="28%" stop-color="#34d399" stop-opacity="0.46" />
+                <stop offset="56%" stop-color="#38bdf8" stop-opacity="0.52" />
+                <stop offset="82%" stop-color="#a855f7" stop-opacity="0.22" />
                 <stop offset="100%" stop-color="#a855f7" stop-opacity="0" />
               </linearGradient>
-              <linearGradient id="${prefix}Aurora2" x1="0" y1="0" x2="1" y2="0">
+              <linearGradient id="${prefix}Aurora2" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="#a855f7" stop-opacity="0" />
-                <stop offset="35%" stop-color="#8b5cf6" stop-opacity="0.65" />
-                <stop offset="70%" stop-color="#2dd4bf" stop-opacity="0.7" />
+                <stop offset="30%" stop-color="#8b5cf6" stop-opacity="0.44" />
+                <stop offset="58%" stop-color="#2dd4bf" stop-opacity="0.48" />
+                <stop offset="84%" stop-color="#38bdf8" stop-opacity="0.2" />
                 <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
               </linearGradient>
               <linearGradient id="${prefix}AscBeam" x1="0" y1="0" x2="0" y2="1">
@@ -347,9 +349,6 @@
                 <stop offset="72%" stop-color="#38bdf8" stop-opacity="0.45" />
                 <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
               </radialGradient>
-              <filter id="${prefix}SoftBlur" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="12" />
-              </filter>
             </defs>
             <rect x="0" y="0" width="1000" height="1000" fill="url(#${prefix}Sky)" />
             <g id="${prefix}StarsLayer"></g>
@@ -366,13 +365,16 @@
                 <stop offset="42%" stop-color="#38bdf8" stop-opacity="0.48" />
                 <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
               </radialGradient>
-              <filter id="${prefix}HeroGlow" x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation="6" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
+              <radialGradient id="${prefix}HeroCyanGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#e0f2fe" stop-opacity="0.85" />
+                <stop offset="45%" stop-color="#38bdf8" stop-opacity="0.52" />
+                <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
+              </radialGradient>
+              <radialGradient id="${prefix}HeroGoldGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#fef9c3" stop-opacity="0.92" />
+                <stop offset="46%" stop-color="#fde047" stop-opacity="0.55" />
+                <stop offset="100%" stop-color="#f59e0b" stop-opacity="0" />
+              </radialGradient>
             </defs>
 
             <rect id="${prefix}AscBeamRect" x="-40" y="-420" width="80" height="840" fill="url(#${prefix}AscBeam)" opacity="0" />
@@ -390,7 +392,8 @@
               <g transform="translate(-44, 24) scale(0.76)">${PrestigeSpriteFactory.adelieGroup()}</g>
             </g>
 
-            <circle id="${prefix}HeroAuraCircle" cx="0" cy="-16" r="105" fill="url(#${prefix}HeroAura)" opacity="0" />
+            <circle id="${prefix}HeroAuraCircle" cx="0" cy="0" r="118" fill="url(#${prefix}HeroAura)" opacity="0" />
+            <circle id="${prefix}HeroCoreGlow" cx="0" cy="0" r="88" fill="url(#${prefix}HeroCyanGlow)" opacity="0" />
 
             <g id="${prefix}EnergyRings" transform="translate(0, -16)">
               <circle id="${prefix}Ring1" cx="0" cy="0" r="175" fill="none" stroke="#7dd3fc" stroke-width="2.6" stroke-dasharray="22 14" opacity="0" />
@@ -449,6 +452,7 @@
       const eclipseRays = overlay.querySelector(`#${prefix}EclipseRays`);
       const structuresGroup = overlay.querySelector(`#${prefix}StructuresGroup`);
       const heroAuraCircle = overlay.querySelector(`#${prefix}HeroAuraCircle`);
+      const heroCoreGlow = overlay.querySelector(`#${prefix}HeroCoreGlow`);
       const ring1 = overlay.querySelector(`#${prefix}Ring1`);
       const ring2 = overlay.querySelector(`#${prefix}Ring2`);
       const ring3 = overlay.querySelector(`#${prefix}Ring3`);
@@ -512,8 +516,7 @@
           const pathEl = makeSvgEl('path', {
             d: 'M-50,240 Q250,150 500,220 T1050,190 L1050,420 Q750,350 500,400 T-50,380 Z',
             fill: `url(#${prefix}Aurora${(r % 2) + 1})`,
-            filter: `url(#${prefix}SoftBlur)`,
-            opacity: (0.48 + r * 0.14).toFixed(2)
+            opacity: (0.44 + r * 0.14).toFixed(2)
           });
           atmoLayer.appendChild(pathEl);
           auroraRibbons.push({ el: pathEl, baseY: 130 + r * 95, amp: 36 + r * 18, phase: r * 2.1, speed: 0.9 + r * 0.32 });
@@ -739,19 +742,15 @@
           return;
         }
 
-        // 1. Overlay Entry (0.0-0.35s) & Exit Frost-Wipe (9.0-10.0s)
+        // 1. Overlay Entry (0.0-0.35s) & Smooth Luminous Fade-Out (9.0-10.0s, WebView-safe)
         if (t < 0.35) {
           overlay.style.opacity = String(Math.min(1, t / 0.35));
-          overlay.style.clipPath = 'none';
         } else if (t >= 9.0) {
           const exitU = Math.min(1, (t - 9.0) / 1.0);
           const easedExit = easeInOut(exitU);
-          overlay.style.opacity = String(1 - easedExit);
-          const radiusPct = Math.max(0, 120 * (1 - easedExit * 0.92));
-          overlay.style.clipPath = `circle(${radiusPct.toFixed(1)}% at 50% 50%)`;
+          overlay.style.opacity = String(Math.max(0, 1 - easedExit));
         } else {
           overlay.style.opacity = '1';
-          overlay.style.clipPath = 'none';
         }
 
         // 2. Optional Skip Button reveal after 1.5s
@@ -794,11 +793,6 @@
         const sx = (Math.random() - 0.5) * 2 * shakeAmp * cfg.shakeScale * atmoShakeBoost;
         const sy = (Math.random() - 0.5) * 2 * shakeAmp * cfg.shakeScale * atmoShakeBoost;
         camEl.style.transform = `translate3d(${sx.toFixed(2)}px, ${sy.toFixed(2)}px, 0)`;
-
-        const coolFilter = cfg.atmosphere === 'blizzard'
-          ? `hue-rotate(${cfg.hueShift - 8}deg) saturate(1.18) contrast(1.06)`
-          : `hue-rotate(${cfg.hueShift}deg) saturate(1.1)`;
-        camEl.style.filter = coolFilter;
 
         const vigOp = t < 2.0 ? (0.45 + (t / 2.0) * 0.45) : t < 5.5 ? 0.9 : t < 6.5 ? 0.45 : 0.62;
         vignetteEl.style.opacity = vigOp.toFixed(3);
@@ -908,14 +902,23 @@
 
         const breathe = t >= 6.5 ? (1 + Math.sin((t - 6.5) * 3.4) * 0.04) : 1;
         heroEmperor.setAttribute('transform', `translate(0, ${heroY.toFixed(1)}) scale(${(heroScale * breathe).toFixed(3)})`);
-        const glowPx = t < 2.0 ? 6 : t < 5.5 ? (6 + escU * 22) : t < 6.5 ? 32 : (18 + Math.sin(t * 4.2) * 7);
-        const glowColor = isAscended ? 'rgba(254, 240, 138, 0.92)' : 'rgba(56, 189, 248, 0.85)';
-        heroEmperor.style.filter = `drop-shadow(0 0 ${glowPx.toFixed(1)}px ${glowColor})`;
 
-        const auraOp = t < 2.0 ? (t / 2.0) * 0.25 : t < 5.5 ? (0.25 + escU * 0.55) : (0.68 + Math.sin(t * 4.5) * 0.22);
-        const auraScale = t < 5.5 ? (0.75 + escU * 0.55) : (1.28 + Math.sin(t * 3.8) * 0.14);
+        // Pure vector radial glow behind Emperor Penguin (artifact-free on Android WebView)
+        const auraOp = t < 2.0 ? (t / 2.0) * 0.30 : t < 5.5 ? (0.30 + escU * 0.58) : (0.72 + Math.sin(t * 4.5) * 0.20);
+        const auraScale = t < 5.5 ? (0.78 + escU * 0.58) : (1.30 + Math.sin(t * 3.8) * 0.14);
         heroAuraCircle.setAttribute('opacity', auraOp.toFixed(3));
         heroAuraCircle.setAttribute('transform', `translate(0, ${(heroY - 10).toFixed(1)}) scale(${auraScale.toFixed(2)})`);
+
+        if (heroCoreGlow) {
+          const coreGlowUrl = isAscended ? `url(#${prefix}HeroGoldGlow)` : `url(#${prefix}HeroCyanGlow)`;
+          if (heroCoreGlow.getAttribute('fill') !== coreGlowUrl) {
+            heroCoreGlow.setAttribute('fill', coreGlowUrl);
+          }
+          const coreScale = t < 2.0 ? 0.72 : t < 5.5 ? (0.72 + escU * 0.62) : t < 6.5 ? 1.52 : (1.18 + Math.sin(t * 4.2) * 0.14);
+          const coreOp = t < 2.0 ? (0.28 + (t / 2.0) * 0.22) : t < 5.5 ? (0.50 + escU * 0.36) : (0.76 + Math.sin(t * 4.2) * 0.16);
+          heroCoreGlow.setAttribute('opacity', coreOp.toFixed(3));
+          heroCoreGlow.setAttribute('transform', `translate(0, ${(heroY - 8).toFixed(1)}) scale(${coreScale.toFixed(2)})`);
+        }
 
         // 8. Tightening Concentric Energy Rings
         const ringTighten = t < 5.5 ? (1.22 - Math.min(1, t / 5.5) * 0.72) : (0.65 + (t - 5.5) * 0.22);

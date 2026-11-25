@@ -277,7 +277,7 @@
 
     <!-- Safe-Area Version Footer -->
     <footer class="splash-footer">
-      <span id="splash-version-label" class="splash-version-pill">v2.5</span>
+      <span id="splash-version-label" class="splash-version-pill">v2.5.1</span>
     </footer>
   </div>
 
@@ -446,6 +446,31 @@
         <button id="factory-reset-cancel-btn" type="button" class="factory-reset-cancel-btn">Cancel</button>
         <button id="factory-reset-next-btn" type="button" class="factory-reset-confirm-btn">Continue</button>
         <button id="factory-reset-execute-btn" type="button" class="factory-reset-confirm-btn" style="display: none;" disabled>Erase Everything</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Glacial Rebirth (Prestige) Themed Confirmation Modal -->
+  <div id="rebirth-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="rebirth-confirm-title">
+    <div class="rebirth-confirm-card">
+      <div style="font-size: 38px; line-height: 1;" aria-hidden="true">💎</div>
+      <div id="rebirth-confirm-title" style="font-size: 19px; font-weight: 900; color: #f5f3ff;">Perform Glacial Rebirth?</div>
+      <div class="rebirth-confirm-reward-box">
+        <div class="rebirth-confirm-reward-label">Frost Essence Claimed</div>
+        <div id="rebirth-confirm-essence-val" class="rebirth-confirm-reward-val">+0 💎</div>
+        <div id="rebirth-confirm-boost-val" class="rebirth-confirm-reward-sub">+0% Permanent Fish/min Boost</div>
+      </div>
+      <div class="rebirth-confirm-summary">
+        <div>
+          <strong style="color: #f8fafc;">Resets this run:</strong> Fish, colony penguins, Glacier Tech, Ice Castle upgrades &amp; palettes, extra fishing holes, and Common/Rare/Epic perks.
+        </div>
+        <div id="rebirth-confirm-preserved-note" class="rebirth-confirm-preserved-pill">
+          🛡️ Legendary &amp; Mythic perks stay permanently active across every rebirth.
+        </div>
+      </div>
+      <div class="rebirth-confirm-actions">
+        <button id="rebirth-confirm-cancel-btn" type="button" class="rebirth-confirm-cancel-btn">Cancel</button>
+        <button id="rebirth-confirm-execute-btn" type="button" class="rebirth-confirm-execute-btn">Confirm Rebirth</button>
       </div>
     </div>
   </div>
@@ -688,35 +713,30 @@
     // Ordered newest-first; contains only the current update notice so launch alerts stay focused
     const APP_FEATURE_RELEASES = [
       {
-        id: '2026-11-update-v25',
-        version: '2.5',
-        title: "What's New in Update 2.5",
-        subtitle: '15-Minute Penguin Parades, Ice Castle cosmetic upgrades, extra fishing holes & festive winter Rebirth audio!',
+        id: '2026-11-update-v251',
+        version: '2.5.1',
+        title: "What's New in Update 2.5.1",
+        subtitle: 'Glacier tab restored, themed Glacial Rebirth confirmation modal, and clean Android Prestige visuals!',
         features: [
           {
-            icon: '🎺',
-            title: '15-Minute Penguin Parade & 2× Fish Boost',
-            desc: 'Every 15 minutes, all penguins on screen line up in a festive single-file march across the glacier to celebratory chimes—automatically activating a 60-second 2× Fish Production Boost!'
-          },
-          {
             icon: '🏰',
-            title: 'Igloo-to-Ice-Castle Upgrades & 6 Palettes',
-            desc: 'Spend fish in the Glacier tab to evolve your humble igloo across 6 crystalline Ice Castle tiers and unlock 6 frosty color palettes (resets cleanly on Glacial Rebirth).'
+            title: 'Glacier Tab Crash Fixed & Polished',
+            desc: 'Resolved the theme swatch lookup error that caused the Glacier tab to appear blank and added full diving-slot descriptions for all 6 fishing holes.'
           },
           {
-            icon: '🕳️',
-            title: 'Purchasable Expansion Fishing Holes (Up to 6)',
-            desc: 'Keep your 3 starter fishing holes and carve up to 3 additional expansion holes on the ice shelf to expand colony capacity.'
+            icon: '💎',
+            title: 'Themed Glacial Rebirth Confirmation Modal',
+            desc: 'Replaced the native system alert prompt with a frosted-glass Glacial Rebirth dialog summarizing Frost Essence gains, resets, and preserved Legendary/Mythic perks.'
           },
           {
-            icon: '❄️',
-            title: 'Winter Rebirth Audio, Instant Freeze & Balance',
-            desc: 'Glacial Rebirth now features a joyful winter-themed procedural soundtrack, immediately stops all penguin activity and SFX upon confirmation, and balances Frost Essence at +1.25% per shard.'
+            icon: '✨',
+            title: 'Artifact-Free Android Prestige Cutscene',
+            desc: 'Removed Android WebView GPU-glitching blur, drop-shadow, and clip-path filters in favor of crisp vector radial glows and smooth fade transitions across the full 10-second sequence.'
           },
           {
-            icon: '🛠️',
-            title: 'Streamlined Architecture & Instant Launch Polish',
-            desc: 'Refactored into clean modular stylesheets and scripts with hardened canvas boot recovery so the glacier renders reliably on every launch.'
+            icon: '🎺',
+            title: 'Penguin Parades & Ice Castle Expansion',
+            desc: 'Includes all v2.5 highlights: 15-minute colony parades with 2× Fish Boost, 6-tier Ice Castle upgrades, and up to 6 carving fishing holes.'
           }
         ]
       }
@@ -7204,10 +7224,12 @@
       const offlineModal = document.getElementById('offline-modal');
       const whatsNewModal = document.getElementById('whats-new-modal');
       const factoryModal = document.getElementById('factory-reset-modal');
+      const rebirthModal = document.getElementById('rebirth-confirm-modal');
       return Boolean(
         (offlineModal && offlineModal.style.display === 'flex') ||
         (whatsNewModal && whatsNewModal.style.display === 'flex') ||
         (factoryModal && factoryModal.style.display === 'flex') ||
+        (rebirthModal && rebirthModal.style.display === 'flex') ||
         (typeof prestigeCutscene !== 'undefined' && prestigeCutscene && prestigeCutscene.isActive) ||
         (typeof state !== 'undefined' && state.pendingOfflineFish > 0)
       );
@@ -7333,6 +7355,105 @@
 
     // PrestigeSpriteFactory & PrestigeCutsceneController loaded from ./js/prestige-cutscene.js
     const prestigeCutscene = new PrestigeCutsceneController({ sound, getState: () => state });
+
+    function closeRebirthConfirmModal() {
+      const modal = document.getElementById('rebirth-confirm-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function startGlacialRebirthFlow() {
+      if (typeof prestigeCutscene !== 'undefined' && prestigeCutscene.isActive) return;
+      const currentPending = state.getPendingPrestigeShards();
+      if (currentPending <= 0) return;
+
+      closeRebirthConfirmModal();
+      sound.init();
+      // Immediately stop any active Parade and silence all background penguin SFX, weather ambience & haptics
+      if (typeof paradeController !== 'undefined' && paradeController) {
+        paradeController.cancelAndReset(activePenguins);
+      }
+      state.paradeBoostTimer = 0;
+      if (typeof sound.setCutsceneMode === 'function') {
+        sound.setCutsceneMode(true);
+      }
+      if (typeof prestigeCutscene !== 'undefined' && typeof prestigeCutscene.play === 'function') {
+        prestigeCutscene.play({
+          pendingShards: currentPending,
+          onClimaxReset: () => executeGlacialRebirthReset(currentPending),
+          onComplete: (result) => {
+            if (typeof sound.setCutsceneMode === 'function') {
+              sound.setCutsceneMode(false);
+            }
+            if (!result) return;
+            if (result.keptPreservedCount > 0) {
+              showToast(`🌟 Glacial Rebirth! ${result.keptPreservedCount} Legendary/Mythic perk${result.keptPreservedCount > 1 ? 's' : ''} preserved; Ice Castle & other upgrades reset.`, '🌟', { category: 'system', durationMs: 4200 });
+            } else {
+              showToast(`🌟 Glacial Rebirth complete! Bonus multiplier now +${result.multiplierPct}%!`, '🌟', { category: 'system', durationMs: 4200 });
+            }
+          }
+        });
+      } else {
+        const result = executeGlacialRebirthReset(currentPending);
+        if (typeof sound.setCutsceneMode === 'function') {
+          sound.setCutsceneMode(false);
+        }
+        sound.playLevelUp();
+        if (result.keptPreservedCount > 0) {
+          showToast(`🌟 Glacial Rebirth! ${result.keptPreservedCount} Legendary/Mythic perk${result.keptPreservedCount > 1 ? 's' : ''} preserved; Ice Castle & other upgrades reset.`, '🌟', { category: 'system', durationMs: 4200 });
+        } else {
+          showToast(`🌟 Glacial Rebirth complete! Bonus multiplier now +${result.multiplierPct}%!`, '🌟', { category: 'system', durationMs: 4200 });
+        }
+      }
+    }
+
+    function openRebirthConfirmModal() {
+      if (typeof prestigeCutscene !== 'undefined' && prestigeCutscene.isActive) return;
+      const currentPending = state.getPendingPrestigeShards();
+      if (currentPending <= 0) return;
+
+      const modal = document.getElementById('rebirth-confirm-modal');
+      if (!modal) {
+        startGlacialRebirthFlow();
+        return;
+      }
+
+      const boostPct = CoreEconomy
+        ? CoreEconomy.formatPrestigeBonusPct(currentPending)
+        : Number((currentPending * 1.25).toFixed(2)).toString();
+      const totalAfter = (state.prestigeShards || 0) + currentPending;
+      const totalBoostPct = CoreEconomy
+        ? CoreEconomy.formatPrestigeBonusPct(totalAfter)
+        : Number((totalAfter * 1.25).toFixed(2)).toString();
+      const preservedCountNow = (state.collectedPerks || []).filter(p => p.rarity === 'legendary' || p.rarity === 'mythic').length;
+
+      const essenceEl = document.getElementById('rebirth-confirm-essence-val');
+      const boostEl = document.getElementById('rebirth-confirm-boost-val');
+      const preservedEl = document.getElementById('rebirth-confirm-preserved-note');
+      const cancelBtn = document.getElementById('rebirth-confirm-cancel-btn');
+      const executeBtn = document.getElementById('rebirth-confirm-execute-btn');
+
+      if (essenceEl) essenceEl.textContent = `+${currentPending} 💎`;
+      if (boostEl) boostEl.textContent = `+${boostPct}% Boost (New Total: +${totalBoostPct}% Fish/min)`;
+      if (preservedEl) {
+        preservedEl.textContent = preservedCountNow > 0
+          ? `🛡️ Preserved Forever: ${preservedCountNow} Legendary/Mythic perk${preservedCountNow === 1 ? '' : 's'} will remain active.`
+          : '🛡️ Permanent Bonus: Your Frost Essence multiplier stays forever (no Legendary/Mythic perks yet).';
+      }
+
+      modal.style.display = 'flex';
+      modal.onclick = (e) => {
+        if (e.target === modal) closeRebirthConfirmModal();
+      };
+      if (cancelBtn) {
+        cancelBtn.onclick = () => closeRebirthConfirmModal();
+        if (typeof cancelBtn.focus === 'function') {
+          try { cancelBtn.focus({ preventScroll: true }); } catch (_) {}
+        }
+      }
+      if (executeBtn) {
+        executeBtn.onclick = () => startGlacialRebirthFlow();
+      }
+    }
 
 
     function showOfflineModal(amount = 0, options = {}) {
@@ -8036,6 +8157,9 @@
               const unlocked = th.cost === 0 || (Array.isArray(state.unlockedIglooThemes) && state.unlockedIglooThemes.includes(th.id));
               const equipped = state.iglooTheme === th.id;
               const affordable = !unlocked && state.fish >= th.cost;
+              const swatchBg = th.swatchGrad || (Array.isArray(th.swatch) && th.swatch.length >= 3
+                ? `linear-gradient(135deg, ${th.swatch[0]} 0%, ${th.swatch[1]} 55%, ${th.swatch[2]} 100%)`
+                : 'linear-gradient(135deg, #ffffff 0%, #7dd3fc 52%, #0284c7 100%)');
               return `
                 <label class="castle-theme-swatch ${equipped ? 'is-active' : ''} ${unlocked ? 'is-unlocked' : (affordable ? 'can-afford' : 'is-locked')}"
                        role="button"
@@ -8043,7 +8167,7 @@
                        aria-disabled="${unlocked || affordable ? 'false' : 'true'}"
                        data-theme-id="${th.id}"
                        data-ios-haptic-label="${unlocked || affordable ? '1' : '0'}">
-                  <span class="castle-swatch-orb" style="background: linear-gradient(135deg, ${th.swatch[0]} 0%, ${th.swatch[1]} 55%, ${th.swatch[2]} 100%);"></span>
+                  <span class="castle-swatch-orb" style="background: ${swatchBg};"></span>
                   <span class="castle-swatch-info">
                     <span class="castle-swatch-name">${th.name}</span>
                     <span class="castle-swatch-status">${equipped ? 'Equipped ✓' : (unlocked ? 'Tap to Equip' : `🐟 ${formatNumber(th.cost)}`)}</span>
@@ -8112,7 +8236,7 @@
                       <span>${isOpen ? '🌊' : '🧊'} ${h.name}</span>
                       ${h.starter ? '<span class="hole-tag starter">Starter</span>' : (isOpen ? '<span class="hole-tag open">Open</span>' : '')}
                     </div>
-                    <div class="hole-item-desc">${h.desc} • +${h.slots} diving slots</div>
+                    <div class="hole-item-desc">${h.desc || 'Glacier diving basin'} • +${h.slots || 10} diving slots</div>
                   </div>
                   <div>
                     ${isOpen
@@ -8318,53 +8442,7 @@
         const btn = prestigeBox.querySelector('#rebirth-action-btn');
         if (pendingShards > 0) {
           btn.addEventListener('click', () => {
-            if (typeof prestigeCutscene !== 'undefined' && prestigeCutscene.isActive) return;
-            const currentPending = state.getPendingPrestigeShards();
-            if (currentPending <= 0) return;
-            const preservedCountNow = (state.collectedPerks || []).filter(p => p.rarity === 'legendary' || p.rarity === 'mythic').length;
-            const promptMsg = preservedCountNow > 0
-              ? `Are you sure you want to perform Glacial Rebirth and claim ${currentPending} Frost Essence (+${CoreEconomy ? CoreEconomy.formatPrestigeBonusPct(currentPending) : Number((currentPending * 1.25).toFixed(2))}%)?\n\nYour fish, penguins, tech, Ice Castle, and extra fishing holes will reset. ${preservedCountNow} Legendary/Mythic perk(s) will be permanently preserved.`
-              : `Are you sure you want to perform Glacial Rebirth and claim ${currentPending} Frost Essence (+${CoreEconomy ? CoreEconomy.formatPrestigeBonusPct(currentPending) : Number((currentPending * 1.25).toFixed(2))}%)?\n\nYour fish, penguins, tech, Ice Castle, extra fishing holes, and non-Legendary/Mythic perks will reset.`;
-
-            if (confirm(promptMsg)) {
-              sound.init();
-              // Immediately stop any active Parade and silence all background penguin SFX, weather ambience & haptics
-              if (typeof paradeController !== 'undefined' && paradeController) {
-                paradeController.cancelAndReset(activePenguins);
-              }
-              state.paradeBoostTimer = 0;
-              if (typeof sound.setCutsceneMode === 'function') {
-                sound.setCutsceneMode(true);
-              }
-              if (typeof prestigeCutscene !== 'undefined' && typeof prestigeCutscene.play === 'function') {
-                prestigeCutscene.play({
-                  pendingShards: currentPending,
-                  onClimaxReset: () => executeGlacialRebirthReset(currentPending),
-                  onComplete: (result) => {
-                    if (typeof sound.setCutsceneMode === 'function') {
-                      sound.setCutsceneMode(false);
-                    }
-                    if (!result) return;
-                    if (result.keptPreservedCount > 0) {
-                      showToast(`🌟 Glacial Rebirth! ${result.keptPreservedCount} Legendary/Mythic perk${result.keptPreservedCount > 1 ? 's' : ''} preserved; Ice Castle & other upgrades reset.`, '🌟', { category: 'system', durationMs: 4200 });
-                    } else {
-                      showToast(`🌟 Glacial Rebirth complete! Bonus multiplier now +${result.multiplierPct}%!`, '🌟', { category: 'system', durationMs: 4200 });
-                    }
-                  }
-                });
-              } else {
-                const result = executeGlacialRebirthReset(currentPending);
-                if (typeof sound.setCutsceneMode === 'function') {
-                  sound.setCutsceneMode(false);
-                }
-                sound.playLevelUp();
-                if (result.keptPreservedCount > 0) {
-                  showToast(`🌟 Glacial Rebirth! ${result.keptPreservedCount} Legendary/Mythic perk${result.keptPreservedCount > 1 ? 's' : ''} preserved; Ice Castle & other upgrades reset.`, '🌟', { category: 'system', durationMs: 4200 });
-                } else {
-                  showToast(`🌟 Glacial Rebirth complete! Bonus multiplier now +${result.multiplierPct}%!`, '🌟', { category: 'system', durationMs: 4200 });
-                }
-              }
-            }
+            openRebirthConfirmModal();
           });
         }
 
@@ -9200,6 +9278,11 @@
       const factoryModal = document.getElementById('factory-reset-modal');
       if (factoryModal && factoryModal.style.display === 'flex') {
         closeFactoryResetModal();
+        return true;
+      }
+      const rebirthModal = document.getElementById('rebirth-confirm-modal');
+      if (rebirthModal && rebirthModal.style.display === 'flex') {
+        closeRebirthConfirmModal();
         return true;
       }
       const whatsNewModal = document.getElementById('whats-new-modal');

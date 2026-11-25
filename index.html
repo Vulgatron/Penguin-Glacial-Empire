@@ -141,6 +141,13 @@
       color: #ffffff;
       text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
       letter-spacing: -0.5px;
+      font-variant-numeric: tabular-nums;
+      transition: color 0.18s ease, text-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    .fish-amount.counting-up {
+      color: #fef08a;
+      text-shadow: 0 0 14px rgba(251, 191, 36, 0.8), 0 0 6px rgba(56, 189, 248, 0.5);
     }
 
     .dps-tag {
@@ -287,10 +294,18 @@
       z-index: 30;
       display: flex;
       flex-direction: column;
-      transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+      transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), height 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), max-height 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), border-radius 0.25s ease;
       box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.4);
+      height: 52vh;
       max-height: 52vh;
       padding-bottom: env(safe-area-inset-bottom, 8px);
+    }
+
+    #bottom-sheet.expanded {
+      height: calc(100dvh - env(safe-area-inset-top, 0px));
+      max-height: calc(100dvh - env(safe-area-inset-top, 0px));
+      border-radius: 16px 16px 0 0;
+      z-index: 45;
     }
 
     #bottom-sheet.collapsed {
@@ -306,6 +321,7 @@
       align-items: center;
       cursor: grab;
       touch-action: none;
+      flex-shrink: 0;
     }
 
     .sheet-drag-handle:active {
@@ -313,16 +329,20 @@
     }
 
     .sheet-handle-bar {
-      width: 44px;
+      width: 48px;
       height: 5px;
-      background: rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.38);
       border-radius: 3px;
       transition: background 0.15s, transform 0.15s;
     }
 
+    #bottom-sheet.expanded .sheet-handle-bar {
+      background: rgba(125, 211, 252, 0.72);
+    }
+
     .sheet-drag-handle:active .sheet-handle-bar {
-      background: rgba(125, 211, 252, 0.75);
-      transform: scaleX(1.1);
+      background: rgba(125, 211, 252, 0.85);
+      transform: scaleX(1.12);
     }
 
     .sheet-header {
@@ -410,6 +430,8 @@
 
     /* Content Area */
     .sheet-content {
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
       padding: 12px 16px;
       display: flex;
@@ -1607,6 +1629,288 @@
       transition: none;
     }
 
+    #toast-banner.is-clickable {
+      cursor: pointer;
+      border-color: rgba(52, 211, 153, 0.85);
+      box-shadow: 0 4px 22px rgba(16, 185, 129, 0.35), 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
+    .toast-cta-pill {
+      display: none;
+      margin-left: 4px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      color: #022c22;
+      background: linear-gradient(135deg, #6ee7b7, #34d399);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    #toast-banner.is-clickable .toast-cta-pill {
+      display: inline-block;
+    }
+
+    /* DAILY CLAIM ALL BUTTON */
+    .claim-all-ready-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 11px 16px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: 1px solid rgba(110, 231, 183, 0.65);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    .claim-all-ready-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* COLONY SYNERGIES */
+    .synergy-card-box {
+      background: linear-gradient(135deg, rgba(14, 42, 78, 0.78), rgba(20, 32, 68, 0.82));
+      border: 1px solid rgba(125, 211, 252, 0.3);
+      border-radius: 16px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .synergy-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .synergy-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #e0f2fe;
+    }
+
+    .synergy-count-pill {
+      font-size: 10px;
+      font-weight: 800;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.16);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .synergy-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .synergy-chip {
+      border-radius: 11px;
+      padding: 7px 8px;
+      background: rgba(6, 18, 36, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .synergy-chip.active {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(52, 211, 153, 0.55);
+    }
+
+    .synergy-chip-name {
+      font-size: 11px;
+      font-weight: 800;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .synergy-chip-req {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .synergy-chip-buff {
+      font-size: 10px;
+      font-weight: 700;
+      color: #6ee7b7;
+    }
+
+    .synergy-chip:not(.active) .synergy-chip-buff {
+      color: #7dd3fc;
+      opacity: 0.72;
+    }
+
+    /* SPECIES FISH/MIN BREAKDOWN CHART */
+    .species-chart-card {
+      background: rgba(12, 30, 56, 0.76);
+      border: 1px solid rgba(125, 211, 252, 0.25);
+      border-radius: 16px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .species-chart-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .species-chart-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #e2e8f0;
+      gap: 8px;
+    }
+
+    .species-chart-val {
+      color: #7dd3fc;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .species-chart-bar-bg {
+      width: 100%;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+
+    .species-chart-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.25s ease;
+    }
+
+    /* DANGER ZONE & FACTORY RESET MODAL */
+    .settings-card.danger-zone {
+      border-color: rgba(239, 68, 68, 0.45);
+      background: linear-gradient(155deg, rgba(69, 10, 20, 0.55), rgba(30, 12, 24, 0.72));
+    }
+
+    .settings-danger-btn {
+      display: block;
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: #ffffff;
+      background: linear-gradient(135deg, #dc2626, #991b1b);
+      border: 1px solid rgba(252, 165, 165, 0.5);
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .settings-danger-btn:active {
+      transform: scale(0.97);
+    }
+
+    #factory-reset-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: rgba(5, 8, 18, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: max(20px, env(safe-area-inset-top, 20px)) 20px max(20px, env(safe-area-inset-bottom, 20px));
+    }
+
+    .factory-reset-card {
+      width: 100%;
+      max-width: 380px;
+      background: linear-gradient(160deg, rgba(24, 12, 22, 0.96), rgba(14, 20, 38, 0.96));
+      border: 2px solid rgba(239, 68, 68, 0.65);
+      border-radius: 24px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-align: center;
+      box-shadow: 0 0 34px rgba(220, 38, 38, 0.35);
+    }
+
+    .factory-reset-input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1.5px solid rgba(248, 113, 113, 0.55);
+      background: rgba(2, 6, 18, 0.78);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 800;
+      text-align: center;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      outline: none;
+    }
+
+    .factory-reset-input:focus {
+      border-color: #f87171;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25);
+    }
+
+    .factory-reset-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .factory-reset-cancel-btn {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .factory-reset-confirm-btn {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      border: 1px solid rgba(252, 165, 165, 0.6);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+
+    .factory-reset-confirm-btn:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+
     /* OFFLINE MODAL */
     #offline-modal {
       position: fixed;
@@ -2677,6 +2981,85 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* Ice-Crystal Gauge Wrapper & Sliding Penguin */
+    .splash-gauge-wrap {
+      position: relative;
+      width: 100%;
+      padding-top: 26px;
+      z-index: 2;
+    }
+
+    .splash-slider-penguin {
+      position: absolute;
+      top: 0;
+      left: 0%;
+      width: 44px;
+      height: 30px;
+      transform: translateX(-55%);
+      pointer-events: none;
+      z-index: 5;
+      will-change: left;
+      filter: drop-shadow(0 3px 6px rgba(2, 12, 28, 0.65));
+    }
+
+    .splash-slider-penguin-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      animation: splashPenguinSlideBob 0.55s ease-in-out infinite alternate;
+    }
+
+    .splash-slide-spray {
+      position: absolute;
+      left: -12px;
+      bottom: 3px;
+      width: 16px;
+      height: 12px;
+      pointer-events: none;
+    }
+
+    .splash-slide-spray span {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(224, 242, 254, 0.92);
+      box-shadow: 0 0 6px rgba(125, 211, 252, 0.85);
+      animation: splashSnowPuff 0.55s ease-out infinite;
+    }
+
+    .splash-slide-spray span:nth-child(1) {
+      right: 2px;
+      bottom: 2px;
+      animation-delay: 0s;
+    }
+
+    .splash-slide-spray span:nth-child(2) {
+      right: 5px;
+      bottom: 5px;
+      width: 3px;
+      height: 3px;
+      animation-delay: 0.18s;
+    }
+
+    .splash-slide-spray span:nth-child(3) {
+      right: 1px;
+      bottom: 6px;
+      width: 2.5px;
+      height: 2.5px;
+      animation-delay: 0.34s;
+    }
+
+    @keyframes splashPenguinSlideBob {
+      0% { transform: translateY(0px) rotate(-3deg); }
+      100% { transform: translateY(-2.5px) rotate(2deg); }
+    }
+
+    @keyframes splashSnowPuff {
+      0% { opacity: 0.95; transform: translate(0, 0) scale(1); }
+      100% { opacity: 0; transform: translate(-12px, -7px) scale(0.3); }
+    }
+
     /* Ice-Crystal Gauge Track */
     .splash-gauge-track {
       position: relative;
@@ -2973,8 +3356,39 @@
             <span id="splash-flavor-text" class="splash-flavor-text">Polishing the ice shelf...</span>
             <span id="splash-percent-badge" class="splash-percent-badge">0%</span>
           </div>
-          <div class="splash-gauge-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="splash-progressbar">
-            <div id="splash-gauge-fill" class="splash-gauge-fill"></div>
+          <div class="splash-gauge-wrap">
+            <div id="splash-slider-penguin" class="splash-slider-penguin" aria-hidden="true">
+              <div class="splash-slider-penguin-inner">
+                <div class="splash-slide-spray"><span></span><span></span><span></span></div>
+                <svg viewBox="0 0 56 36" width="44" height="30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <!-- Orange feet kicking back -->
+                  <ellipse cx="7" cy="24" rx="5.5" ry="2.8" transform="rotate(-14 7 24)" fill="#fb923c" />
+                  <ellipse cx="9" cy="28" rx="5" ry="2.4" transform="rotate(8 9 28)" fill="#f97316" />
+                  <!-- Sleek belly-sliding body -->
+                  <ellipse cx="26" cy="23" rx="17" ry="9.5" transform="rotate(4 26 23)" fill="#0f172a" />
+                  <!-- Gleaming white belly sliding on ice -->
+                  <ellipse cx="27" cy="26.5" rx="14" ry="5.5" transform="rotate(3 27 26.5)" fill="#f8fafc" />
+                  <!-- Swept-back flipper -->
+                  <ellipse cx="23" cy="21" rx="8.5" ry="3.4" transform="rotate(-24 23 21)" fill="#1e293b" stroke="#38bdf8" stroke-opacity="0.45" stroke-width="0.9" />
+                  <!-- Head leaning forward joyfully -->
+                  <circle cx="40.5" cy="17" r="8.2" fill="#0f172a" />
+                  <!-- Cozy cyan scarf trailing in wind -->
+                  <path d="M33 20 Q24 14 15 16" stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round" />
+                  <path d="M34 21 Q27 17 20 19.5" stroke="#7dd3fc" stroke-width="1.6" stroke-linecap="round" />
+                  <!-- Eye & cheerful highlight -->
+                  <circle cx="43.5" cy="15.2" r="2.5" fill="#ffffff" />
+                  <circle cx="44.2" cy="15" r="1.35" fill="#020617" />
+                  <circle cx="44.6" cy="14.5" r="0.5" fill="#ffffff" />
+                  <!-- Rosy cheek -->
+                  <ellipse cx="42" cy="18.6" rx="1.9" ry="1.1" fill="#fda4af" opacity="0.8" />
+                  <!-- Orange beak pointing forward -->
+                  <polygon points="47.5,15.2 54.5,17.4 47.2,19.4" fill="#fb923c" />
+                </svg>
+              </div>
+            </div>
+            <div class="splash-gauge-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="splash-progressbar">
+              <div id="splash-gauge-fill" class="splash-gauge-fill"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -3150,7 +3564,7 @@
 
     <!-- Safe-Area Version Footer -->
     <footer class="splash-footer">
-      <span id="splash-version-label" class="splash-version-pill">v1.7</span>
+      <span id="splash-version-label" class="splash-version-pill">v1.8</span>
     </footer>
   </div>
 
@@ -3268,6 +3682,7 @@
   <div id="toast-banner">
     <span id="toast-icon">✨</span>
     <span id="toast-text">Alert message</span>
+    <span id="toast-cta" class="toast-cta-pill">Tap →</span>
   </div>
 
   <!-- Offline Progress Modal -->
@@ -3297,6 +3712,26 @@
       <div class="whats-new-list" id="whats-new-features-list"></div>
       <div class="whats-new-actions">
         <label class="prestige-btn" id="whats-new-dismiss-btn" role="button" tabindex="0" data-ios-haptic-label="1" style="width: 100%;">Awesome, Let's Play!</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Factory Reset 2-Step Confirmation Modal -->
+  <div id="factory-reset-modal" role="dialog" aria-modal="true" aria-labelledby="factory-reset-title">
+    <div class="factory-reset-card">
+      <div style="font-size: 38px;">⚠️</div>
+      <div id="factory-reset-title" style="font-size: 18px; font-weight: 900; color: #fecaca;">Factory Reset Colony?</div>
+      <div id="factory-reset-desc" style="font-size: 12px; color: #e2e8f0; line-height: 1.45;">
+        This will permanently erase <strong>all progress</strong> — including fish, penguins, Glacier Tech, Frost Essence, Daily Streaks, perks, achievements, and chatter logs — and restart from a brand-new colony.
+      </div>
+      <div id="factory-reset-step2-box" style="display: none; flex-direction: column; gap: 8px;">
+        <div style="font-size: 11px; color: #fca5a5; font-weight: 700;">Type <strong>RESET</strong> below to confirm permanent erasure:</div>
+        <input id="factory-reset-confirm-input" class="factory-reset-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type RESET" aria-label="Type RESET to confirm" />
+      </div>
+      <div class="factory-reset-actions">
+        <button id="factory-reset-cancel-btn" type="button" class="factory-reset-cancel-btn">Cancel</button>
+        <button id="factory-reset-next-btn" type="button" class="factory-reset-confirm-btn">Continue</button>
+        <button id="factory-reset-execute-btn" type="button" class="factory-reset-confirm-btn" style="display: none;" disabled>Erase Everything</button>
       </div>
     </div>
   </div>
@@ -4082,25 +4517,103 @@
     // Ordered newest-first; contains only the current update notice so launch alerts stay focused
     const APP_FEATURE_RELEASES = [
       {
-        id: '2026-11-launch-splash-screen-v17',
-        version: '1.7',
-        title: "What's New in Update 1.7",
-        subtitle: 'A brand-new animated arctic welcome every time you launch!',
+        id: '2026-11-update-v18',
+        version: '1.8',
+        title: "What's New in Update 1.8",
+        subtitle: 'Major gameplay polish, accurate colony math, full-screen drawer & polar upgrades!',
         features: [
           {
-            icon: '❄️',
-            title: 'Animated Launch Splash Screen',
-            desc: 'Glacial Empire now greets you with a frosted winter splash screen featuring twilight skies, drifting snow particles, stylized penguin & igloo artwork, and a glowing ice-crystal loading gauge.'
+            icon: '🐧',
+            title: 'Sliding Splash Penguin & Colony Cap (6 Each)',
+            desc: 'A playful penguin now belly-slides across the launch loading bar! On the ice, each unlocked species caps at 6 visible penguins while scaling catches so your Fish/min stays 100% accurate.'
           },
           {
-            icon: '📱',
-            title: 'Adaptive Phone, Tablet & Foldable Support',
-            desc: 'Built to scale crisply across iOS and Android phones, iPads, tablets, and foldables in both portrait and landscape orientations with safe-area padding.'
+            icon: '📈',
+            title: 'Live Fish Counter, Full-Screen Menu & Tech Multipliers',
+            desc: 'Watch your fish balance roll up live, drag the menu handle all the way to full screen, bulk-buy Glacier Tech (1x/10x/MAX), tap Goal toasts to jump to Daily, and claim all ready goals at once.'
+          },
+          {
+            icon: '✨',
+            title: 'Golden Fish, Colony Synergies, Igloo Tiers & Dynamic Skies',
+            desc: 'Tap leaping Golden Fish for 30s catch bursts, unlock 4 cross-species synergies, evolve your Igloo Depot as you level up, view Species Fish/min charts in Stats, and enjoy shifting polar skies & slide trails.'
+          },
+          {
+            icon: '⚙️',
+            title: 'Live Weather Countdown, Toast Filter & Factory Reset',
+            desc: 'Weather alerts now tick down live, Settings lets you mute routine purchase/boost toasts or run a safe Factory Reset, and Glacier Level (+4.25%) & Colony Size (+12.75%) bonuses are rebalanced by 15%.'
           }
         ]
       }
     ];
     const LATEST_FEATURE_RELEASE = APP_FEATURE_RELEASES[0];
+
+    // Update 1.8 Balance & Colony Constants (15% reduction from prior +5% / +15% rates)
+    const GLACIER_LEVEL_BONUS_RATE = 0.0425; // +4.25% per Glacier Level
+    const COLONY_SIZE_BONUS_RATE = 0.1275;   // +12.75% per Penguin Level (every 10 recruits)
+    const MAX_VISIBLE_PER_COLONY = 6;        // Max 6 visible sprites per unlocked species
+
+    const COLONY_SYNERGIES = [
+      {
+        id: 'syn_ice_scouts',
+        name: 'Ice Scout Pair',
+        icon: '🛷',
+        reqText: '10+ Adélie & 5+ Gentoo',
+        buffText: '+6% Walk & Slide Speed',
+        check: (s) => (s.penguins.adelie?.count || 0) >= 10 && (s.penguins.gentoo?.count || 0) >= 5,
+        apply: (agg) => { agg.walkSlideMult *= 1.06; }
+      },
+      {
+        id: 'syn_deep_crew',
+        name: 'Deep-Sea Crew',
+        icon: '🤿',
+        reqText: '10+ Gentoo & 5+ Chinstrap',
+        buffText: '+8% Dive Speed',
+        check: (s) => (s.penguins.gentoo?.count || 0) >= 10 && (s.penguins.chinstrap?.count || 0) >= 5,
+        apply: (agg) => { agg.diveSpeedMult *= 1.08; }
+      },
+      {
+        id: 'syn_royal_court',
+        name: 'Royal Court',
+        icon: '👑',
+        reqText: '10+ Chinstrap & 5+ Emperor',
+        buffText: '+10% Catch Yield',
+        check: (s) => (s.penguins.chinstrap?.count || 0) >= 10 && (s.penguins.emperor?.count || 0) >= 5,
+        apply: (agg) => { agg.catchYieldMult *= 1.10; }
+      },
+      {
+        id: 'syn_frost_singularity',
+        name: 'Frost Singularity',
+        icon: '🤖',
+        reqText: '5+ Emperor & 1+ Cyber',
+        buffText: '+12% All Fish Output',
+        check: (s) => (s.penguins.emperor?.count || 0) >= 5 && (s.penguins.cyber?.count || 0) >= 1,
+        apply: (agg) => { agg.allFishMult *= 1.12; }
+      }
+    ];
+
+    function formatPct(value) {
+      const rounded = Math.round((Number(value) || 0) * 100) / 100;
+      if (Math.abs(rounded - Math.round(rounded)) < 0.001) {
+        return String(Math.round(rounded));
+      }
+      return rounded.toFixed(2).replace(/0$/, '');
+    }
+
+    function formatWeatherCountdown(seconds) {
+      const clamped = Math.max(0, Math.ceil(Number(seconds) || 0));
+      const mins = Math.floor(clamped / 60);
+      const secs = clamped % 60;
+      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    function formatHudFish(num) {
+      const val = Math.max(0, Number(num) || 0);
+      if (val < 10000) return Math.floor(val).toLocaleString();
+      const units = ['K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp'];
+      const uIdx = Math.floor(Math.log10(val) / 3) - 1;
+      const scaled = val / Math.pow(10, (uIdx + 1) * 3);
+      return scaled.toFixed(2) + (units[uIdx] || '');
+    }
 
     function pickRecruitedTrait(speciesId) {
       const pData = state && state.penguins && state.penguins[speciesId];
@@ -4500,7 +5013,11 @@
             }
           }
           if (typeof showToast === 'function') {
-            showToast('📅 Daily Goals refreshed for the new day!');
+            showToast('📅 Daily Goals refreshed for the new day!', '🎯', {
+              category: 'goal',
+              onClick: () => { if (typeof openDailyTabFromNotification === 'function') openDailyTabFromNotification(); },
+              durationMs: 4200
+            });
           }
           return true;
         }
@@ -4521,7 +5038,11 @@
               updated = true;
               if (obj.progress >= obj.target) {
                 if (typeof showToast === 'function') {
-                  showToast(`🎯 Objective Ready: "${obj.title}"!`, '🎁');
+                  showToast(`🎯 Objective Ready: "${obj.title}"!`, '🎁', {
+                    category: 'goal',
+                    onClick: () => { if (typeof openDailyTabFromNotification === 'function') openDailyTabFromNotification(); },
+                    durationMs: 4500
+                  });
                 }
                 if (typeof sound !== 'undefined' && sound.playChirp) sound.playChirp();
               }
@@ -4533,7 +5054,7 @@
         }
       }
 
-      claim(id, nowMs = Date.now()) {
+      claim(id, nowMs = Date.now(), silent = false) {
         let obj = this.objectives.find(o => o.id === id);
         if (!obj && this.bonusObjective && this.bonusObjective.id === id) {
           obj = this.bonusObjective;
@@ -4542,7 +5063,7 @@
 
         obj.claimed = true;
         this.totalGoalsCompleted = (this.totalGoalsCompleted || 0) + 1;
-        if (typeof sound !== 'undefined' && sound.playLevelUp) sound.playLevelUp();
+        if (!silent && typeof sound !== 'undefined' && sound.playLevelUp) sound.playLevelUp();
 
         const cycleKey = this.dateKey || this.getCycleDateKey(nowMs);
         this.syncStreakStatusForCycle(cycleKey);
@@ -4567,11 +5088,11 @@
 
         if (obj.rewardType === 'fish') {
           state.addFish(obj.rewardAmount);
-          if (typeof sound !== 'undefined' && sound.triggerHaptic) sound.triggerHaptic('collect');
+          if (!silent && typeof sound !== 'undefined' && sound.triggerHaptic) sound.triggerHaptic('collect');
         } else if (obj.rewardType === 'shards') {
           state.prestigeShards += obj.rewardAmount;
           state.totalEssenceEarned = (state.totalEssenceEarned || 0) + obj.rewardAmount;
-          if (typeof sound !== 'undefined' && sound.triggerHaptic) sound.triggerHaptic('collect');
+          if (!silent && typeof sound !== 'undefined' && sound.triggerHaptic) sound.triggerHaptic('collect');
         }
 
         if (obj.isBonus) {
@@ -4581,16 +5102,64 @@
           this.ensureBonusObjectiveState();
         }
 
-        if (typeof state !== 'undefined' && state) {
-          if (typeof state.calculateDPS === 'function') state.calculateDPS();
-          if (typeof state.save === 'function') state.save();
+        if (!silent) {
+          if (typeof state !== 'undefined' && state) {
+            if (typeof state.calculateDPS === 'function') state.calculateDPS();
+            if (typeof state.save === 'function') state.save();
+          }
+          if (typeof showToast === 'function') {
+            showToast(streakToast || `🎁 Claimed ${obj.rewardLabel}!`, '🎁', { category: 'goal' });
+          }
+          if (typeof updateSheetContent === 'function') updateSheetContent();
+          if (typeof updateHUD === 'function') updateHUD();
         }
-        if (typeof showToast === 'function') {
-          showToast(streakToast || `🎁 Claimed ${obj.rewardLabel}!`);
+        return { rewardType: obj.rewardType, rewardAmount: obj.rewardAmount, streakToast };
+      }
+
+      claimAllReady(nowMs = Date.now()) {
+        const readyIds = this.objectives
+          .filter(o => !o.claimed && o.progress >= o.target)
+          .map(o => o.id);
+        if (this.bonusObjective && !this.bonusObjective.claimed && this.bonusObjective.progress >= this.bonusObjective.target) {
+          readyIds.push(this.bonusObjective.id);
         }
-        if (typeof updateSheetContent === 'function') updateSheetContent();
-        if (typeof updateHUD === 'function') updateHUD();
-        return true;
+        if (readyIds.length === 0) return 0;
+
+        let claimedCount = 0;
+        let totalFish = 0;
+        let totalShards = 0;
+        let streakMsg = '';
+
+        readyIds.forEach(id => {
+          const res = this.claim(id, nowMs, true);
+          if (res) {
+            claimedCount++;
+            if (res.rewardType === 'fish') totalFish += res.rewardAmount;
+            if (res.rewardType === 'shards') totalShards += res.rewardAmount;
+            if (res.streakToast) streakMsg = res.streakToast;
+          }
+        });
+
+        if (claimedCount > 0) {
+          if (typeof sound !== 'undefined') {
+            if (sound.playLevelUp) sound.playLevelUp();
+            if (sound.triggerHaptic) sound.triggerHaptic('collect');
+          }
+          if (typeof state !== 'undefined' && state) {
+            if (typeof state.calculateDPS === 'function') state.calculateDPS();
+            if (typeof state.save === 'function') state.save();
+          }
+          const parts = [];
+          if (totalFish > 0) parts.push(`+${formatNumber(totalFish)} 🐟`);
+          if (totalShards > 0) parts.push(`+${totalShards} 💎`);
+          const summary = `🎁 Claimed ${claimedCount} Goals (${parts.join(' & ')})!`;
+          if (typeof showToast === 'function') {
+            showToast(streakMsg ? `${summary} ${streakMsg}` : summary, '🎁', { category: 'goal', durationMs: 3800 });
+          }
+          if (typeof updateSheetContent === 'function') updateSheetContent();
+          if (typeof updateHUD === 'function') updateHUD();
+        }
+        return claimedCount;
       }
 
       getClaimableCount() {
@@ -4820,15 +5389,15 @@
         await this.loadConfig();
 
         if (!this.isHostedOverWeb()) {
-          showToast('🌐 Open the GitHub Pages HTTPS link on iOS/Android to enable PWA push reminders.', '🔔');
+          showToast('🌐 Open the GitHub Pages HTTPS link on iOS/Android to enable PWA push reminders.', '🔔', { category: 'system' });
           return false;
         }
         if (this.needsIOSHomeScreenInstall()) {
-          showToast('🍎 On iPhone/iPad, tap Share → Add to Home Screen first to enable Apple Push.', '📲');
+          showToast('🍎 On iPhone/iPad, tap Share → Add to Home Screen first to enable Apple Push.', '📲', { category: 'system' });
           return false;
         }
         if (!this.supportsNotifications()) {
-          showToast('⚠️ Notifications are not supported on this browser.', '⚠️');
+          showToast('⚠️ Notifications are not supported on this browser.', '⚠️', { category: 'system' });
           return false;
         }
 
@@ -4839,7 +5408,7 @@
             if (typeof state !== 'undefined' && state.save) state.save();
             showToast(perm === 'denied'
               ? '🚫 Notifications blocked. Enable them in browser/iOS Settings.'
-              : '🔔 Notification permission dismissed.', '🔔');
+              : '🔔 Notification permission dismissed.', '🔔', { category: 'system' });
             if (typeof updateSheetContent === 'function') updateSheetContent();
             return false;
           }
@@ -4849,15 +5418,15 @@
             const ok = await this.subscribeToPushRelay();
             showToast(ok
               ? '🔔 8:00 AM Daily Push Reminders enabled!'
-              : '⚠️ Permission granted, but push relay registration failed.', '🔔');
+              : '⚠️ Permission granted, but push relay registration failed.', '🔔', { category: 'system' });
           } else {
-            showToast('⏰ 8:00 AM Reminders armed (add push-config.json relay for background delivery)!', '🔔');
+            showToast('⏰ 8:00 AM Reminders armed (add push-config.json relay for background delivery)!', '🔔', { category: 'system' });
           }
           if (typeof state !== 'undefined' && state.save) state.save();
           if (typeof updateSheetContent === 'function') updateSheetContent();
           return true;
         } catch (err) {
-          showToast('⚠️ Could not enable notifications: ' + (err && err.message ? err.message : 'Error'), '⚠️');
+          showToast('⚠️ Could not enable notifications: ' + (err && err.message ? err.message : 'Error'), '⚠️', { category: 'system' });
           if (typeof updateSheetContent === 'function') updateSheetContent();
           return false;
         }
@@ -4885,7 +5454,7 @@
         }
         this.pushSubscribed = false;
         if (typeof state !== 'undefined' && state.save) state.save();
-        showToast('🔕 Daily 8:00 AM Reminders turned off.', '🔕');
+        showToast('🔕 Daily 8:00 AM Reminders turned off.', '🔕', { category: 'system' });
         if (typeof updateSheetContent === 'function') updateSheetContent();
       }
 
@@ -4922,11 +5491,11 @@
       async sendTestReminder() {
         await this.loadConfig();
         if (this.needsIOSHomeScreenInstall()) {
-          showToast('🍎 Install to Home Screen on iOS first to test Apple notifications.', '📲');
+          showToast('🍎 Install to Home Screen on iOS first to test Apple notifications.', '📲', { category: 'system' });
           return false;
         }
         if (!this.supportsNotifications()) {
-          showToast('🌐 Test notifications require the HTTPS PWA.', '🔔');
+          showToast('🌐 Test notifications require the HTTPS PWA.', '🔔', { category: 'system' });
           return false;
         }
         if (this.getPermissionState() !== 'granted') {
@@ -4941,7 +5510,7 @@
             : 'All daily goals for this cycle are claimed! Check back at 3:00 AM.',
           'daily-goals-test'
         );
-        showToast(sent ? '🔔 Test reminder notification dispatched!' : '⚠️ Unable to display OS notification here.', '🔔');
+        showToast(sent ? '🔔 Test reminder notification dispatched!' : '⚠️ Unable to display OS notification here.', '🔔', { category: 'system' });
         return sent;
       }
 
@@ -5280,7 +5849,7 @@
       if (newlyUnlocked.length > 0) {
         sound.playLevelUp();
         newlyUnlocked.forEach(ach => {
-          showToast(`🏆 Achievement Unlocked: ${ach.title}!`);
+          showToast(`🏆 Achievement Unlocked: ${ach.title}!`, '🏆', { category: 'boost' });
         });
         if (state.currentTab === 'stats') {
           updateSheetContent();
@@ -5372,6 +5941,9 @@
         });
         this.lastColonySpeechEndedAt = 0;
         this.lastSeenFeatureReleaseId = '';
+        this.disableRoutineToasts = false;
+        this.speciesFishRemainder = {};
+        this.isFactoryResetting = false;
       }
 
       recordSpeechLog(speciesId, entry) {
@@ -5559,7 +6131,27 @@
       }
 
       getGlacierLevelMultiplier() {
-        return 1 + ((this.glacierLevel - 1) * 0.05);
+        return 1 + ((this.glacierLevel - 1) * GLACIER_LEVEL_BONUS_RATE);
+      }
+
+      getColonySynergies() {
+        const agg = {
+          walkSlideMult: 1.0,
+          diveSpeedMult: 1.0,
+          catchYieldMult: 1.0,
+          allFishMult: 1.0,
+          activeCount: 0,
+          items: []
+        };
+        COLONY_SYNERGIES.forEach(syn => {
+          const active = Boolean(syn.check(this));
+          if (active) {
+            agg.activeCount++;
+            syn.apply(agg);
+          }
+          agg.items.push({ ...syn, active });
+        });
+        return agg;
       }
 
       getDailyStreakFishMultiplier() {
@@ -5600,11 +6192,12 @@
         const prestige = this.getPrestigeMultiplier();
         const levelBonus = this.getGlacierLevelMultiplier();
         const streakBonus = this.getDailyStreakFishMultiplier();
+        const synergies = this.getColonySynergies();
         const frenzy = this.frenzyTimer > 0 ? 3 : 1;
         const supernova = this.supernovaTimer > 0 ? 4 : 1;
         const polarSurge = this.polarSurgeTimer > 0 ? 2 : 1;
         const weatherMult = this.getWeatherYieldMultiplier();
-        return Math.floor(base * krillBonus * prestige * levelBonus * streakBonus * frenzy * supernova * polarSurge * weatherMult * this.clickMult);
+        return Math.floor(base * krillBonus * prestige * levelBonus * streakBonus * synergies.allFishMult * frenzy * supernova * polarSurge * weatherMult * this.clickMult);
       }
 
       getSpeciesTraitAverages(speciesId) {
@@ -5633,33 +6226,106 @@
         };
       }
 
-      calculateDPS() {
-        let total = 0;
+      getAverageDepotToHoleDistance() {
+        const w = (typeof width === 'number' && width > 10) ? width : 360;
+        const h = (typeof height === 'number' && height > 10) ? height : 640;
+        const depX = (typeof DEPOT !== 'undefined') ? w * DEPOT.x : w * 0.5;
+        const depY = (typeof DEPOT !== 'undefined') ? (h * DEPOT.y + DEPOT.doorOffset.y) : (h * 0.44 + 18);
+        const holes = (typeof FISHING_HOLES !== 'undefined' && Array.isArray(FISHING_HOLES) && FISHING_HOLES.length > 0)
+          ? FISHING_HOLES
+          : [{ xRatio: 0.22, yRatio: 0.73 }, { xRatio: 0.50, yRatio: 0.81 }, { xRatio: 0.78, yRatio: 0.74 }];
+        let distSum = 0;
+        holes.forEach(hole => {
+          distSum += Math.hypot(w * hole.xRatio - depX, h * hole.yRatio - depY);
+        });
+        return Math.max(40, (distSum / holes.length) * 0.97);
+      }
+
+      getGlobalOutputMultiplier(synergies = null) {
+        const syn = synergies || this.getColonySynergies();
         const prestige = this.getPrestigeMultiplier();
         const levelBonus = this.getGlacierLevelMultiplier();
+        const streakBonus = this.getDailyStreakFishMultiplier();
         const cryoBonus = 1 + (this.tech.cryo_storage * 0.2);
-        const lineBonus = 1 + (this.tech.reinforced_line * 0.25);
         const frenzy = this.frenzyTimer > 0 ? 3 : 1;
         const supernova = this.supernovaTimer > 0 ? 4 : 1;
         const polarSurge = this.polarSurgeTimer > 0 ? 2 : 1;
+        const weatherMult = this.getWeatherYieldMultiplier();
+        return prestige * levelBonus * streakBonus * cryoBonus * frenzy * supernova * polarSurge * weatherMult * syn.allFishMult;
+      }
 
+      getSpeciesTripMetrics(speciesId, synergies = null) {
+        const sp = PENGUIN_SPECIES.find(s => s.id === speciesId);
+        const pData = this.penguins[speciesId];
+        if (!sp || !pData || pData.count <= 0) {
+          return { speciesId, count: 0, tripSeconds: 1, perPenguinTripYield: 0, dps: 0, fishPerMin: 0 };
+        }
+        const syn = synergies || this.getColonySynergies();
+        const traitAvg = this.getSpeciesTraitAverages(sp.id);
+        const lineBonus = 1 + (this.tech.reinforced_line * 0.25);
+        const emperorMult = (sp.id === 'emperor' && this.emperorBoost > 0) ? (1 + this.emperorBoost) : 1;
+        const globalMult = this.getGlobalOutputMultiplier(syn);
+
+        const baseCatch = sp.baseYield * (1 + (pData.level - 1) * COLONY_SIZE_BONUS_RATE) * traitAvg.yieldMult * this.perkCatchMult * lineBonus * emperorMult * syn.catchYieldMult;
+        const perPenguinTripYield = baseCatch * globalMult;
+
+        let walkSpeed = sp.baseSpeed * 40 * traitAvg.speedMult * this.perkWalkSpeedMult * syn.walkSlideMult * (1 + this.tech.thermal_parkas * 0.15);
+        if (this.slushDebuffTimer > 0) walkSpeed *= 0.92;
+        if (this.supernovaTimer > 0) walkSpeed *= 2.5;
+        walkSpeed = Math.max(12, walkSpeed);
+
+        const slideChance = sp.id === 'gentoo' ? 1.0 : 0.35;
+        const slideFactor = 1.8 * this.perkSlideSpeedMult * (1 + this.tech.smooth_ice * 0.3);
+        const avgLegDist = this.getAverageDepotToHoleDistance();
+        const expectedLegSec = (1 - slideChance) * (avgLegDist / walkSpeed) + slideChance * (avgLegDist / (walkSpeed * slideFactor));
+
+        const diveRate = this.diveSpeedMult * traitAvg.diveSpeedMult * syn.diveSpeedMult * (1 + (sp.diveTime > 1 ? 0.2 : 0));
+        const diveSec = Math.max(0.6, sp.diveTime / Math.max(0.1, diveRate));
+
+        const tripSeconds = Math.max(1.8, (expectedLegSec * 2) + 0.5 + diveSec + 0.6);
+        const dps = (perPenguinTripYield / tripSeconds) * pData.count;
+        return {
+          speciesId: sp.id,
+          name: sp.name,
+          avatar: sp.avatar,
+          accentColor: sp.accentColor || '#38bdf8',
+          count: pData.count,
+          tripSeconds,
+          perPenguinTripYield,
+          dps,
+          fishPerMin: dps * 60
+        };
+      }
+
+      getSpeciesFishPerMinuteBreakdown() {
+        const syn = this.getColonySynergies();
+        const rows = [];
+        let totalFpm = 0;
         PENGUIN_SPECIES.forEach(sp => {
           const pData = this.penguins[sp.id];
           if (pData && pData.count > 0) {
-            const traitAvg = this.getSpeciesTraitAverages(sp.id);
-            let yieldVal = sp.baseYield * (1 + (pData.level - 1) * 0.15) * traitAvg.yieldMult * this.perkCatchMult * lineBonus;
-            if (sp.id === 'emperor' && this.emperorBoost > 0) {
-              yieldVal *= (1 + this.emperorBoost);
-            }
-            const tripSeconds = Math.max(2.5, 9 / (sp.baseSpeed * traitAvg.speedMult * traitAvg.diveSpeedMult * (1 + this.tech.thermal_parkas * 0.15)));
-            const rate = (yieldVal / tripSeconds) * pData.count;
-            total += rate;
+            const m = this.getSpeciesTripMetrics(sp.id, syn);
+            totalFpm += m.fishPerMin;
+            rows.push(m);
+          }
+        });
+        return rows.map(r => ({
+          ...r,
+          sharePct: totalFpm > 0 ? (r.fishPerMin / totalFpm) * 100 : 0
+        }));
+      }
+
+      calculateDPS() {
+        let total = 0;
+        const syn = this.getColonySynergies();
+        PENGUIN_SPECIES.forEach(sp => {
+          const pData = this.penguins[sp.id];
+          if (pData && pData.count > 0) {
+            total += this.getSpeciesTripMetrics(sp.id, syn).dps;
           }
         });
 
-        const weatherMult = this.getWeatherYieldMultiplier();
-        const streakBonus = this.getDailyStreakFishMultiplier();
-        this.dps = total * prestige * levelBonus * streakBonus * cryoBonus * frenzy * supernova * polarSurge * weatherMult;
+        this.dps = total;
         if (this.dps > this.highestDPS) {
           this.highestDPS = this.dps;
         }
@@ -5684,6 +6350,7 @@
       }
 
       addFish(amount) {
+        if (!(amount > 0)) return;
         this.fish += amount;
         this.lifetimeFish += amount;
         this.runFish += amount;
@@ -5704,7 +6371,7 @@
         }
         if (levelsGained > 0) {
           sound.playLevelUp();
-          showToast(`🧊 Glacier Level Up! Now Level ${this.glacierLevel} (+5% Production per level)`);
+          showToast(`🧊 Glacier Level Up! Now Level ${this.glacierLevel} (+${formatPct(GLACIER_LEVEL_BONUS_RATE * 100)}% Production per level)`, '🧊', { category: 'boost' });
           spawnLevelUpCelebration();
           this.save();
         }
@@ -5712,6 +6379,7 @@
       }
 
       save() {
+        if (this.isFactoryResetting) return;
         const saveObj = {
           fish: this.fish,
           lifetimeFish: this.lifetimeFish,
@@ -5762,6 +6430,7 @@
           lastColonySpeechEndedAt: this.lastColonySpeechEndedAt,
           pendingOfflineFish: this.pendingOfflineFish,
           lastSeenFeatureReleaseId: this.lastSeenFeatureReleaseId,
+          disableRoutineToasts: Boolean(this.disableRoutineToasts),
           dailyReminderEnabled: typeof pushReminders !== 'undefined' ? pushReminders.enabled : false,
           lastDailyReminderDateKey: typeof pushReminders !== 'undefined' ? pushReminders.lastNotifiedDateKey : ''
         };
@@ -5932,6 +6601,9 @@
             if (typeof data.lastSeenFeatureReleaseId === 'string') {
               this.lastSeenFeatureReleaseId = data.lastSeenFeatureReleaseId;
             }
+            if (typeof data.disableRoutineToasts === 'boolean') {
+              this.disableRoutineToasts = data.disableRoutineToasts;
+            }
 
             if (data.lastSaveTime) {
               const elapsedSec = (Date.now() - data.lastSaveTime) / 1000;
@@ -6021,6 +6693,11 @@
       spreadY: 25
     };
 
+    const createHoleSlots = (count = 10) => Array.from({ length: count }, (_, idx) => ({
+      angle: -Math.PI + (idx / count) * Math.PI * 2,
+      occupiedBy: null
+    }));
+
     const FISHING_HOLES = [
       {
         id: 1,
@@ -6029,11 +6706,7 @@
         radiusX: 44,
         radiusY: 20,
         rippleTimer: 0,
-        slots: [
-          { angle: -Math.PI * 0.75, occupiedBy: null },
-          { angle: -Math.PI * 0.25, occupiedBy: null },
-          { angle: Math.PI * 0.5, occupiedBy: null }
-        ]
+        slots: createHoleSlots(10)
       },
       {
         id: 2,
@@ -6042,11 +6715,7 @@
         radiusX: 50,
         radiusY: 22,
         rippleTimer: 1.2,
-        slots: [
-          { angle: -Math.PI * 0.75, occupiedBy: null },
-          { angle: -Math.PI * 0.25, occupiedBy: null },
-          { angle: Math.PI * 0.5, occupiedBy: null }
-        ]
+        slots: createHoleSlots(10)
       },
       {
         id: 3,
@@ -6055,21 +6724,31 @@
         radiusX: 44,
         radiusY: 20,
         rippleTimer: 2.4,
-        slots: [
-          { angle: -Math.PI * 0.75, occupiedBy: null },
-          { angle: -Math.PI * 0.25, occupiedBy: null },
-          { angle: Math.PI * 0.5, occupiedBy: null }
-        ]
+        slots: createHoleSlots(10)
       }
     ];
 
     function claimAvailableSlot(penguinId) {
+      // Spread penguins evenly across holes by picking the least-crowded hole with a free slot
+      let bestHole = null;
+      let bestOccupied = Infinity;
       for (let hole of FISHING_HOLES) {
+        let occ = 0;
+        let hasFree = false;
         for (let slot of hole.slots) {
-          if (slot.occupiedBy === null) {
-            slot.occupiedBy = penguinId;
-            return { hole, slot };
-          }
+          if (slot.occupiedBy !== null) occ++;
+          else hasFree = true;
+        }
+        if (hasFree && occ < bestOccupied) {
+          bestOccupied = occ;
+          bestHole = hole;
+        }
+      }
+      if (bestHole) {
+        const freeSlot = bestHole.slots.find(s => s.occupiedBy === null);
+        if (freeSlot) {
+          freeSlot.occupiedBy = penguinId;
+          return { hole: bestHole, slot: freeSlot };
         }
       }
       return null;
@@ -6109,6 +6788,26 @@
     let weatherSnowMix = 0.1;
     let weatherWindMix = 0.25;
     let weatherFogMix = 0.0;
+
+    // Belly-Slide Ice Trails & Splash Ripple Buffers (Update 1.8)
+    const slideTrails = [];
+    const holeRipples = [];
+    function spawnHoleRipple(hole, color = 'rgba(186, 230, 253, 0.85)') {
+      if (!hole || holeRipples.length > 36) return;
+      holeRipples.push({
+        holeId: hole.id,
+        xRatio: hole.xRatio,
+        yRatio: hole.yRatio,
+        maxRx: hole.radiusX * 1.05,
+        maxRy: hole.radiusY * 1.05,
+        progress: 0.08,
+        color
+      });
+    }
+
+    // Golden Fish School Timed Mini-Event State (Update 1.8)
+    let goldenFishEvent = null;
+    let nextGoldenFishCooldown = 78 + Math.random() * 34; // 78–112s between leaps
 
     const tapParticles = [];
     function addTapParticle(x, y, text, color = '#38bdf8', size = 16) {
@@ -7348,26 +8047,42 @@
           }
         }
 
-        const traitSpeed = this.trait ? this.trait.speedMult : 1.0;
-        let speed = this.species.baseSpeed * 40 * traitSpeed * state.perkWalkSpeedMult * (1 + state.tech.thermal_parkas * 0.15);
+        const synergies = state.getColonySynergies();
+        const pSpeciesData = state.penguins[this.species.id] || { count: 1, level: 1 };
+        const useColonyTraitAvg = pSpeciesData.count > MAX_VISIBLE_PER_COLONY;
+        const speciesTraitAvg = useColonyTraitAvg ? state.getSpeciesTraitAverages(this.species.id) : null;
+        const traitSpeed = useColonyTraitAvg ? speciesTraitAvg.speedMult : (this.trait ? this.trait.speedMult : 1.0);
+        let speed = this.species.baseSpeed * 40 * traitSpeed * state.perkWalkSpeedMult * synergies.walkSlideMult * (1 + state.tech.thermal_parkas * 0.15);
         if (state.slushDebuffTimer > 0) speed *= 0.92;
         if (state.supernovaTimer > 0) speed *= 2.5;
 
         if (this.isSliding) {
           speed *= 1.8 * state.perkSlideSpeedMult * (1 + state.tech.smooth_ice * 0.3);
           this.slideEffectTimer += dt;
-          if (this.slideEffectTimer > 0.15 && tapParticles.length < 30) {
+          if (this.slideEffectTimer > 0.08) {
             this.slideEffectTimer = 0;
-            tapParticles.push({
-              x: this.x + (Math.random() - 0.5) * 8,
-              y: this.y + 6,
-              text: this.species.id === 'cyber' ? '✦' : '❄️',
-              color: this.species.id === 'cyber' ? 'rgba(56, 189, 248, 0.85)' : 'rgba(255, 255, 255, 0.75)',
-              size: 10,
-              life: 0.4,
-              vy: -0.8,
-              vx: -this.facing * (1 + Math.random())
-            });
+            if (slideTrails.length < 90) {
+              slideTrails.push({
+                x: this.x - this.facing * 6,
+                y: this.y + 7,
+                r: this.species.id === 'emperor' ? 5.5 : 4.2,
+                life: 0.72,
+                maxLife: 0.72,
+                cyber: this.species.id === 'cyber'
+              });
+            }
+            if (tapParticles.length < 30 && Math.random() < 0.55) {
+              tapParticles.push({
+                x: this.x + (Math.random() - 0.5) * 8,
+                y: this.y + 6,
+                text: this.species.id === 'cyber' ? '✦' : '❄️',
+                color: this.species.id === 'cyber' ? 'rgba(56, 189, 248, 0.85)' : 'rgba(255, 255, 255, 0.75)',
+                size: 10,
+                life: 0.4,
+                vy: -0.8,
+                vx: -this.facing * (1 + Math.random())
+              });
+            }
           }
         }
 
@@ -7447,12 +8162,13 @@
             this.diveTimer -= dt;
             if (this.diveTimer <= 0) {
               this.state = 'FISHING';
-              const traitDive = this.trait ? this.trait.diveSpeedMult : 1.0;
-              const diveRate = state.diveSpeedMult * traitDive * (1 + (this.species.diveTime > 1 ? 0.2 : 0));
-              this.diveTimer = Math.max(0.6, this.species.diveTime / diveRate);
+              const traitDive = useColonyTraitAvg ? speciesTraitAvg.diveSpeedMult : (this.trait ? this.trait.diveSpeedMult : 1.0);
+              const diveRate = state.diveSpeedMult * traitDive * synergies.diveSpeedMult * (1 + (this.species.diveTime > 1 ? 0.2 : 0));
+              this.diveTimer = Math.max(0.6, this.species.diveTime / Math.max(0.1, diveRate));
               sound.playSplash();
               if (this.claimedTarget) {
                 this.claimedTarget.hole.rippleTimer = 1.0;
+                spawnHoleRipple(this.claimedTarget.hole, 'rgba(186, 230, 253, 0.88)');
               }
             }
             break;
@@ -7469,13 +8185,15 @@
               sound.playSplash();
               if (this.claimedTarget) {
                 this.claimedTarget.hole.rippleTimer = 1.0;
+                spawnHoleRipple(this.claimedTarget.hole, 'rgba(125, 211, 252, 0.94)');
               }
 
               const lineBonus = 1 + (state.tech.reinforced_line * 0.25);
-              const pData = state.penguins[this.species.id] || { level: 1 };
-              const traitYield = this.trait ? this.trait.yieldMult : 1.0;
-              const catchVal = Math.round(this.species.baseYield * (1 + (pData.level - 1) * 0.15) * traitYield * state.perkCatchMult * lineBonus);
-              this.carriedFish = Math.max(1, catchVal);
+              const pData = pSpeciesData;
+              const traitYield = useColonyTraitAvg ? speciesTraitAvg.yieldMult : (this.trait ? this.trait.yieldMult : 1.0);
+              const emperorMult = (this.species.id === 'emperor' && state.emperorBoost > 0) ? (1 + state.emperorBoost) : 1;
+              const catchVal = this.species.baseYield * (1 + (pData.level - 1) * COLONY_SIZE_BONUS_RATE) * traitYield * state.perkCatchMult * lineBonus * emperorMult * synergies.catchYieldMult;
+              this.carriedFish = Math.max(0.1, catchVal);
 
               releaseSlot(this.uid);
               this.claimedTarget = null;
@@ -7512,18 +8230,24 @@
                 this.y += (dy / dist) * step;
               }
             } else {
-              const cryoBonus = 1 + (state.tech.cryo_storage * 0.2);
-              const frenzy = state.frenzyTimer > 0 ? 3 : 1;
-              const supernova = state.supernovaTimer > 0 ? 4 : 1;
-              const polarSurge = state.polarSurgeTimer > 0 ? 2 : 1;
-              const weatherMult = state.getWeatherYieldMultiplier();
-              const streakBonus = state.getDailyStreakFishMultiplier();
-              const totalBanked = Math.floor(this.carriedFish * cryoBonus * state.getPrestigeMultiplier() * streakBonus * frenzy * supernova * polarSurge * weatherMult);
+              const pData = state.penguins[this.species.id] || { count: 1 };
+              const activeSpeciesCount = Math.max(1, activePenguins.filter(p => p.speciesId === this.species.id).length);
+              const colonyScale = Math.max(1, pData.count) / activeSpeciesCount;
+              const globalMult = state.getGlobalOutputMultiplier(synergies);
+              const rawBanked = this.carriedFish * globalMult * colonyScale;
 
-              state.addFish(totalBanked);
-              sound.playPlink();
-              sound.triggerHaptic('collect', 90);
-              addTapParticle(this.x, this.y - 12, `+${totalBanked} 🐟`, '#fbbf24', 16);
+              if (!state.speciesFishRemainder) state.speciesFishRemainder = {};
+              const prevRem = state.speciesFishRemainder[this.species.id] || 0;
+              const combined = rawBanked + prevRem;
+              const totalBanked = Math.floor(combined);
+              state.speciesFishRemainder[this.species.id] = combined - totalBanked;
+
+              if (totalBanked > 0) {
+                state.addFish(totalBanked);
+                sound.playPlink();
+                sound.triggerHaptic('collect', 90);
+                addTapParticle(this.x, this.y - 12, `+${formatNumber(totalBanked)} 🐟`, '#fbbf24', 16);
+              }
 
               this.carriedFish = 0;
               this.initiatePathToFishingHole();
@@ -7897,41 +8621,31 @@
     }
 
     function syncActivePenguins() {
-      let totalCount = 0;
-      Object.keys(state.penguins).forEach(id => {
-        totalCount += state.penguins[id].count;
-      });
+      // Strictly cap visible penguins to MAX_VISIBLE_PER_COLONY (6) per unlocked species
+      PENGUIN_SPECIES.forEach(sp => {
+        const owned = (state.penguins[sp.id] && state.penguins[sp.id].count) ? state.penguins[sp.id].count : 0;
+        const targetVisible = Math.min(MAX_VISIBLE_PER_COLONY, Math.max(0, owned));
+        let speciesSprites = activePenguins.filter(p => p.speciesId === sp.id);
 
-      const visualCount = Math.min(14, Math.max(1, totalCount));
-      const unlocked = PENGUIN_SPECIES.filter(s => (state.penguins[s.id] && state.penguins[s.id].count > 0));
+        while (speciesSprites.length < targetVisible) {
+          const created = new ActivePenguin(sp.id);
+          activePenguins.push(created);
+          speciesSprites.push(created);
+        }
 
-      // Guarantee every unlocked penguin species has at least one matching sprite on the ice
-      unlocked.forEach(sp => {
-        const hasSpeciesOnIce = activePenguins.some(p => p.speciesId === sp.id);
-        if (!hasSpeciesOnIce) {
-          if (activePenguins.length >= visualCount) {
-            // Replace a duplicate of the most populated species on the ice
-            const countsOnIce = {};
-            activePenguins.forEach(p => { countsOnIce[p.speciesId] = (countsOnIce[p.speciesId] || 0) + 1; });
-            const dupIdx = activePenguins.findIndex(p => (countsOnIce[p.speciesId] || 0) > 1);
-            if (dupIdx >= 0) {
-              const removed = activePenguins.splice(dupIdx, 1)[0];
-              if (removed) releaseSlot(removed.uid);
-            }
-          }
-          if (activePenguins.length < visualCount) {
-            activePenguins.push(new ActivePenguin(sp.id));
+        while (speciesSprites.length > targetVisible) {
+          const toRemove = speciesSprites.shift();
+          const idx = activePenguins.indexOf(toRemove);
+          if (idx >= 0) {
+            activePenguins.splice(idx, 1);
+            releaseSlot(toRemove.uid);
           }
         }
       });
 
-      while (activePenguins.length < visualCount) {
-        const species = unlocked[Math.floor(Math.random() * unlocked.length)] || PENGUIN_SPECIES[0];
-        activePenguins.push(new ActivePenguin(species.id));
-      }
-      while (activePenguins.length > visualCount) {
-        const p = activePenguins.pop();
-        if (p) releaseSlot(p.uid);
+      // Fallback safeguard: ensure at least 1 Adélie if colony is somehow completely empty
+      if (activePenguins.length === 0) {
+        activePenguins.push(new ActivePenguin('adelie'));
       }
     }
 
@@ -7940,13 +8654,146 @@
     let lastTime = performance.now();
     let lastAutoSavePerfNow = lastTime;
     let auroraWavePhase = 0;
+    let skyCycleElapsed = 0;
     let achievementCheckTimer = 0;
+    let displayedFish = 0;
+    let fishCountUpGlowTimer = 0;
+
+    function updateDisplayedFish(dt) {
+      const target = Math.max(0, Number(state.fish) || 0);
+      if (target < displayedFish || Math.abs(target - displayedFish) < 0.35) {
+        displayedFish = target;
+      } else {
+        const delta = target - displayedFish;
+        const step = Math.max(delta * Math.min(1, dt * 8.5), dt * Math.max(12, delta * 2.5));
+        displayedFish = Math.min(target, displayedFish + step);
+        fishCountUpGlowTimer = 0.28;
+      }
+      if (fishCountUpGlowTimer > 0) {
+        fishCountUpGlowTimer = Math.max(0, fishCountUpGlowTimer - dt);
+      }
+    }
+
+    function spawnGoldenFishEvent() {
+      const hole = FISHING_HOLES[Math.floor(Math.random() * FISHING_HOLES.length)] || FISHING_HOLES[1];
+      const dir = hole.xRatio > 0.6 ? -1 : (hole.xRatio < 0.4 ? 1 : (Math.random() < 0.5 ? -1 : 1));
+      goldenFishEvent = {
+        hole,
+        dir,
+        elapsed: 0,
+        duration: 5.5,
+        x: width * hole.xRatio,
+        y: height * hole.yRatio,
+        caught: false
+      };
+      spawnHoleRipple(hole, 'rgba(253, 224, 71, 0.95)');
+      if (typeof sound !== 'undefined' && sound.playSplash) sound.playSplash();
+    }
+
+    function updateAndDrawGoldenFish(ctx, dt) {
+      const blocking = (typeof isModalBlockingAurora === 'function' && isModalBlockingAurora()) ||
+        (typeof launchSplash !== 'undefined' && launchSplash && launchSplash.isActive) ||
+        state.isAuroraModalOpen;
+
+      if (!goldenFishEvent) {
+        if (!blocking) {
+          nextGoldenFishCooldown -= dt;
+          if (nextGoldenFishCooldown <= 0) {
+            spawnGoldenFishEvent();
+            nextGoldenFishCooldown = 78 + Math.random() * 36;
+          }
+        }
+        return;
+      }
+
+      goldenFishEvent.elapsed += dt;
+      if (goldenFishEvent.elapsed >= goldenFishEvent.duration || goldenFishEvent.caught) {
+        goldenFishEvent = null;
+        return;
+      }
+
+      const hole = goldenFishEvent.hole;
+      const hx = width * hole.xRatio;
+      const hy = height * hole.yRatio;
+      const t = goldenFishEvent.elapsed / goldenFishEvent.duration;
+      // Graceful triple-leap shimmer arc above the fishing hole
+      const hopPhase = (t * 2.5) % 1;
+      const arcY = Math.sin(hopPhase * Math.PI) * 58;
+      const swayX = Math.sin(t * Math.PI * 2) * 34 * goldenFishEvent.dir;
+      goldenFishEvent.x = hx + swayX;
+      goldenFishEvent.y = hy - 14 - arcY;
+
+      ctx.save();
+      ctx.translate(goldenFishEvent.x, goldenFishEvent.y);
+
+      // Pulsing golden halo ring so players spot it effortlessly
+      const pulse = 0.65 + 0.35 * Math.sin(auroraWavePhase * 9);
+      const halo = ctx.createRadialGradient(0, 0, 3, 0, 0, 28 + pulse * 6);
+      halo.addColorStop(0, 'rgba(254, 240, 138, 0.85)');
+      halo.addColorStop(0.5, 'rgba(251, 191, 36, 0.38)');
+      halo.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(0, 0, 32, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Gleaming Golden Fish silhouette
+      const tilt = Math.cos(hopPhase * Math.PI) * -0.45 * goldenFishEvent.dir;
+      ctx.rotate(tilt);
+      ctx.scale(goldenFishEvent.dir, 1);
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.moveTo(-12, 0);
+      ctx.lineTo(-22, -7);
+      ctx.lineTo(-19, 0);
+      ctx.lineTo(-22, 7);
+      ctx.closePath();
+      ctx.fill();
+
+      const bodyGrad = ctx.createLinearGradient(-12, -8, 14, 8);
+      bodyGrad.addColorStop(0, '#fef08a');
+      bodyGrad.addColorStop(0.55, '#fbbf24');
+      bodyGrad.addColorStop(1, '#d97706');
+      ctx.fillStyle = bodyGrad;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 14, 7.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#020617';
+      ctx.beginPath();
+      ctx.arc(7, -1.5, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(7.6, -2.1, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Subtle sparkle trail
+      if (Math.random() < 0.3 && tapParticles.length < 35) {
+        tapParticles.push({
+          x: goldenFishEvent.x + (Math.random() - 0.5) * 14,
+          y: goldenFishEvent.y + (Math.random() - 0.5) * 10,
+          text: '✦',
+          color: '#fef08a',
+          size: 11,
+          life: 0.45,
+          vy: -0.6,
+          vx: (Math.random() - 0.5) * 0.8
+        });
+      }
+    }
 
     function gameLoop(now) {
       const dt = Math.min(0.1, (now - lastTime) / 1000);
       lastTime = now;
 
       auroraWavePhase += dt * 0.8;
+      skyCycleElapsed += dt;
       achievementCheckTimer += dt;
       if (achievementCheckTimer >= 1.0) {
         achievementCheckTimer = 0;
@@ -7980,11 +8827,11 @@
       if (state.advanceWeather(dt)) {
         const w = state.getCurrentWeather();
         if (w.id === 'blizzard') {
-          showToast('🌨️ Blizzard Incoming! Visibility down, +20% Fish Yield!', '🌨️');
+          showToast('🌨️ Blizzard Incoming! Visibility down, +20% Fish Yield!', '🌨️', { category: 'weather', durationMs: 4200 });
         } else if (w.id === 'light_snow') {
-          showToast('❄️ Light Snow drifting over the glacier.', '❄️');
+          showToast('❄️ Light Snow drifting over the glacier.', '❄️', { category: 'weather', durationMs: 4000 });
         } else {
-          showToast('☀️ The polar skies have Cleared!', '☀️');
+          showToast('☀️ The polar skies have Cleared!', '☀️', { category: 'weather', durationMs: 4000 });
         }
         state.save();
         if (state.currentTab === 'stats') {
@@ -8009,9 +8856,11 @@
       activePenguins.sort((a, b) => a.y - b.y);
       activePenguins.forEach(p => p.draw(ctx));
 
+      updateAndDrawGoldenFish(ctx, dt);
       drawBlizzardVisibilityOverlay(ctx, dt);
       activePenguins.forEach(p => p.drawSpeechBubble(ctx));
       updateParticles(ctx, dt);
+      updateDisplayedFish(dt);
       updateHUD();
 
       requestAnimationFrame(gameLoop);
@@ -8025,18 +8874,91 @@
       speed: 1.4 + (idx % 5) * 0.45
     }));
 
+    const SKY_PALETTE_KEYFRAMES = [
+      // 0: Deep Polar Twilight
+      { top: [2, 8, 20], mid: [7, 25, 54], bot: [18, 56, 102], starAlpha: 0.92, auroraAlpha: 0.85 },
+      // 1: Starry Arctic Midnight
+      { top: [1, 5, 16], mid: [5, 16, 42], bot: [12, 34, 72], starAlpha: 1.0, auroraAlpha: 0.72 },
+      // 2: Vibrant Aurora Borealis Peak
+      { top: [4, 14, 30], mid: [10, 38, 66], bot: [20, 74, 104], starAlpha: 0.88, auroraAlpha: 1.25 },
+      // 3: Crisp Polar Dawn
+      { top: [14, 24, 52], mid: [34, 52, 92], bot: [72, 102, 146], starAlpha: 0.45, auroraAlpha: 0.52 }
+    ];
+
+    function lerpRgbStr(a, b, t) {
+      const r = Math.round(a[0] + (b[0] - a[0]) * t);
+      const g = Math.round(a[1] + (b[1] - a[1]) * t);
+      const bl = Math.round(a[2] + (b[2] - a[2]) * t);
+      return `rgb(${r}, ${g}, ${bl})`;
+    }
+
+    function getCurrentSkyAtmosphere() {
+      const cyclePos = ((skyCycleElapsed % 360) / 360) * SKY_PALETTE_KEYFRAMES.length;
+      const idx = Math.floor(cyclePos) % SKY_PALETTE_KEYFRAMES.length;
+      const nextIdx = (idx + 1) % SKY_PALETTE_KEYFRAMES.length;
+      const frac = cyclePos - Math.floor(cyclePos);
+      const smooth = frac * frac * (3 - 2 * frac);
+      const a = SKY_PALETTE_KEYFRAMES[idx];
+      const b = SKY_PALETTE_KEYFRAMES[nextIdx];
+      return {
+        top: lerpRgbStr(a.top, b.top, smooth),
+        mid: lerpRgbStr(a.mid, b.mid, smooth),
+        bot: lerpRgbStr(a.bot, b.bot, smooth),
+        starAlpha: a.starAlpha + (b.starAlpha - a.starAlpha) * smooth,
+        auroraAlpha: a.auroraAlpha + (b.auroraAlpha - a.auroraAlpha) * smooth
+      };
+    }
+
+    function drawSlideTrailsAndRipples(ctx, dt) {
+      ctx.save();
+      for (let i = slideTrails.length - 1; i >= 0; i--) {
+        const seg = slideTrails[i];
+        seg.life -= dt;
+        if (seg.life <= 0) {
+          slideTrails.splice(i, 1);
+          continue;
+        }
+        const alpha = (seg.life / seg.maxLife) * 0.42;
+        ctx.fillStyle = seg.cyber
+          ? `rgba(125, 211, 252, ${alpha.toFixed(3)})`
+          : `rgba(240, 249, 255, ${alpha.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.ellipse(seg.x, seg.y, seg.r * 1.45, seg.r * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (let i = holeRipples.length - 1; i >= 0; i--) {
+        const rip = holeRipples[i];
+        rip.progress += dt * 1.35;
+        if (rip.progress >= 1) {
+          holeRipples.splice(i, 1);
+          continue;
+        }
+        const rx = rip.maxRx * rip.progress;
+        const ry = rip.maxRy * rip.progress;
+        ctx.globalAlpha = Math.max(0, 1 - rip.progress);
+        ctx.strokeStyle = rip.color;
+        ctx.lineWidth = 2.0 * (1 - rip.progress * 0.5);
+        ctx.beginPath();
+        ctx.ellipse(width * rip.xRatio, height * rip.yRatio + 1, rx, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     function drawScene(ctx, dt) {
       ctx.clearRect(0, 0, width, height);
 
+      const skyAtm = getCurrentSkyAtmosphere();
       const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.56);
-      skyGradient.addColorStop(0, '#020814');
-      skyGradient.addColorStop(0.5, '#071936');
-      skyGradient.addColorStop(1, '#123866');
+      skyGradient.addColorStop(0, skyAtm.top);
+      skyGradient.addColorStop(0.5, skyAtm.mid);
+      skyGradient.addColorStop(1, skyAtm.bot);
       ctx.fillStyle = skyGradient;
       ctx.fillRect(0, 0, width, height * 0.6);
 
-      drawPolarStarsAndMoon(ctx, auroraWavePhase);
-      drawAuroraWaves(ctx, auroraWavePhase);
+      drawPolarStarsAndMoon(ctx, auroraWavePhase, skyAtm.starAlpha);
+      drawAuroraWaves(ctx, auroraWavePhase, skyAtm.auroraAlpha);
       drawDistantMountains(ctx);
 
       const iceGradient = ctx.createLinearGradient(0, height * 0.38, 0, height);
@@ -8063,15 +8985,16 @@
         drawIceHole(ctx, hole);
       });
 
+      drawSlideTrailsAndRipples(ctx, dt);
       drawIglooDepot(ctx);
       drawSnow(ctx, dt);
     }
 
-    function drawPolarStarsAndMoon(ctx, phase) {
+    function drawPolarStarsAndMoon(ctx, phase, starOpacityScale = 1.0) {
       ctx.save();
       SKY_STARS.forEach(star => {
-        const twinkle = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(phase * star.speed + star.phase));
-        ctx.fillStyle = `rgba(224, 242, 254, ${twinkle.toFixed(3)})`;
+        const twinkle = (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(phase * star.speed + star.phase))) * starOpacityScale;
+        ctx.fillStyle = `rgba(224, 242, 254, ${Math.min(1, twinkle).toFixed(3)})`;
         ctx.beginPath();
         ctx.arc(star.xFrac * width, star.yFrac * height, star.size, 0, Math.PI * 2);
         ctx.fill();
@@ -8102,9 +9025,10 @@
       ctx.restore();
     }
 
-    function drawAuroraWaves(ctx, phase) {
+    function drawAuroraWaves(ctx, phase, auroraOpacityScale = 1.0) {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = Math.max(0.35, Math.min(1.0, auroraOpacityScale));
 
       const ribbons = [
         { cTop: 'rgba(56, 189, 248, 0.04)', cBot: 'rgba(56, 189, 248, 0.30)', baseY: 0.14, offset: 0 },
@@ -8360,19 +9284,57 @@
       const cx = width * DEPOT.x;
       const cy = height * DEPOT.y;
       const r = DEPOT.radius;
+      const lvl = (state && state.glacierLevel) ? state.glacierLevel : 1;
 
       ctx.save();
       // Ambient ground shadow + snow threshold
       ctx.fillStyle = 'rgba(10, 30, 60, 0.35)';
       ctx.beginPath();
-      ctx.ellipse(cx, cy + r * 0.42, r * 1.35, r * 0.48, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + r * 0.42, r * (lvl >= 10 ? 1.55 : 1.35), r * 0.48, 0, 0, Math.PI * 2);
       ctx.fill();
+
+      // Lv 20+: Royal Aurora Crystal Halo behind the depot
+      if (lvl >= 20) {
+        const haloPulse = 0.72 + 0.28 * Math.sin(auroraWavePhase * 2.4);
+        const royalHalo = ctx.createRadialGradient(cx, cy - r * 0.35, r * 0.35, cx, cy - r * 0.35, r * 1.9);
+        royalHalo.addColorStop(0, `rgba(192, 132, 252, ${(0.28 * haloPulse).toFixed(3)})`);
+        royalHalo.addColorStop(0.55, `rgba(56, 189, 248, ${(0.18 * haloPulse).toFixed(3)})`);
+        royalHalo.addColorStop(1, 'rgba(56, 189, 248, 0)');
+        ctx.fillStyle = royalHalo;
+        ctx.beginPath();
+        ctx.arc(cx, cy - r * 0.3, r * 1.85, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Lv 10+: Twin Crystalline Ice Spires flanking the main dome
+      if (lvl >= 10) {
+        [-1, 1].forEach(side => {
+          const sx = cx + side * (r * 1.06);
+          const sy = cy + 2;
+          const spireH = lvl >= 20 ? 44 : 34;
+          const spireGrad = ctx.createLinearGradient(sx, sy - spireH, sx, sy);
+          spireGrad.addColorStop(0, lvl >= 20 ? '#e9d5ff' : '#e0f2fe');
+          spireGrad.addColorStop(0.55, '#38bdf8');
+          spireGrad.addColorStop(1, '#0369a1');
+          ctx.fillStyle = spireGrad;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - spireH);
+          ctx.lineTo(sx + side * 11, sy);
+          ctx.lineTo(sx - side * 9, sy);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        });
+      }
 
       // Main Igloo Dome
       const domeGrad = ctx.createRadialGradient(cx - r * 0.28, cy - r * 0.42, 4, cx, cy, r * 1.05);
       domeGrad.addColorStop(0, '#ffffff');
-      domeGrad.addColorStop(0.5, '#d4ecfc');
-      domeGrad.addColorStop(1, '#7ab3dc');
+      domeGrad.addColorStop(0.5, lvl >= 20 ? '#e0f2fe' : '#d4ecfc');
+      domeGrad.addColorStop(1, lvl >= 10 ? '#60a5fa' : '#7ab3dc');
       ctx.fillStyle = domeGrad;
       ctx.beginPath();
       ctx.arc(cx, cy, r, Math.PI, 0, false);
@@ -8405,8 +9367,8 @@
       });
 
       // Outer dome rim outline
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
-      ctx.lineWidth = 1.4;
+      ctx.strokeStyle = lvl >= 20 ? 'rgba(216, 180, 254, 0.85)' : 'rgba(255, 255, 255, 0.65)';
+      ctx.lineWidth = lvl >= 20 ? 2.0 : 1.4;
       ctx.beginPath();
       ctx.arc(cx, cy, r, Math.PI, 0, false);
       ctx.stroke();
@@ -8424,40 +9386,86 @@
       ctx.closePath();
       ctx.fill();
 
+      // Lv 5+: Glowing Warm Lantern Posts flanking doorway
+      if (lvl >= 5) {
+        [-1, 1].forEach(side => {
+          const lx = cx + side * (r * 0.48);
+          const ly = cy - 6;
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(lx, cy + 4);
+          ctx.lineTo(lx, ly);
+          ctx.stroke();
+
+          const lGlow = ctx.createRadialGradient(lx, ly, 1, lx, ly, 11);
+          lGlow.addColorStop(0, 'rgba(254, 240, 138, 0.95)');
+          lGlow.addColorStop(0.55, 'rgba(251, 191, 36, 0.4)');
+          lGlow.addColorStop(1, 'rgba(251, 191, 36, 0)');
+          ctx.fillStyle = lGlow;
+          ctx.beginPath();
+          ctx.arc(lx, ly, 11, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath();
+          ctx.arc(lx, ly, 2.8, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
       // Warm cozy hearth glow inside doorway & spilling on snow
-      const lanternGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy + 4, r * 0.42);
-      lanternGrad.addColorStop(0, 'rgba(253, 224, 71, 0.72)');
-      lanternGrad.addColorStop(0.55, 'rgba(251, 191, 36, 0.32)');
+      const lanternGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy + 4, r * (lvl >= 5 ? 0.52 : 0.42));
+      lanternGrad.addColorStop(0, 'rgba(253, 224, 71, 0.78)');
+      lanternGrad.addColorStop(0.55, 'rgba(251, 191, 36, 0.35)');
       lanternGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
       ctx.fillStyle = lanternGrad;
       ctx.beginPath();
-      ctx.ellipse(cx, cy + 2, r * 0.42, r * 0.28, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + 2, r * 0.46, r * 0.3, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Crisp Flagpole & Waving Colony Pennant
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - r);
-      ctx.lineTo(cx, cy - r - 18);
-      ctx.stroke();
+      // Lv 20+: Royal Crystal Crown perched at dome summit
+      if (lvl >= 20) {
+        ctx.fillStyle = '#fde047';
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(cx - 11, cy - r + 1);
+        ctx.lineTo(cx - 8, cy - r - 10);
+        ctx.lineTo(cx - 3, cy - r - 4);
+        ctx.lineTo(cx, cy - r - 13);
+        ctx.lineTo(cx + 3, cy - r - 4);
+        ctx.lineTo(cx + 8, cy - r - 10);
+        ctx.lineTo(cx + 11, cy - r + 1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        // Crisp Flagpole & Waving Colony Pennant
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r);
+        ctx.lineTo(cx, cy - r - 18);
+        ctx.stroke();
 
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.arc(cx, cy - r - 18.5, 2.2, 0, Math.PI * 2);
-      ctx.fill();
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(cx, cy - r - 18.5, 2.2, 0, Math.PI * 2);
+        ctx.fill();
 
-      const wave = Math.sin(auroraWavePhase * 3.2) * 3;
-      const flagGrad = ctx.createLinearGradient(cx, cy - r - 17, cx + 16, cy - r - 6);
-      flagGrad.addColorStop(0, '#38bdf8');
-      flagGrad.addColorStop(1, '#0284c7');
-      ctx.fillStyle = flagGrad;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - r - 17);
-      ctx.quadraticCurveTo(cx + 8, cy - r - 16 + wave * 0.6, cx + 16, cy - r - 12 + wave);
-      ctx.lineTo(cx, cy - r - 7);
-      ctx.closePath();
-      ctx.fill();
+        const wave = Math.sin(auroraWavePhase * 3.2) * 3;
+        const flagGrad = ctx.createLinearGradient(cx, cy - r - 17, cx + 16, cy - r - 6);
+        flagGrad.addColorStop(0, lvl >= 10 ? '#c084fc' : '#38bdf8');
+        flagGrad.addColorStop(1, lvl >= 10 ? '#6366f1' : '#0284c7');
+        ctx.fillStyle = flagGrad;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r - 17);
+        ctx.quadraticCurveTo(cx + 8, cy - r - 16 + wave * 0.6, cx + 16, cy - r - 12 + wave);
+        ctx.lineTo(cx, cy - r - 7);
+        ctx.closePath();
+        ctx.fill();
+      }
 
       ctx.restore();
     }
@@ -8580,6 +9588,35 @@
       sound.init();
       dailyManager.track('taps', 1);
       state.totalManualClicks = (state.totalManualClicks || 0) + 1;
+
+      // Priority 1: Check Golden Fish School mini-event tap
+      if (goldenFishEvent && !goldenFishEvent.caught && Math.hypot(goldenFishEvent.x - x, goldenFishEvent.y - y) < 48) {
+        goldenFishEvent.caught = true;
+        const gx = goldenFishEvent.x;
+        const gy = goldenFishEvent.y;
+        goldenFishEvent = null;
+        state.calculateDPS();
+        const burstFish = Math.max(50, Math.round(state.dps * 30));
+        state.addFish(burstFish);
+        sound.playLevelUp();
+        sound.triggerHaptic('collect');
+        for (let i = 0; i < 18; i++) {
+          const ang = (i / 18) * Math.PI * 2;
+          const spd = 2.2 + Math.random() * 4.2;
+          fireworks.push({
+            x: gx,
+            y: gy,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 1.2,
+            color: i % 2 === 0 ? '#fde047' : '#fbbf24',
+            size: 2.5 + Math.random() * 2.5,
+            life: 0.9
+          });
+        }
+        addTapParticle(gx, gy - 18, `✨ +${formatNumber(burstFish)} 🐟`, '#fde047', 19);
+        showToast(`🐠 Golden Fish Caught! +${formatNumber(burstFish)} 🐟 (30s catch burst!)`, '✨', { category: 'boost', durationMs: 3600 });
+        return;
+      }
 
       let tappedPenguin = false;
       for (let p of activePenguins) {
@@ -9046,11 +10083,11 @@
 
       if (isPenalty) {
         sound.playBuzzer();
-        showToast(`🚨 TIMEOUT PENALTY! Lowest tier chosen: "${chosenPerk.name}"`);
+        showToast(`🚨 TIMEOUT PENALTY! Lowest tier chosen: "${chosenPerk.name}"`, '⚠️', { category: 'boost' });
       } else {
         sound.playLevelUp();
         sound.triggerHaptic('collect');
-        showToast(`✨ Aurora Boon Granted: "${chosenPerk.name}"!`);
+        showToast(`✨ Aurora Boon Granted: "${chosenPerk.name}"!`, '✨', { category: 'boost' });
       }
 
       updateSheetContent();
@@ -9075,10 +10112,19 @@
       selectAuroraPerk(worstIndex, true);
     }
 
-    // --- TOAST NOTIFICATION (SWIPEABLE DISMISS) ---
+    // --- TOAST NOTIFICATION (CLICKABLE, LIVE-TICKING, SWIPEABLE DISMISS & SELECTIVE FILTER) ---
     let toastTimeout = null;
     let toastResetTimeout = null;
+    let toastLiveInterval = null;
+    let activeToastOnClick = null;
     let toastSwipeInitialized = false;
+
+    function clearToastLiveInterval() {
+      if (toastLiveInterval) {
+        clearInterval(toastLiveInterval);
+        toastLiveInterval = null;
+      }
+    }
 
     function scheduleToastAutoHide(delayMs = 2800) {
       if (toastTimeout) clearTimeout(toastTimeout);
@@ -9097,9 +10143,12 @@
         clearTimeout(toastResetTimeout);
         toastResetTimeout = null;
       }
+      clearToastLiveInterval();
+      activeToastOnClick = null;
+
       const banner = document.getElementById('toast-banner');
       if (!banner) return;
-      banner.classList.remove('dragging');
+      banner.classList.remove('dragging', 'is-clickable');
 
       if (exitDx !== 0 || exitDy !== 0) {
         banner.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
@@ -9180,13 +10229,19 @@
         banner.classList.remove('dragging');
 
         const elapsed = Math.max(1, performance.now() - dragStartAt);
+        const totalDist = Math.hypot(lastDx, lastDy);
         const vx = Math.abs(lastDx) / elapsed;
         const vy = lastDy / elapsed;
 
+        const isCleanTap = !cancelled && totalDist < 10 && typeof activeToastOnClick === 'function';
         const swipedHoriz = !cancelled && (Math.abs(lastDx) >= 44 || (Math.abs(lastDx) >= 18 && vx >= 0.32));
         const swipedUp = !cancelled && (lastDy <= -22 || (lastDy <= -10 && vy <= -0.25));
 
-        if (swipedHoriz) {
+        if (isCleanTap) {
+          const cb = activeToastOnClick;
+          dismissToastBanner(0, 0);
+          try { cb(); } catch (_) {}
+        } else if (swipedHoriz) {
           const dir = lastDx >= 0 ? 1 : -1;
           const exitX = dir * Math.max(180, (window.innerWidth || 360) * 0.65);
           dismissToastBanner(exitX, lastDy);
@@ -9254,34 +10309,86 @@
         if (activeSource !== 'touch') return;
         endDrag(true);
       }, { passive: true });
+
+      banner.addEventListener('click', (e) => {
+        // Fallback click handler for keyboard/accessibility or direct click dispatch
+        if (typeof activeToastOnClick === 'function' && banner.classList.contains('show') && !activeSource) {
+          const cb = activeToastOnClick;
+          dismissToastBanner(0, 0);
+          try { cb(); } catch (_) {}
+        }
+      });
     }
 
-    function showToast(text, icon = '✨') {
+    function showToast(text, icon = '✨', options = {}) {
+      const opts = (options && typeof options === 'object') ? options : {};
+      const category = opts.category || 'info';
+      if (
+        typeof state !== 'undefined' &&
+        state &&
+        state.disableRoutineToasts &&
+        category !== 'goal' &&
+        category !== 'weather' &&
+        category !== 'system'
+      ) {
+        return false;
+      }
+
       setupToastSwipeDismiss();
       const banner = document.getElementById('toast-banner');
-      if (!banner) return;
+      if (!banner) return false;
       if (toastResetTimeout) {
         clearTimeout(toastResetTimeout);
         toastResetTimeout = null;
       }
+      clearToastLiveInterval();
+      activeToastOnClick = typeof opts.onClick === 'function' ? opts.onClick : null;
+
       banner.classList.remove('dragging');
+      banner.classList.toggle('is-clickable', Boolean(activeToastOnClick));
       banner.style.transition = '';
       banner.style.transform = '';
       banner.style.opacity = '';
-      document.getElementById('toast-icon').textContent = icon;
-      document.getElementById('toast-text').textContent = text;
+
+      const iconEl = document.getElementById('toast-icon');
+      const textEl = document.getElementById('toast-text');
+      const ctaEl = document.getElementById('toast-cta');
+      if (iconEl) iconEl.textContent = icon;
+      if (textEl) textEl.textContent = text;
+      if (ctaEl) ctaEl.textContent = opts.ctaText || 'Tap →';
       banner.classList.add('show');
 
-      scheduleToastAutoHide(2800);
+      if (typeof opts.liveUpdater === 'function') {
+        const refreshLive = () => {
+          if (!banner.classList.contains('show')) {
+            clearToastLiveInterval();
+            return;
+          }
+          const updated = opts.liveUpdater();
+          if (updated && typeof updated === 'object') {
+            if (iconEl && updated.icon) iconEl.textContent = updated.icon;
+            if (textEl && updated.text) textEl.textContent = updated.text;
+          } else if (typeof updated === 'string' && textEl) {
+            textEl.textContent = updated;
+          }
+        };
+        refreshLive();
+        toastLiveInterval = setInterval(refreshLive, 500);
+      }
+
+      scheduleToastAutoHide(typeof opts.durationMs === 'number' ? opts.durationMs : 2800);
+      return true;
     }
 
     // --- OFFLINE PROGRESS MODAL ---
     function isModalBlockingAurora() {
       const offlineModal = document.getElementById('offline-modal');
       const whatsNewModal = document.getElementById('whats-new-modal');
+      const factoryModal = document.getElementById('factory-reset-modal');
       return Boolean(
         (offlineModal && offlineModal.style.display === 'flex') ||
         (whatsNewModal && whatsNewModal.style.display === 'flex') ||
+        (factoryModal && factoryModal.style.display === 'flex') ||
         (typeof state !== 'undefined' && state.pendingOfflineFish > 0)
       );
     }
@@ -9299,7 +10406,7 @@
       if (toClaim > 0 && state) {
         state.addFish(toClaim);
         sound.triggerHaptic('collect');
-        showToast(`🐟 Claimed +${formatNumber(toClaim)} idle fish!`, '🐟');
+        showToast(`🐟 Claimed +${formatNumber(toClaim)} idle fish!`, '🐟', { category: 'boost' });
       }
       sound.playLevelUp();
       if (state) {
@@ -9402,7 +10509,139 @@
       return true;
     }
 
+    // --- FACTORY RESET FLOW (SAFE 2-STEP WIPE) ---
+    function closeFactoryResetModal() {
+      const modal = document.getElementById('factory-reset-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function performFactoryReset() {
+      state.isFactoryResetting = true;
+      closeFactoryResetModal();
+
+      // Clear native Android SharedPreferences & backup JSON
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.saveGame === 'function') {
+          window.AndroidBridge.saveGame('');
+        }
+      } catch (e) {
+        console.warn('AndroidBridge factory wipe warning:', e);
+      }
+
+      // Clear browser localStorage save
+      try {
+        localStorage.removeItem('PENGUIN_GLACIAL_SAVE');
+      } catch (e) {
+        console.warn('localStorage factory wipe warning:', e);
+      }
+
+      try {
+        if (window.location && typeof window.location.reload === 'function') {
+          window.location.reload();
+        }
+      } catch (_) {}
+    }
+
+    function openFactoryResetModal() {
+      const modal = document.getElementById('factory-reset-modal');
+      const step2Box = document.getElementById('factory-reset-step2-box');
+      const inputEl = document.getElementById('factory-reset-confirm-input');
+      const nextBtn = document.getElementById('factory-reset-next-btn');
+      const execBtn = document.getElementById('factory-reset-execute-btn');
+      const cancelBtn = document.getElementById('factory-reset-cancel-btn');
+      if (!modal) return;
+
+      if (step2Box) step2Box.style.display = 'none';
+      if (inputEl) inputEl.value = '';
+      if (nextBtn) nextBtn.style.display = 'inline-block';
+      if (execBtn) {
+        execBtn.style.display = 'none';
+        execBtn.disabled = true;
+      }
+
+      modal.style.display = 'flex';
+
+      if (cancelBtn) {
+        cancelBtn.onclick = () => closeFactoryResetModal();
+      }
+      if (nextBtn) {
+        nextBtn.onclick = () => {
+          if (step2Box) step2Box.style.display = 'flex';
+          nextBtn.style.display = 'none';
+          if (execBtn) {
+            execBtn.style.display = 'inline-block';
+            execBtn.disabled = true;
+          }
+          if (inputEl && typeof inputEl.focus === 'function') {
+            inputEl.focus();
+          }
+        };
+      }
+      if (inputEl) {
+        inputEl.oninput = () => {
+          const valid = inputEl.value.trim().toUpperCase() === 'RESET';
+          if (execBtn) execBtn.disabled = !valid;
+        };
+      }
+      if (execBtn) {
+        execBtn.onclick = () => {
+          if (!inputEl || inputEl.value.trim().toUpperCase() !== 'RESET') return;
+          performFactoryReset();
+        };
+      }
+    }
+
+    function renderColonySynergiesHtml(synergies) {
+      const syn = synergies || state.getColonySynergies();
+      return `
+        <div class="synergy-card-box">
+          <div class="synergy-header-row">
+            <div class="synergy-title">🤝 Colony Synergies</div>
+            <span class="synergy-count-pill">${syn.activeCount} / ${syn.items.length} Active</span>
+          </div>
+          <div class="synergy-grid">
+            ${syn.items.map(item => `
+              <div class="synergy-chip ${item.active ? 'active' : ''}">
+                <div class="synergy-chip-name">${item.icon} ${item.name} ${item.active ? '✓' : ''}</div>
+                <div class="synergy-chip-req">${item.reqText}</div>
+                <div class="synergy-chip-buff">${item.buffText}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
     // --- BOTTOM SHEET & UI TABS ---
+    let sheetSnapState = 'default'; // 'collapsed' | 'default' | 'expanded'
+
+    function setBottomSheetState(nextState) {
+      const sheet = document.getElementById('bottom-sheet');
+      const pill = document.getElementById('collapsed-pill');
+      const dragHandle = document.getElementById('sheet-drag-handle');
+      if (!sheet) return;
+
+      sheetSnapState = nextState;
+      sheet.style.transition = '';
+      sheet.style.transform = '';
+      sheet.style.height = '';
+      sheet.style.maxHeight = '';
+
+      if (nextState === 'collapsed') {
+        sheet.classList.remove('expanded');
+        sheet.classList.add('collapsed');
+        if (pill) pill.classList.remove('hidden');
+      } else if (nextState === 'expanded') {
+        sheet.classList.remove('collapsed');
+        sheet.classList.add('expanded');
+        if (pill) pill.classList.add('hidden');
+        if (dragHandle) dragHandle.setAttribute('aria-label', 'Drag down to shrink or close menu');
+      } else {
+        sheet.classList.remove('collapsed', 'expanded');
+        if (pill) pill.classList.add('hidden');
+        if (dragHandle) dragHandle.setAttribute('aria-label', 'Drag up for full screen or down to close menu');
+      }
+    }
 
     function setupUIEvents() {
       document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -9431,15 +10670,11 @@
       const pill = document.getElementById('collapsed-pill');
       const dragHandle = document.getElementById('sheet-drag-handle');
 
-      const collapseSheet = () => {
-        sheet.classList.add('collapsed');
-        pill.classList.remove('hidden');
-      };
-
       if (dragHandle) {
         let isDragging = false;
         let startY = 0;
         let currentDy = 0;
+        let startHeight = 0;
         let dragStartTime = 0;
 
         dragHandle.addEventListener('pointerdown', (e) => {
@@ -9447,6 +10682,9 @@
           startY = e.clientY;
           currentDy = 0;
           dragStartTime = performance.now();
+          const vh = window.innerHeight || document.documentElement.clientHeight || 640;
+          startHeight = sheet.getBoundingClientRect ? sheet.getBoundingClientRect().height : (sheetSnapState === 'expanded' ? vh : vh * 0.52);
+          if (!(startHeight > 10)) startHeight = sheetSnapState === 'expanded' ? vh : vh * 0.52;
           sheet.style.transition = 'none';
           if (dragHandle.setPointerCapture) {
             try { dragHandle.setPointerCapture(e.pointerId); } catch (_) {}
@@ -9455,24 +10693,65 @@
 
         dragHandle.addEventListener('pointermove', (e) => {
           if (!isDragging) return;
-          currentDy = Math.max(0, e.clientY - startY);
-          sheet.style.transform = `translateY(${currentDy}px)`;
+          currentDy = e.clientY - startY;
+          const vh = window.innerHeight || document.documentElement.clientHeight || 640;
+          const defaultH = vh * 0.52;
+
+          if (sheetSnapState === 'expanded') {
+            const targetH = Math.max(defaultH * 0.45, Math.min(vh, startHeight - currentDy));
+            if (currentDy > 0) {
+              sheet.style.height = `${targetH}px`;
+              sheet.style.maxHeight = `${targetH}px`;
+              sheet.style.transform = '';
+            }
+          } else {
+            if (currentDy < 0) {
+              // Pulling UP -> stretch smoothly toward full screen
+              const targetH = Math.min(vh, startHeight - currentDy);
+              sheet.style.height = `${targetH}px`;
+              sheet.style.maxHeight = `${targetH}px`;
+              sheet.style.transform = '';
+            } else {
+              // Pulling DOWN -> translate toward collapsed
+              sheet.style.height = '';
+              sheet.style.maxHeight = '';
+              sheet.style.transform = `translateY(${currentDy}px)`;
+            }
+          }
         });
 
         const endDrag = (e) => {
           if (!isDragging) return;
           isDragging = false;
           const elapsed = Math.max(1, performance.now() - dragStartTime);
-          const velocity = currentDy / elapsed;
-          sheet.style.transition = '';
-          sheet.style.transform = '';
+          const velocity = currentDy / elapsed; // negative = upward, positive = downward
 
           if (dragHandle.releasePointerCapture) {
             try { dragHandle.releasePointerCapture(e.pointerId); } catch (_) {}
           }
 
-          if (currentDy > 50 || (velocity > 0.35 && currentDy > 16)) {
-            collapseSheet();
+          if (Math.abs(currentDy) < 8) {
+            // Crisp tap on drag handle toggles default <-> expanded
+            setBottomSheetState(sheetSnapState === 'expanded' ? 'default' : 'expanded');
+            return;
+          }
+
+          if (sheetSnapState === 'expanded') {
+            if (currentDy > 220 || (velocity > 0.85 && currentDy > 90)) {
+              setBottomSheetState('collapsed');
+            } else if (currentDy > 45 || (velocity > 0.3 && currentDy > 18)) {
+              setBottomSheetState('default');
+            } else {
+              setBottomSheetState('expanded');
+            }
+          } else {
+            if (currentDy < -45 || (velocity < -0.3 && currentDy < -16)) {
+              setBottomSheetState('expanded');
+            } else if (currentDy > 50 || (velocity > 0.35 && currentDy > 16)) {
+              setBottomSheetState('collapsed');
+            } else {
+              setBottomSheetState('default');
+            }
           }
         };
 
@@ -9481,9 +10760,7 @@
       }
 
       pill.addEventListener('click', () => {
-        sheet.style.transform = '';
-        sheet.classList.remove('collapsed');
-        pill.classList.add('hidden');
+        setBottomSheetState('default');
         updateSheetContent();
       });
 
@@ -9494,23 +10771,32 @@
           sound.muted = !sound.muted;
           updateAudioButton();
           sound.syncWeatherAmbience(true);
-          showToast(sound.muted ? '🔇 Sound Muted' : '🔊 Sound Enabled');
+          showToast(sound.muted ? '🔇 Sound Muted' : '🔊 Sound Enabled', sound.muted ? '🔇' : '🔊', { category: 'system' });
         });
       }
 
       const weatherPill = document.getElementById('weather-pill');
       if (weatherPill) {
         weatherPill.addEventListener('click', () => {
-          const w = state.getCurrentWeather();
-          const mins = Math.floor(Math.max(0, state.weatherTimer) / 60);
-          const secs = Math.floor(Math.max(0, state.weatherTimer) % 60);
-          const timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-          showToast(`${w.icon} ${w.name} (${timeStr} left) — ${w.desc}`, w.icon);
+          const buildWeatherToast = () => {
+            const w = state.getCurrentWeather();
+            const timeStr = formatWeatherCountdown(state.weatherTimer);
+            return {
+              icon: w.icon,
+              text: `${w.name} (${timeStr} left) — ${w.desc}`
+            };
+          };
+          const initial = buildWeatherToast();
+          showToast(initial.text, initial.icon, {
+            category: 'weather',
+            durationMs: 5500,
+            liveUpdater: buildWeatherToast
+          });
         });
       }
 
       document.getElementById('info-btn').addEventListener('click', () => {
-        showToast('🐧 Tap penguins & ice! View Level/XP in Stats and Audio/Haptics in Settings.');
+        showToast('🐧 Tap penguins, ice & leaping Golden Fish! Drag menu up for full screen.', 'ℹ️', { category: 'system', durationMs: 3600 });
       });
     }
 
@@ -9522,12 +10808,16 @@
     function updateSheetContent() {
       const actionsBox = document.getElementById('header-actions-box');
       if (actionsBox) {
-        actionsBox.style.display = state.currentTab === 'penguins' ? 'flex' : 'none';
+        actionsBox.style.display = (state.currentTab === 'penguins' || state.currentTab === 'tech') ? 'flex' : 'none';
       }
       const container = document.getElementById('sheet-content-container');
       container.innerHTML = '';
 
       if (state.currentTab === 'penguins') {
+        const synWrap = document.createElement('div');
+        synWrap.innerHTML = renderColonySynergiesHtml(state.getColonySynergies());
+        container.appendChild(synWrap.firstElementChild);
+
         PENGUIN_SPECIES.forEach(sp => {
           const pData = state.penguins[sp.id] || { count: 0, level: 1, nextTrait: 'optimistic', traitCounts: {} };
           const nextTrait = getTraitDef(pData.nextTrait);
@@ -9574,7 +10864,7 @@
             })
             .join(' ');
 
-          const levelYield = Math.round(sp.baseYield * (1 + (pData.level - 1) * 0.15) * 10) / 10;
+          const levelYield = Math.round(sp.baseYield * (1 + (pData.level - 1) * COLONY_SIZE_BONUS_RATE) * 10) / 10;
 
           const spriteUrl = getPenguinPortraitDataUrl(sp.id);
           const avatarInnerHtml = spriteUrl
@@ -9623,13 +10913,20 @@
               pData.nextTrait = rollRandomTraitId();
 
               sound.playChirp();
-              showToast(`Recruited ${nextTrait.icon} ${nextTrait.name} ${sp.name}${qty > 1 ? ` (+${qty - 1} more)` : ''}!`);
+              showToast(`Recruited ${nextTrait.icon} ${nextTrait.name} ${sp.name}${qty > 1 ? ` (+${qty - 1} more)` : ''}!`, '🐧', { category: 'purchase' });
               dailyManager.track('recruits', qty);
               checkAchievements();
               state.save();
-              if (activePenguins.length >= 14) {
-                const oldest = activePenguins.shift();
-                if (oldest) releaseSlot(oldest.uid);
+
+              // Enforce 6 visible penguins per colony: if species is already at 6 on ice, swap oldest of this species
+              const sameSpeciesSprites = activePenguins.filter(p => p.speciesId === sp.id);
+              if (sameSpeciesSprites.length >= MAX_VISIBLE_PER_COLONY) {
+                const oldestSame = sameSpeciesSprites[0];
+                const removeIdx = activePenguins.indexOf(oldestSame);
+                if (removeIdx >= 0) {
+                  activePenguins.splice(removeIdx, 1);
+                  releaseSlot(oldestSame.uid);
+                }
               }
               activePenguins.push(new ActivePenguin(sp.id, nextTrait));
               syncActivePenguins();
@@ -9643,8 +10940,38 @@
       } else if (state.currentTab === 'tech') {
         GLACIER_TECH.forEach(tech => {
           const currentLvl = state.tech[tech.id] || 0;
-          const cost = state.getTechCost(tech.id, currentLvl);
+          let qty = typeof state.buyMultiplier === 'number' ? state.buyMultiplier : 1;
+          let cost = 0;
+          let affordableQty = 0;
+
+          if (state.buyMultiplier === 'MAX') {
+            let tempFish = state.fish;
+            let tempLvl = currentLvl;
+            while (affordableQty < 500) {
+              const nextCost = state.getTechCost(tech.id, tempLvl);
+              if (tempFish >= nextCost) {
+                tempFish -= nextCost;
+                cost += nextCost;
+                tempLvl++;
+                affordableQty++;
+              } else {
+                break;
+              }
+            }
+            if (affordableQty === 0) {
+              cost = state.getTechCost(tech.id, currentLvl);
+              qty = 1;
+            } else {
+              qty = affordableQty;
+            }
+          } else {
+            for (let i = 0; i < qty; i++) {
+              cost += state.getTechCost(tech.id, currentLvl + i);
+            }
+          }
+
           const canAfford = state.fish >= cost;
+          const tierLabel = qty > 1 ? `Tier ${currentLvl} → ${currentLvl + qty}` : `Tier ${currentLvl}`;
 
           const card = document.createElement('div');
           card.className = `roster-card ${canAfford ? 'can-afford' : ''}`;
@@ -9654,12 +10981,12 @@
             <div class="roster-info">
               <div class="roster-name-row">
                 <span class="roster-name">${tech.name}</span>
-                <span class="roster-level">Tier ${currentLvl}</span>
+                <span class="roster-level">${tierLabel}</span>
               </div>
               <div class="roster-desc">${tech.desc}</div>
             </div>
             <label class="buy-btn ${canAfford ? '' : 'is-disabled'}" role="button" tabindex="${canAfford ? '0' : '-1'}" aria-disabled="${canAfford ? 'false' : 'true'}" data-ios-haptic-label="${canAfford ? '1' : '0'}">
-              <span class="buy-btn-label">RESEARCH</span>
+              <span class="buy-btn-label">RESEARCH +${qty}</span>
               <span class="buy-btn-cost">🐟 ${formatNumber(cost)}</span>
             </label>
           `;
@@ -9668,10 +10995,10 @@
           btn.addEventListener('click', () => {
             if (state.fish >= cost) {
               state.fish -= cost;
-              state.tech[tech.id] = currentLvl + 1;
+              state.tech[tech.id] = currentLvl + qty;
               sound.playLevelUp();
-              showToast(`🔬 Researched ${tech.name} Tier ${currentLvl + 1}!`);
-              dailyManager.track('tech_upgrades', 1);
+              showToast(`🔬 Researched ${tech.name} Tier ${currentLvl + qty}${qty > 1 ? ` (+${qty})` : ''}!`, '🔬', { category: 'purchase' });
+              dailyManager.track('tech_upgrades', qty);
               checkAchievements();
               state.save();
               updateSheetContent();
@@ -9735,6 +11062,21 @@
           </div>
         `;
         container.appendChild(streakBanner);
+
+        const claimableNow = dailyManager.getClaimableCount();
+        if (claimableNow >= 2) {
+          const claimAllBtn = document.createElement('label');
+          claimAllBtn.id = 'daily-claim-all-btn';
+          claimAllBtn.className = 'claim-all-ready-btn';
+          claimAllBtn.setAttribute('role', 'button');
+          claimAllBtn.setAttribute('tabindex', '0');
+          claimAllBtn.setAttribute('data-ios-haptic-label', '1');
+          claimAllBtn.innerHTML = `<span>🎁</span><span>CLAIM ALL READY (${claimableNow})</span>`;
+          claimAllBtn.addEventListener('click', () => {
+            dailyManager.claimAllReady();
+          });
+          container.appendChild(claimAllBtn);
+        }
 
         const renderObjectiveCard = (obj) => {
           const card = document.createElement('div');
@@ -9892,9 +11234,9 @@
 
               sound.playLevelUp();
               if (keptPreservedCount > 0) {
-                showToast(`🌟 Glacial Rebirth! ${keptPreservedCount} Legendary/Mythic perk${keptPreservedCount > 1 ? 's' : ''} preserved; ${resetPerksCount} other perks reset.`);
+                showToast(`🌟 Glacial Rebirth! ${keptPreservedCount} Legendary/Mythic perk${keptPreservedCount > 1 ? 's' : ''} preserved; ${resetPerksCount} other perks reset.`, '🌟', { category: 'system', durationMs: 4200 });
               } else {
-                showToast(`🌟 Glacial Rebirth complete! Non-preserved perks reset. Bonus multiplier now +${state.prestigeShards * 5}%!`);
+                showToast(`🌟 Glacial Rebirth complete! Non-preserved perks reset. Bonus multiplier now +${state.prestigeShards * 5}%!`, '🌟', { category: 'system', durationMs: 4200 });
               }
               checkAchievements();
               state.save();
@@ -9967,6 +11309,20 @@
           }).join('') + `</div>`;
         }
 
+        const glacierBonusPctText = formatPct((state.glacierLevel - 1) * GLACIER_LEVEL_BONUS_RATE * 100);
+        const speciesBreakdown = state.getSpeciesFishPerMinuteBreakdown();
+        const speciesChartRowsHtml = speciesBreakdown.map(row => `
+          <div class="species-chart-row">
+            <div class="species-chart-meta">
+              <span>${row.avatar} ${row.name} <span style="opacity:0.65;">(×${row.count})</span></span>
+              <span class="species-chart-val">+${formatNumber(Math.round(row.fishPerMin))}/min • ${Math.round(row.sharePct)}%</span>
+            </div>
+            <div class="species-chart-bar-bg">
+              <div class="species-chart-bar-fill" style="width: ${Math.max(4, Math.round(row.sharePct))}%; background: ${row.accentColor};"></div>
+            </div>
+          </div>
+        `).join('');
+
         statsContainer.innerHTML = `
           <!-- Hero Overview -->
           <div class="stats-hero-card">
@@ -9985,7 +11341,7 @@
           <div class="stats-level-card">
             <div class="stats-level-top">
               <div class="stats-level-title">🧊 Glacier Level <span id="stats-glacier-level">${state.glacierLevel}</span></div>
-              <div class="stats-level-bonus-pill" id="stats-level-bonus">+${(state.glacierLevel - 1) * 5}% Production</div>
+              <div class="stats-level-bonus-pill" id="stats-level-bonus">+${glacierBonusPctText}% Production</div>
             </div>
             <div class="progress-bar-bg" style="height: 8px;">
               <div class="progress-bar-fill" id="stats-glacier-level-fill" style="width: ${xpPct}%;"></div>
@@ -9995,6 +11351,15 @@
               <span id="stats-level-remaining">${xpPct}% (${formatNumber(xpRemaining)} to next)</span>
             </div>
           </div>
+
+          <!-- Live Fish/min Species Breakdown Chart -->
+          <div class="stat-section-title">📊 Live Fish/min by Species</div>
+          <div class="species-chart-card" id="stats-species-breakdown-chart">
+            ${speciesChartRowsHtml || '<div style="font-size:11px;color:#94a3b8;">Recruit penguins to see live colony output.</div>'}
+          </div>
+
+          <!-- Colony Synergies -->
+          ${renderColonySynergiesHtml(state.getColonySynergies())}
 
           <!-- Highlight Progression Stats -->
           <div class="stat-section-title">Core Progression</div>
@@ -10077,7 +11442,7 @@
             </div>
             <div class="stat-card">
               <div class="stat-card-header">🧊 Glacier Level Bonus</div>
-              <div class="stat-card-val" style="color: #38bdf8;">+${(state.glacierLevel - 1) * 5}%</div>
+              <div class="stat-card-val" style="color: #38bdf8;">+${glacierBonusPctText}%</div>
             </div>
             <div class="stat-card">
               <div class="stat-card-header">🎣 Catch Multiplier</div>
@@ -10523,11 +11888,35 @@
           </div>
 
           <div class="settings-card">
+            <div class="settings-card-header">💬 In-Game Toast Banners</div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <div class="settings-label">Purchase &amp; Boost Toasts</div>
+                <div class="settings-desc">Hide routine purchase &amp; boost banners while always keeping Daily Goal &amp; Weather alerts visible</div>
+              </div>
+              <label id="settings-toast-filter-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="toggle-pill-btn ${state.disableRoutineToasts ? 'off' : ''}">
+                ${state.disableRoutineToasts ? '🎯 Goals & Weather Only' : '🔔 All Toasts'}
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-card">
             <div class="settings-card-header">🎉 Game Updates &amp; What's New</div>
             <div class="settings-desc">Review highlights from the latest Glacial Empire update (${LATEST_FEATURE_RELEASE.version})</div>
             <div class="settings-btn-row">
               <label id="settings-whats-new-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="settings-test-btn">
                 ✨ View Latest Features
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-card danger-zone">
+            <div class="settings-card-header" style="color: #fca5a5;">⚠️ Danger Zone — Factory Reset</div>
+            <div class="settings-desc">Permanently erase all saved progress, penguins, Frost Essence, streaks, and logs to start completely over.</div>
+            <div class="settings-btn-row">
+              <label id="settings-factory-reset-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="settings-danger-btn">
+                🗑️ Factory Reset Colony
               </label>
             </div>
           </div>
@@ -10542,7 +11931,7 @@
             sound.syncWeatherAmbience(true);
             sound.syncIosHapticDomState();
             state.save();
-            showToast(sound.muted ? '🔇 Sound Muted' : '🔊 Sound Enabled');
+            showToast(sound.muted ? '🔇 Sound Muted' : '🔊 Sound Enabled', sound.muted ? '🔇' : '🔊', { category: 'system' });
             updateSheetContent();
           });
         }
@@ -10578,9 +11967,9 @@
             state.save();
             if (sound.hapticsEnabled) {
               sound.triggerHaptic('penguin_tap');
-              showToast('📳 Haptic Feedback Enabled');
+              showToast('📳 Haptic Feedback Enabled', '📳', { category: 'system' });
             } else {
-              showToast('📴 Haptic Feedback Disabled');
+              showToast('📴 Haptic Feedback Disabled', '📴', { category: 'system' });
             }
             updateSheetContent();
           });
@@ -10591,12 +11980,12 @@
           testBtn.addEventListener('click', () => {
             sound.init();
             if (!sound.isActive()) {
-              showToast('🔇 Enable Sound Engine (unmute & volume > 0%) to feel haptics');
+              showToast('🔇 Enable Sound Engine (unmute & volume > 0%) to feel haptics', '🔇', { category: 'system' });
               return;
             }
             sound.playChirp();
             sound.triggerHaptic('collect');
-            showToast(sound.hapticsEnabled ? '📳 Haptic & Audio pulse triggered!' : '🔊 Audio played (Haptics turned Off)');
+            showToast(sound.hapticsEnabled ? '📳 Haptic & Audio pulse triggered!' : '🔊 Audio played (Haptics turned Off)', '✨', { category: 'system' });
           });
         }
 
@@ -10620,11 +12009,36 @@
           });
         }
 
+        const toastFilterBtn = settingsWrap.querySelector('#settings-toast-filter-btn');
+        if (toastFilterBtn) {
+          toastFilterBtn.addEventListener('click', () => {
+            sound.init();
+            state.disableRoutineToasts = !state.disableRoutineToasts;
+            state.save();
+            showToast(
+              state.disableRoutineToasts
+                ? '🎯 Routine toasts hidden — Goals & Weather alerts stay on.'
+                : '🔔 All toast notifications enabled.',
+              state.disableRoutineToasts ? '🎯' : '🔔',
+              { category: 'system' }
+            );
+            updateSheetContent();
+          });
+        }
+
         const whatsNewBtn = settingsWrap.querySelector('#settings-whats-new-btn');
         if (whatsNewBtn) {
           whatsNewBtn.addEventListener('click', () => {
             sound.init();
             maybeShowWhatsNewModal(true);
+          });
+        }
+
+        const factoryResetBtn = settingsWrap.querySelector('#settings-factory-reset-btn');
+        if (factoryResetBtn) {
+          factoryResetBtn.addEventListener('click', () => {
+            sound.init();
+            openFactoryResetModal();
           });
         }
 
@@ -10637,7 +12051,11 @@
     function updateHUD() {
       state.calculateDPS();
 
-      document.getElementById('fish-count').textContent = formatNumber(state.fish);
+      const fishEl = document.getElementById('fish-count');
+      if (fishEl) {
+        fishEl.textContent = formatHudFish(displayedFish);
+        fishEl.classList.toggle('counting-up', fishCountUpGlowTimer > 0);
+      }
       document.getElementById('dps-count').textContent = `+${formatNumber(Math.round(state.dps * 60))}/min`;
 
       const statsLevelEl = document.getElementById('stats-glacier-level');
@@ -10653,7 +12071,7 @@
         const remEl = document.getElementById('stats-level-remaining');
         if (reqTextEl) reqTextEl.textContent = `${formatNumber(state.levelFish)} / ${formatNumber(req)} XP`;
         if (fillEl) fillEl.style.width = `${pct}%`;
-        if (bonusEl) bonusEl.textContent = `+${(state.glacierLevel - 1) * 5}% Production`;
+        if (bonusEl) bonusEl.textContent = `+${formatPct((state.glacierLevel - 1) * GLACIER_LEVEL_BONUS_RATE * 100)}% Production`;
         if (remEl) remEl.textContent = `${pctRounded}% (${formatNumber(remaining)} to next)`;
       }
 
@@ -10697,13 +12115,9 @@
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-tab') === 'daily');
       });
-      const sheet = document.getElementById('bottom-sheet');
-      const pill = document.getElementById('collapsed-pill');
-      if (sheet) {
-        sheet.style.transform = '';
-        sheet.classList.remove('collapsed');
+      if (sheetSnapState === 'collapsed') {
+        setBottomSheetState('default');
       }
-      if (pill) pill.classList.add('hidden');
       if (typeof updateSheetContent === 'function') updateSheetContent();
     }
 
@@ -10836,6 +12250,7 @@
         }
 
         const fillEl = document.getElementById('splash-gauge-fill');
+        const sliderPenguinEl = document.getElementById('splash-slider-penguin');
         const pctEl = document.getElementById('splash-percent-badge');
         const flavorEl = document.getElementById('splash-flavor-text');
         const barEl = document.getElementById('splash-progressbar');
@@ -10880,6 +12295,7 @@
           this.progress = pct;
 
           if (fillEl) fillEl.style.width = `${pct}%`;
+          if (sliderPenguinEl) sliderPenguinEl.style.left = `${pct}%`;
           if (pctEl) pctEl.textContent = `${pct}%`;
           if (barEl) barEl.setAttribute('aria-valuenow', String(pct));
 
@@ -10913,6 +12329,7 @@
       } catch (e) {
         console.warn('Init load fallback:', e);
       }
+      displayedFish = Math.max(0, Number(state.fish) || 0);
       dailyManager.checkDailyReset();
       try {
         const params = new URLSearchParams(window.location.search || '');

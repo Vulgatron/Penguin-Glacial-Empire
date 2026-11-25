@@ -1,7 +1,11 @@
-const CACHE_NAME = 'penguin-glacial-empire-v21';
+const CACHE_NAME = 'penguin-glacial-empire-v22';
 const CORE_ASSETS = [
   './',
   './index.html',
+  './js/economy.js',
+  './js/daily-system.js',
+  './js/save-system.js',
+  './js/push-client.js',
   './manifest.webmanifest',
   './push-config.json',
   './icons/apple-touch-icon.png',
@@ -20,7 +24,8 @@ self.addEventListener('install', (event) => {
       )
     )
   );
-  self.skipWaiting();
+  // Do NOT unconditionally call skipWaiting() mid-session so active players aren't jolted
+  // by sudden controllerchange reloads right after claiming offline fish.
 });
 
 self.addEventListener('activate', (event) => {
@@ -39,12 +44,14 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Network-first (revalidating HTTP cache) for HTML navigation & push-config.json so Android/iOS PWAs receive updates immediately
+  // Network-first (revalidating HTTP cache) for HTML, modular JS, and push-config.json
+  // so Android/iOS PWAs receive updates cleanly in lockstep.
   if (
     event.request.mode === 'navigate' ||
     url.pathname.endsWith('/') ||
     url.pathname.endsWith('index.html') ||
-    url.pathname.endsWith('push-config.json')
+    url.pathname.endsWith('push-config.json') ||
+    url.pathname.includes('/js/')
   ) {
     event.respondWith(
       fetch(event.request.url, { cache: 'no-cache' })
@@ -94,7 +101,7 @@ self.addEventListener('push', (event) => {
   const title = payload.title || '🎯 Daily Goals Ready — Glacial Empire';
   const body =
     payload.body ||
-    'Your 8:00 AM colony objectives are waiting! Tap to claim fish & Frost Essence rewards.';
+    'Your daily colony objectives are waiting! Tap to claim fish & Frost Essence rewards.';
   const targetUrl = payload.url || './?tab=daily';
 
   const options = {

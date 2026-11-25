@@ -3,6 +3,7 @@ main = "worker.js"
 compatibility_date = "2025-01-01"
 
 [triggers]
+# Runs every 15 minutes; relay-core matches each subscriber's local reminderHour + reminderMinute window
 crons = ["*/15 * * * *"]
 
 [[kv_namespaces]]
@@ -10,7 +11,9 @@ binding = "PUSH_SUBSCRIPTIONS"
 id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
 
 [vars]
-# Optional: restrict CORS to your GitHub Pages origin, e.g. "https://username.github.io"
-ALLOWED_ORIGIN = "*"
+# Required in production: comma-separated list of allowed PWA origins (do NOT use "*" in production)
+ALLOWED_ORIGIN = "https://your-username.github.io"
+# Set to "true" to restrict push endpoints strictly to known Apple/Google/Mozilla/Microsoft push hosts
+STRICT_PUSH_HOSTS = "false"
 # Must be a valid mailto: or https:// URL for Apple APNs Web Push
 VAPID_SUBJECT = "mailto:your-email@example.com"

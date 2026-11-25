@@ -1,0 +1,40 @@
+name: Glacial Empire CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  web-and-relay-tests:
+    name: Web & Push Relay Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check JavaScript syntax
+        run: |
+          node --check js/economy.js
+          node --check js/daily-system.js
+          node --check js/save-system.js
+          node --check js/push-client.js
+          node --check sw.js
+          node --check push-relay/relay-core.js
+          node --check push-relay/worker.js
+      - name: Run Node.js unit tests
+        run: node --test tests/*.test.mjs
+
+  android-build-and-test:
+    name: Android Asset Sync, Unit Tests & Debug Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Sync web assets, run unit tests, and assemble debug APK
+        run: gradle :app:syncWebAssets :app:testDebugUnitTest :app:assembleDebug

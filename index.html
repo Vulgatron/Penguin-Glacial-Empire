@@ -3308,9 +3308,40 @@
       .splash-float-left,
       .splash-float-right,
       .splash-gauge-fill::before,
-      .splash-gauge-fill::after {
+      .splash-gauge-fill::after,
+      .aurora-alert-banner,
+      .toast-banner {
         animation: none !important;
       }
+      #bottom-sheet,
+      .buy-btn,
+      .prestige-btn,
+      .tab-btn,
+      #launch-splash-screen {
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Keyboard Focus Visibility & Readable Text Selection in Settings/Info */
+    button:focus-visible,
+    [role="button"]:focus-visible,
+    input:focus-visible,
+    .tab-btn:focus-visible,
+    .buy-btn:focus-visible,
+    .prestige-btn:focus-visible {
+      outline: 2px solid var(--accent-glow);
+      outline-offset: 2px;
+    }
+
+    .roster-desc,
+    .whats-new-item-desc,
+    .speech-log-text,
+    .stat-card,
+    .push-status-box,
+    #factory-reset-desc,
+    .settings-info-text {
+      user-select: text;
+      -webkit-user-select: text;
     }
 
     /* =========================================================================
@@ -3868,22 +3899,22 @@
   </div>
 
   <!-- Toast Banner -->
-  <div id="toast-banner">
-    <span id="toast-icon">✨</span>
+  <div id="toast-banner" role="status" aria-live="polite" aria-atomic="true">
+    <span id="toast-icon" aria-hidden="true">✨</span>
     <span id="toast-text">Alert message</span>
     <span id="toast-cta" class="toast-cta-pill">Tap →</span>
   </div>
 
   <!-- Offline Progress Modal -->
-  <div id="offline-modal">
+  <div id="offline-modal" role="dialog" aria-modal="true" aria-labelledby="offline-modal-title">
     <div class="offline-card">
-      <div style="font-size: 44px;">❄️🐧❄️</div>
-      <h2 style="font-size: 20px; font-weight: 800; color: #ffffff;">Welcome Back!</h2>
+      <div style="font-size: 44px;" aria-hidden="true">❄️🐧❄️</div>
+      <h2 id="offline-modal-title" style="font-size: 20px; font-weight: 800; color: #ffffff;">Welcome Back!</h2>
       <p style="font-size: 13px; color: #cbd5e1; line-height: 1.4;">
         While you were resting, your loyal penguin colony kept diving through the ice sheets!
       </p>
       <div style="background: rgba(56, 189, 248, 0.15); border: 1px solid var(--accent-cyan); border-radius: 16px; padding: 12px; width: 100%;">
-        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Fish Banked (1/3 Idle Reduction)</div>
+        <div id="offline-rate-caption" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Fish Banked (1/3 Idle Reduction • Up to 24h Full + 7d Cap)</div>
         <div style="font-size: 22px; font-weight: 900; color: var(--accent-gold);" id="offline-fish-val">+0 🐟</div>
       </div>
       <label class="prestige-btn" id="offline-claim-btn" role="button" tabindex="0" data-ios-haptic-label="1" style="width: 100%; touch-action: manipulation;">Claim Catch</label>
@@ -3931,10 +3962,20 @@
     <label id="ios-haptic-label" for="ios-haptic-switch" style="display:inline-block;min-width:2px;min-height:2px;"></label>
   </div>
 
+  <script src="./js/economy.js"></script>
+  <script src="./js/daily-system.js"></script>
+  <script src="./js/save-system.js"></script>
+  <script src="./js/push-client.js"></script>
   <script>
     /* ==========================================================================
        PENGUIN GLACIAL EMPIRE - ENGINE & GAME LOGIC
        ========================================================================== */
+    const CoreEconomy = (window.GlacialCore && window.GlacialCore.Economy) || null;
+    const CoreDaily = (window.GlacialCore && window.GlacialCore.DailySystem) || null;
+    const CoreSave = (window.GlacialCore && window.GlacialCore.SaveSystem) || null;
+    const CorePush = (window.GlacialCore && window.GlacialCore.PushClient) || null;
+    const prefersReducedMotion = () =>
+      Boolean(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
     // --- Web Audio API Synthesizer (Zero External Assets) ---
     class SoundEngine {
@@ -5115,6 +5156,7 @@
 
       // Daily reset occurs every day at 3:00 AM local time.
       getCycleDateKey(nowMs = Date.now()) {
+        if (CoreDaily) return CoreDaily.getCycleDateKey(nowMs);
         const shifted = new Date(nowMs - 3 * 3600 * 1000);
         const y = shifted.getFullYear();
         const m = String(shifted.getMonth() + 1).padStart(2, '0');
@@ -5123,6 +5165,7 @@
       }
 
       shiftCycleDateKey(dateKey, deltaDays = 0) {
+        if (CoreDaily) return CoreDaily.shiftCycleDateKey(dateKey, deltaDays);
         const parts = String(dateKey || '').split('-').map(n => parseInt(n, 10));
         if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) {
           return '';
@@ -5139,11 +5182,19 @@
       }
 
       isConsecutiveCycleDay(prevKey, nextKey) {
+        if (CoreDaily) return CoreDaily.isConsecutiveCycleDay(prevKey, nextKey);
         if (!prevKey || !nextKey) return false;
         return this.shiftCycleDateKey(prevKey, 1) === nextKey;
       }
 
       syncStreakStatusForCycle(currentKey = this.dateKey) {
+        if (CoreDaily) {
+          const synced = CoreDaily.syncStreakForCycle(this, currentKey);
+          this.streakCount = synced.streakCount;
+          this.bestStreak = synced.bestStreak;
+          this.lastStreakDateKey = synced.lastStreakDateKey;
+          return;
+        }
         if (
           this.lastStreakDateKey &&
           this.lastStreakDateKey !== currentKey &&
@@ -5444,7 +5495,14 @@
         this.syncStreakStatusForCycle(cycleKey);
 
         let streakToast = '';
-        if (this.lastStreakDateKey !== cycleKey) {
+        if (CoreDaily) {
+          const streakRes = CoreDaily.applyStreakForGoalClaim(this, cycleKey);
+          this.streakCount = streakRes.streakCount;
+          this.bestStreak = streakRes.bestStreak;
+          this.lastStreakDateKey = streakRes.lastStreakDateKey;
+          this.permanentFishBonusPct = streakRes.permanentFishBonusPct;
+          streakToast = streakRes.streakToast;
+        } else if (this.lastStreakDateKey !== cycleKey) {
           const isConsecutive = this.isConsecutiveCycleDay(this.lastStreakDateKey, cycleKey);
           if (isConsecutive) {
             this.streakCount = (this.streakCount || 0) + 1;
@@ -5465,8 +5523,9 @@
           state.addFish(obj.rewardAmount);
           if (!silent && typeof sound !== 'undefined' && sound.triggerHaptic) sound.triggerHaptic('collect');
         } else if (obj.rewardType === 'shards') {
-          state.prestigeShards += obj.rewardAmount;
-          state.totalEssenceEarned = (state.totalEssenceEarned || 0) + obj.rewardAmount;
+          const safeShards = CoreEconomy ? CoreEconomy.sanitizeInteger(obj.rewardAmount, 1, 1, 100) : Math.max(1, Math.floor(obj.rewardAmount || 1));
+          state.prestigeShards += safeShards;
+          state.totalEssenceEarned = (state.totalEssenceEarned || 0) + safeShards;
           if (!silent && typeof sound !== 'undefined' && sound.triggerHaptic) sound.triggerHaptic('collect');
         }
 
@@ -5480,7 +5539,7 @@
         if (!silent) {
           if (typeof state !== 'undefined' && state) {
             if (typeof state.calculateDPS === 'function') state.calculateDPS();
-            if (typeof state.save === 'function') state.save();
+            if (typeof state.save === 'function') state.save({ immediate: true });
           }
           if (typeof showToast === 'function') {
             showToast(streakToast || `🎁 Claimed ${obj.rewardLabel}!`, '🎁', { category: 'goal' });
@@ -5569,8 +5628,14 @@
 
       isHostedOverWeb() {
         if (typeof window === 'undefined' || !window.location) return false;
+        const hasNativeBridge = Boolean(window.AndroidBridge);
+        if (CorePush) {
+          return CorePush.isHostedWebPwa(window.location, hasNativeBridge);
+        }
+        if (hasNativeBridge) return false;
         const proto = window.location.protocol;
         const host = window.location.hostname;
+        if (host === 'appassets.androidplatform.net') return false;
         return proto === 'https:' || host === 'localhost' || host === '127.0.0.1';
       }
 
@@ -5619,13 +5684,30 @@
       }
 
       hasRelayConfigured() {
+        if (CorePush) {
+          return CorePush.validatePushConfig(this.config).configured;
+        }
         return Boolean(
           this.config &&
           typeof this.config.vapidPublicKey === 'string' &&
           this.config.vapidPublicKey.trim().length > 10 &&
           typeof this.config.subscribeApiUrl === 'string' &&
-          this.config.subscribeApiUrl.trim().startsWith('http')
+          this.config.subscribeApiUrl.trim().startsWith('https://')
         );
+      }
+
+      getConfigDiagnostics() {
+        if (CorePush) {
+          return CorePush.validatePushConfig(this.config);
+        }
+        return { configured: this.hasRelayConfigured(), partiallyConfigured: false, issues: [], config: this.config };
+      }
+
+      getFormattedReminderTime() {
+        const h = this.config ? this.config.defaultReminderHour : 8;
+        const m = this.config ? this.config.defaultReminderMinute : 0;
+        if (CorePush) return CorePush.formatReminderTime(h, m);
+        return `${h}:${String(m || 0).padStart(2, '0')}`;
       }
 
       urlBase64ToUint8Array(base64String) {
@@ -5648,11 +5730,12 @@
           if (res && res.ok) {
             const parsed = await res.json();
             if (parsed && typeof parsed === 'object') {
-              this.config = Object.assign({}, this.config, parsed);
+              const merged = Object.assign({}, this.config, parsed);
+              this.config = CorePush ? CorePush.validatePushConfig(merged).config : merged;
             }
           }
-        } catch (_) {
-          // Ignore config fetch failure when offline or running locally without config
+        } catch (err) {
+          this.lastError = 'Unable to load push-config.json';
         }
         await this.refreshSubscriptionState();
       }
@@ -5701,63 +5784,82 @@
           };
         }
 
+        const timeLabel = this.getFormattedReminderTime();
+        const diag = this.getConfigDiagnostics();
+
         if (this.enabled && perm === 'granted') {
-          if (this.pushSubscribed && this.hasRelayConfigured()) {
+          if (this.pushSubscribed && diag.configured) {
             return {
               tone: 'ok',
-              text: '✅ 8:00 AM Web Push Active! Your device is subscribed to daily colony task reminders even when the app is closed.'
+              text: `✅ ${timeLabel} Web Push Active! Your device is subscribed to daily colony task reminders even when the app is closed.`
             };
           }
-          if (!this.hasRelayConfigured()) {
+          if (!diag.configured) {
             return {
               tone: 'warn',
-              text: '⏰ Permission granted (open-app 8:00 AM reminders active). To deliver push notifications while closed, deploy push-relay/ & fill push-config.json.'
+              text: diag.partiallyConfigured
+                ? `⚠️ Push relay configuration is incomplete (${diag.issues.join(', ')}). Check push-config.json; open-app ${timeLabel} reminders remain active.`
+                : `⏰ Background push relay is not configured yet (open-app ${timeLabel} reminders remain active). Deploy push-relay/ & fill push-config.json for closed-app delivery.`
             };
           }
           return {
             tone: 'warn',
-            text: '🔔 Permission granted. Tap Re-Sync Push to finish registering this device with your 8:00 AM push relay.'
+            text: `🔔 Permission granted. Tap Re-Sync Push to finish registering this device with your ${timeLabel} push relay.`
+          };
+        }
+
+        if (!diag.configured) {
+          return {
+            tone: 'normal',
+            text: `Get open-app daily goal reminders at ${timeLabel}. Background push while closed activates once push-config.json is configured with your deployed relay.`
           };
         }
 
         return {
           tone: 'normal',
-          text: 'Get reminded at 8:00 AM local time whenever new Daily Goals are waiting. Works on Android & Apple Home Screen PWAs (iOS 16.4+).'
+          text: `Get reminded at ${timeLabel} local time whenever new Daily Goals are waiting. Works on Android & Apple Home Screen PWAs (iOS 16.4+).`
         };
       }
 
       async subscribeToPushRelay() {
         if (!this.supportsWebPush() || !this.hasRelayConfigured()) return false;
-        const reg = await navigator.serviceWorker.ready;
-        if (!reg || !reg.pushManager) return false;
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          if (!reg || !reg.pushManager) return false;
 
-        let sub = await reg.pushManager.getSubscription();
-        if (!sub) {
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: this.urlBase64ToUint8Array(this.config.vapidPublicKey)
+          let sub = await reg.pushManager.getSubscription();
+          if (!sub) {
+            sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: this.urlBase64ToUint8Array(this.config.vapidPublicKey)
+            });
+          }
+
+          const timeZone = (typeof Intl !== 'undefined' && Intl.DateTimeFormat)
+            ? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
+            : 'UTC';
+
+          const resp = await fetch(this.config.subscribeApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subscription: sub.toJSON(),
+              timeZone,
+              tzOffsetMinutes: -new Date().getTimezoneOffset(),
+              reminderHour: typeof this.config.defaultReminderHour === 'number' ? this.config.defaultReminderHour : 8,
+              reminderMinute: typeof this.config.defaultReminderMinute === 'number' ? this.config.defaultReminderMinute : 0,
+              app: 'penguin-glacial-empire'
+            })
           });
+
+          this.pushSubscribed = Boolean(resp && resp.ok);
+          this.lastError = this.pushSubscribed ? '' : `Relay returned HTTP ${resp ? resp.status : 'network_error'}`;
+          return this.pushSubscribed;
+        } catch (err) {
+          this.pushSubscribed = false;
+          this.lastError = err && err.message ? err.message : 'Push relay subscription failed';
+          return false;
         }
-
-        const timeZone = (typeof Intl !== 'undefined' && Intl.DateTimeFormat)
-          ? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
-          : 'UTC';
-
-        const resp = await fetch(this.config.subscribeApiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            subscription: sub.toJSON(),
-            timeZone,
-            tzOffsetMinutes: -new Date().getTimezoneOffset(),
-            reminderHour: typeof this.config.defaultReminderHour === 'number' ? this.config.defaultReminderHour : 8,
-            reminderMinute: typeof this.config.defaultReminderMinute === 'number' ? this.config.defaultReminderMinute : 0,
-            app: 'penguin-glacial-empire'
-          })
-        });
-
-        this.pushSubscribed = Boolean(resp && resp.ok);
-        return this.pushSubscribed;
       }
 
       async enable() {
@@ -5894,21 +5996,36 @@
         if (nowMs - this._lastCheckMs < 25000) return false;
         this._lastCheckMs = nowMs;
 
-        const now = new Date(nowMs);
         const reminderHour = typeof this.config.defaultReminderHour === 'number' ? this.config.defaultReminderHour : 8;
-        if (now.getHours() < reminderHour) return false;
-
+        const reminderMinute = typeof this.config.defaultReminderMinute === 'number' ? this.config.defaultReminderMinute : 0;
         const cycleKey = dailyManager.getCycleDateKey(nowMs);
-        if (this.lastNotifiedDateKey === cycleKey) return false;
+
+        const shouldFire = CorePush
+          ? CorePush.shouldTriggerForegroundReminder({
+              enabled: this.enabled,
+              permission: this.getPermissionState(),
+              nowMs,
+              reminderHour,
+              reminderMinute,
+              lastNotifiedDateKey: this.lastNotifiedDateKey,
+              cycleKey
+            })
+          : (() => {
+              const now = new Date(nowMs);
+              return (now.getHours() * 60 + now.getMinutes()) >= (reminderHour * 60 + reminderMinute) &&
+                this.lastNotifiedDateKey !== cycleKey;
+            })();
+
+        if (!shouldFire) return false;
 
         const remainingCount = dailyManager.objectives.filter(o => !o.claimed).length;
         this.lastNotifiedDateKey = cycleKey;
-        if (typeof state !== 'undefined' && state.save) state.save();
+        if (typeof state !== 'undefined' && state.save) state.save({ immediate: true });
 
         if (remainingCount > 0) {
           this.showNotificationNow(
             '🎯 Daily Goals Ready — Glacial Empire',
-            `It's past 8:00 AM! ${remainingCount} colony goal${remainingCount === 1 ? ' is' : 's are'} waiting for rewards.`,
+            `It's past ${this.getFormattedReminderTime()}! ${remainingCount} colony goal${remainingCount === 1 ? ' is' : 's are'} waiting for rewards.`,
             'daily-goals-reminder'
           );
           return true;
@@ -6494,18 +6611,22 @@
       }
 
       getLevelReq() {
+        if (CoreEconomy) return CoreEconomy.calculateLevelRequirement(this.glacierLevel);
         return Math.floor(150 * Math.pow(1.32, this.glacierLevel));
       }
 
       getPendingPrestigeShards() {
+        if (CoreEconomy) return CoreEconomy.calculatePendingPrestigeShards(this.runFish);
         return Math.floor(Math.cbrt((this.runFish || 0) / 150000));
       }
 
       getPrestigeMultiplier() {
+        if (CoreEconomy) return CoreEconomy.calculatePrestigeMultiplier(this.prestigeShards);
         return 1 + (this.prestigeShards * 0.05);
       }
 
       getGlacierLevelMultiplier() {
+        if (CoreEconomy) return CoreEconomy.calculateGlacierLevelMultiplier(this.glacierLevel, GLACIER_LEVEL_BONUS_RATE);
         return 1 + ((this.glacierLevel - 1) * GLACIER_LEVEL_BONUS_RATE);
       }
 
@@ -6710,10 +6831,16 @@
       getPenguinCost(id, currentCount, applyTraitDiscount = true) {
         const def = PENGUIN_SPECIES.find(s => s.id === id);
         if (!def) return 999999;
-        let base = Math.floor(def.baseCost * Math.pow(def.costMult, currentCount));
+        let traitMult = 1.0;
         if (applyTraitDiscount && this.penguins[id] && this.penguins[id].nextTrait) {
-          const trait = getTraitDef(this.penguins[id].nextTrait);
-          base = Math.max(1, Math.floor(base * trait.costMult));
+          traitMult = getTraitDef(this.penguins[id].nextTrait).costMult;
+        }
+        if (CoreEconomy) {
+          return CoreEconomy.calculatePenguinCost(def, currentCount, traitMult);
+        }
+        let base = Math.floor(def.baseCost * Math.pow(def.costMult, currentCount));
+        if (applyTraitDiscount) {
+          base = Math.max(1, Math.floor(base * traitMult));
         }
         return base;
       }
@@ -6721,19 +6848,26 @@
       getTechCost(id, currentLvl) {
         const def = GLACIER_TECH.find(t => t.id === id);
         if (!def) return 999999;
+        if (CoreEconomy) {
+          return CoreEconomy.calculateTechCost(def, currentLvl);
+        }
         return Math.floor(def.baseCost * Math.pow(def.costMult, currentLvl));
       }
 
       addFish(amount) {
-        if (!(amount > 0)) return;
-        this.fish += amount;
-        this.lifetimeFish += amount;
-        this.runFish += amount;
-        this.levelFish += amount;
+        const safeAmt = CoreEconomy
+          ? CoreEconomy.sanitizeFiniteNumber(amount, 0, 0, CoreEconomy.MAX_SAFE_RESOURCE)
+          : (Number.isFinite(amount) && amount > 0 ? amount : 0);
+        if (!(safeAmt > 0)) return;
+        const safeAdd = CoreEconomy ? CoreEconomy.safeAddResource : ((a, b) => a + b);
+        this.fish = safeAdd(this.fish, safeAmt);
+        this.lifetimeFish = safeAdd(this.lifetimeFish, safeAmt);
+        this.runFish = safeAdd(this.runFish, safeAmt);
+        this.levelFish = safeAdd(this.levelFish, safeAmt);
 
-        dailyManager.track('collect_fish', amount);
+        dailyManager.track('collect_fish', safeAmt);
         if (this.getCurrentWeather().id === 'blizzard') {
-          dailyManager.track('blizzard_fish', amount);
+          dailyManager.track('blizzard_fish', safeAmt);
         }
 
         let levelsGained = 0;
@@ -6748,14 +6882,16 @@
           sound.playLevelUp();
           showToast(`🧊 Glacier Level Up! Now Level ${this.glacierLevel} (+${formatPct(GLACIER_LEVEL_BONUS_RATE * 100)}% Production per level)`, '🧊', { category: 'boost' });
           spawnLevelUpCelebration();
-          this.save();
+          this.save({ immediate: true });
         }
         checkAchievements();
       }
 
-      save() {
-        if (this.isFactoryResetting) return;
-        const saveObj = {
+      buildSavePayload() {
+        const now = Date.now();
+        return {
+          saveVersion: CoreSave ? CoreSave.CURRENT_SAVE_VERSION : 2,
+          savedAt: now,
           fish: this.fish,
           lifetimeFish: this.lifetimeFish,
           runFish: this.runFish,
@@ -6772,12 +6908,13 @@
           clickMult: this.clickMult,
           diveSpeedMult: this.diveSpeedMult,
           emperorBoost: this.emperorBoost,
+          goldenFishTimer: this.goldenFishTimer || 0,
           muted: sound.muted,
           masterVolume: sound.masterVolume,
           sfxVolume: sound.sfxVolume,
           ambientVolume: sound.ambientVolume,
           hapticsEnabled: sound.hapticsEnabled,
-          lastSaveTime: Date.now(),
+          lastSaveTime: now,
           dailyObjectives: {
             dateKey: dailyManager.dateKey,
             objectives: dailyManager.objectives,
@@ -6809,195 +6946,268 @@
           dailyReminderEnabled: typeof pushReminders !== 'undefined' ? pushReminders.enabled : false,
           lastDailyReminderDateKey: typeof pushReminders !== 'undefined' ? pushReminders.lastNotifiedDateKey : ''
         };
+      }
 
-        const jsonStr = JSON.stringify(saveObj);
+      _getPersistenceController() {
+        if (this._persistence) return this._persistence;
+        const primaryKey = CoreSave ? CoreSave.STORAGE_KEY : 'PENGUIN_GLACIAL_SAVE';
+        const backupKey = CoreSave ? CoreSave.BACKUP_STORAGE_KEY : 'PENGUIN_GLACIAL_SAVE_BACKUP';
+        const writeRaw = (jsonStr, { sync = false } = {}) => {
+          let nativeOk = false;
+          let webOk = false;
 
-        // 1. Primary: Save to native Android SharedPreferences (backed by disk)
-        try {
-          if (window.AndroidBridge && typeof window.AndroidBridge.saveGame === 'function') {
-            window.AndroidBridge.saveGame(jsonStr);
+          // 1. Primary: Save to native Android storage (async queue by default, sync on lifecycle flush)
+          try {
+            if (window.AndroidBridge) {
+              if (sync && typeof window.AndroidBridge.saveGameSync === 'function') {
+                nativeOk = Boolean(window.AndroidBridge.saveGameSync(jsonStr));
+              } else if (typeof window.AndroidBridge.saveGame === 'function') {
+                nativeOk = Boolean(window.AndroidBridge.saveGame(jsonStr));
+              }
+            }
+          } catch (e) {
+            console.warn('Native AndroidBridge save failed:', e);
           }
-        } catch (e) {
-          console.warn('Native AndroidBridge save failed:', e);
-        }
 
-        // 2. Secondary: Save to localStorage as browser fallback
-        try {
-          localStorage.setItem('PENGUIN_GLACIAL_SAVE', jsonStr);
-        } catch (e) {
-          console.warn('localStorage save failed:', e);
-        }
+          // 2. Secondary: Save to localStorage primary + known-good backup slot
+          try {
+            const prevPrimary = localStorage.getItem(primaryKey);
+            if (prevPrimary && prevPrimary.startsWith('{') && prevPrimary.endsWith('}')) {
+              localStorage.setItem(backupKey, prevPrimary);
+            }
+            localStorage.setItem(primaryKey, jsonStr);
+            if (!localStorage.getItem(backupKey)) {
+              localStorage.setItem(backupKey, jsonStr);
+            }
+            webOk = true;
+          } catch (e) {
+            console.warn('localStorage save failed:', e);
+          }
+
+          return nativeOk || webOk;
+        };
+
+        this._persistence = CoreSave
+          ? CoreSave.createPersistenceController({ autosaveIntervalMs: 15000, writeFn: writeRaw })
+          : {
+              save: (obj, opts) => ({ written: writeRaw(JSON.stringify(obj), opts || {}) }),
+              markLoaded: () => {},
+              setCorruptionGuard: () => {},
+              reset: () => {}
+            };
+        return this._persistence;
+      }
+
+      save(options = {}) {
+        if (this.isFactoryResetting) return false;
+        const isRoutine = Boolean(options && options.routine);
+        const immediate = options && typeof options.immediate === 'boolean' ? options.immediate : !isRoutine;
+        const sync = Boolean(options && options.sync);
+        const force = Boolean(options && options.force);
+        const saveObj = this.buildSavePayload();
+        const res = this._getPersistenceController().save(saveObj, { immediate, sync, force });
+        return Boolean(res && res.written);
       }
 
       load() {
         try {
-          let raw = null;
+          const primaryKey = CoreSave ? CoreSave.STORAGE_KEY : 'PENGUIN_GLACIAL_SAVE';
+          const backupKey = CoreSave ? CoreSave.BACKUP_STORAGE_KEY : 'PENGUIN_GLACIAL_SAVE_BACKUP';
+          const quarantineKey = CoreSave ? CoreSave.QUARANTINE_STORAGE_KEY : 'PENGUIN_GLACIAL_SAVE_CORRUPT';
 
-          // 1. Primary: Try reading from native Android SharedPreferences
+          let nativeRaw = null;
+          let webPrimaryRaw = null;
+          let webBackupRaw = null;
+
+          // 1. Primary: Try reading from native Android storage (preserves pre-WebViewAssetLoader saves)
           try {
             if (window.AndroidBridge && typeof window.AndroidBridge.loadGame === 'function') {
               const nativeData = window.AndroidBridge.loadGame();
-              if (nativeData && nativeData.length > 5) {
-                raw = nativeData;
+              if (nativeData && nativeData.length > 2) {
+                nativeRaw = nativeData;
               }
             }
           } catch (e) {
             console.warn('Native AndroidBridge load error:', e);
           }
 
-          // 2. Secondary: Fall back to localStorage if native storage was empty or unavailable
-          if (!raw) {
-            raw = localStorage.getItem('PENGUIN_GLACIAL_SAVE');
+          // 2. Secondary: Read browser localStorage primary & known-good backup
+          try {
+            webPrimaryRaw = localStorage.getItem(primaryKey);
+            webBackupRaw = localStorage.getItem(backupKey);
+          } catch (_) {}
+
+          const primaryRaw = nativeRaw || webPrimaryRaw;
+          const backupRaw = (nativeRaw && webPrimaryRaw && webPrimaryRaw !== nativeRaw)
+            ? webPrimaryRaw
+            : webBackupRaw;
+
+          const schemaDefs = {
+            speciesIds: PENGUIN_SPECIES.map(s => s.id),
+            traitIds: PENGUIN_TRAITS.map(t => t.id),
+            techIds: GLACIER_TECH.map(t => t.id),
+            weatherCount: WEATHER_TYPES.length,
+            weatherCycleSeconds: WEATHER_CYCLE_SECONDS
+          };
+
+          const nowMs = Date.now();
+          let recovered = null;
+          if (CoreSave) {
+            recovered = CoreSave.parseAndRecoverSave({ primaryRaw, backupRaw, schemaDefs, nowMs });
+          } else if (primaryRaw) {
+            recovered = { status: 'ok', data: JSON.parse(primaryRaw), recoveredFromBackup: false };
+          } else {
+            recovered = { status: 'empty', data: null, recoveredFromBackup: false };
           }
 
-          if (raw) {
-            const data = JSON.parse(raw);
-            this.fish = (typeof data.fish === 'number') ? data.fish : 0;
-            this.lifetimeFish = (typeof data.lifetimeFish === 'number') ? data.lifetimeFish : 0;
-            this.glacierLevel = (typeof data.glacierLevel === 'number') ? data.glacierLevel : 1;
-            this.levelFish = (typeof data.levelFish === 'number') ? data.levelFish : 0;
-            this.prestigeShards = (typeof data.prestigeShards === 'number') ? data.prestigeShards : 0;
-            if (data.penguins) this.penguins = Object.assign(this.penguins, data.penguins);
-            this.ensurePenguinTraits();
-            if (data.tech) this.tech = Object.assign(this.tech, data.tech);
+          if (recovered.corruptedPayload) {
+            try {
+              localStorage.setItem(quarantineKey, String(recovered.corruptedPayload).slice(0, 65536));
+            } catch (_) {}
+          }
 
-            if (Array.isArray(data.collectedPerks)) {
-              this.collectedPerks = data.collectedPerks;
-            } else {
-              this.collectedPerks = [];
+          if (recovered.status === 'corrupted_unrecoverable') {
+            console.warn('Save data corrupted and no valid backup was available; quarantined corrupted copy.');
+            this._getPersistenceController().setCorruptionGuard(false);
+            if (typeof showToast === 'function') {
+              showToast('⚠️ Corrupted save detected. Started fresh while keeping a backup copy.', '🛡️', { category: 'system', durationMs: 5200 });
             }
-            if (data.unlockedAchievements && typeof data.unlockedAchievements === 'object') {
-              this.unlockedAchievements = data.unlockedAchievements;
-            } else {
-              this.unlockedAchievements = {};
-            }
+            return;
+          }
 
-            this.perkWalkSpeedMult = data.perkWalkSpeedMult || 1.0;
-            this.perkSlideSpeedMult = data.perkSlideSpeedMult || 1.0;
-            this.perkCatchMult = data.perkCatchMult || 1.0;
-            this.clickMult = data.clickMult || 1.0;
-            this.diveSpeedMult = data.diveSpeedMult || 1.0;
-            this.emperorBoost = data.emperorBoost || 0;
-            this.recalculatePerkMultipliers();
+          const data = recovered.data;
+          if (!data) return;
 
-            if (typeof data.muted === 'boolean') sound.muted = data.muted;
-            if (typeof data.masterVolume === 'number') sound.masterVolume = Math.max(0, Math.min(1, data.masterVolume));
-            if (typeof data.sfxVolume === 'number') sound.sfxVolume = Math.max(0, Math.min(1, data.sfxVolume));
-            if (typeof data.ambientVolume === 'number') sound.ambientVolume = Math.max(0, Math.min(1, data.ambientVolume));
-            if (typeof data.hapticsEnabled === 'boolean') sound.hapticsEnabled = data.hapticsEnabled;
-            sound.syncWeatherAmbience(true);
-            sound.syncIosHapticDomState();
+          this.fish = data.fish;
+          this.lifetimeFish = data.lifetimeFish;
+          this.glacierLevel = data.glacierLevel;
+          this.levelFish = data.levelFish;
+          this.prestigeShards = data.prestigeShards;
+          this.penguins = Object.assign(this.penguins, data.penguins);
+          this.ensurePenguinTraits();
+          this.tech = Object.assign(this.tech, data.tech);
 
-            this.totalRebirths = data.totalRebirths || 0;
-            this.totalEssenceEarned = (typeof data.totalEssenceEarned === 'number')
-              ? Math.max(this.prestigeShards, data.totalEssenceEarned)
-              : Math.max(0, this.prestigeShards);
-            this.rebirthHistory = Array.isArray(data.rebirthHistory) ? data.rebirthHistory : [];
-            if (typeof data.runFish === 'number') {
-              this.runFish = Math.max(0, data.runFish);
-            } else {
-              // Migration for saves created before runFish existed
-              this.runFish = this.totalRebirths > 0 ? Math.max(this.fish, this.levelFish) : this.lifetimeFish;
-            }
+          this.collectedPerks = Array.isArray(data.collectedPerks) ? data.collectedPerks : [];
+          this.unlockedAchievements = (data.unlockedAchievements && typeof data.unlockedAchievements === 'object')
+            ? data.unlockedAchievements
+            : {};
 
-            const currentDailyKey = dailyManager.getCycleDateKey();
-            const savedDaily = data.dailyObjectives || {};
-            dailyManager.streakCount = (typeof savedDaily.streakCount === 'number' && savedDaily.streakCount >= 0) ? savedDaily.streakCount : 0;
-            dailyManager.bestStreak = (typeof savedDaily.bestStreak === 'number' && savedDaily.bestStreak >= 0)
-              ? Math.max(dailyManager.streakCount, savedDaily.bestStreak)
-              : dailyManager.streakCount;
-            dailyManager.lastStreakDateKey = (typeof savedDaily.lastStreakDateKey === 'string') ? savedDaily.lastStreakDateKey : '';
-            dailyManager.permanentFishBonusPct = (typeof savedDaily.permanentFishBonusPct === 'number' && savedDaily.permanentFishBonusPct >= 0)
-              ? savedDaily.permanentFishBonusPct
-              : 0;
-            dailyManager.totalGoalsCompleted = (typeof savedDaily.totalGoalsCompleted === 'number' && savedDaily.totalGoalsCompleted >= 0)
-              ? savedDaily.totalGoalsCompleted
-              : 0;
-            dailyManager.syncStreakStatusForCycle(currentDailyKey);
+          this.perkWalkSpeedMult = data.perkWalkSpeedMult || 1.0;
+          this.perkSlideSpeedMult = data.perkSlideSpeedMult || 1.0;
+          this.perkCatchMult = data.perkCatchMult || 1.0;
+          this.clickMult = data.clickMult || 1.0;
+          this.diveSpeedMult = data.diveSpeedMult || 1.0;
+          this.emperorBoost = data.emperorBoost || 0;
+          this.goldenFishTimer = data.goldenFishTimer || 0;
+          this.recalculatePerkMultipliers();
 
-            if (savedDaily.dateKey === currentDailyKey && Array.isArray(savedDaily.objectives)) {
-              dailyManager.dateKey = currentDailyKey;
-              dailyManager.objectives = savedDaily.objectives;
-              dailyManager.dailyBonusCleared = (typeof savedDaily.dailyBonusCleared === 'number' && savedDaily.dailyBonusCleared >= 0)
-                ? savedDaily.dailyBonusCleared
-                : 0;
-              dailyManager.bonusObjective = (savedDaily.bonusObjective && typeof savedDaily.bonusObjective === 'object')
-                ? savedDaily.bonusObjective
-                : null;
-              dailyManager.ensureBonusObjectiveState();
-            } else {
-              dailyManager.dateKey = currentDailyKey;
-              dailyManager.dailyBonusCleared = 0;
-              dailyManager.bonusObjective = null;
-              dailyManager.objectives = dailyManager.getDefaultObjectives(currentDailyKey, dailyManager.totalGoalsCompleted);
-            }
+          if (typeof data.muted === 'boolean') sound.muted = data.muted;
+          if (typeof data.masterVolume === 'number') sound.masterVolume = Math.max(0, Math.min(1, data.masterVolume));
+          if (typeof data.sfxVolume === 'number') sound.sfxVolume = Math.max(0, Math.min(1, data.sfxVolume));
+          if (typeof data.ambientVolume === 'number') sound.ambientVolume = Math.max(0, Math.min(1, data.ambientVolume));
+          if (typeof data.hapticsEnabled === 'boolean') sound.hapticsEnabled = data.hapticsEnabled;
+          sound.syncWeatherAmbience(true);
+          sound.syncIosHapticDomState();
 
-            this.totalAuroraBlessingsClaimed = data.totalAuroraBlessingsClaimed || 0;
-            this.totalManualClicks = data.totalManualClicks || 0;
-            this.totalDives = data.totalDives || 0;
-            this.totalSlides = data.totalSlides || 0;
-            this.gameStartTime = data.gameStartTime || Date.now();
-            this.highestDPS = data.highestDPS || 0;
+          this.totalRebirths = data.totalRebirths || 0;
+          this.totalEssenceEarned = Math.max(this.prestigeShards, data.totalEssenceEarned || 0);
+          this.rebirthHistory = Array.isArray(data.rebirthHistory) ? data.rebirthHistory : [];
+          this.runFish = Math.max(0, data.runFish || 0);
 
-            if (typeof data.weatherIndex === 'number' && data.weatherIndex >= 0 && data.weatherIndex < WEATHER_TYPES.length) {
-              this.weatherIndex = data.weatherIndex;
-            }
-            if (typeof data.weatherTimer === 'number' && data.weatherTimer > 0) {
-              this.weatherTimer = Math.min(WEATHER_CYCLE_SECONDS, data.weatherTimer);
-            }
-            if (typeof pushReminders !== 'undefined') {
-              if (typeof data.dailyReminderEnabled === 'boolean') pushReminders.enabled = data.dailyReminderEnabled;
-              if (typeof data.lastDailyReminderDateKey === 'string') pushReminders.lastNotifiedDateKey = data.lastDailyReminderDateKey;
-            }
-            if (data.speechLog && typeof data.speechLog === 'object') {
-              PENGUIN_SPECIES.forEach(sp => {
-                if (Array.isArray(data.speechLog[sp.id])) {
-                  this.speechLog[sp.id] = data.speechLog[sp.id].slice(0, 50);
-                } else {
-                  this.speechLog[sp.id] = [];
-                }
-              });
-            }
-            if (data.speechLogExpanded && typeof data.speechLogExpanded === 'object') {
-              PENGUIN_SPECIES.forEach(sp => {
-                if (typeof data.speechLogExpanded[sp.id] === 'boolean') {
-                  this.speechLogExpanded[sp.id] = data.speechLogExpanded[sp.id];
-                }
-              });
-            }
-            if (typeof data.lastColonySpeechEndedAt === 'number' && data.lastColonySpeechEndedAt >= 0) {
-              this.lastColonySpeechEndedAt = data.lastColonySpeechEndedAt;
-            }
-            if (typeof data.pendingOfflineFish === 'number' && data.pendingOfflineFish > 0) {
-              this.pendingOfflineFish = Math.floor(data.pendingOfflineFish);
-            } else {
-              this.pendingOfflineFish = 0;
-            }
-            if (typeof data.lastSeenFeatureReleaseId === 'string') {
-              this.lastSeenFeatureReleaseId = data.lastSeenFeatureReleaseId;
-            }
-            if (typeof data.disableRoutineToasts === 'boolean') {
-              this.disableRoutineToasts = data.disableRoutineToasts;
-            }
+          const currentDailyKey = dailyManager.getCycleDateKey(nowMs);
+          const savedDaily = data.dailyObjectives || {};
+          dailyManager.streakCount = Math.max(0, savedDaily.streakCount || 0);
+          dailyManager.bestStreak = Math.max(dailyManager.streakCount, savedDaily.bestStreak || 0);
+          dailyManager.lastStreakDateKey = typeof savedDaily.lastStreakDateKey === 'string' ? savedDaily.lastStreakDateKey : '';
+          dailyManager.permanentFishBonusPct = Math.max(0, savedDaily.permanentFishBonusPct || 0);
+          dailyManager.totalGoalsCompleted = Math.max(0, savedDaily.totalGoalsCompleted || 0);
+          dailyManager.syncStreakStatusForCycle(currentDailyKey);
 
-            if (data.lastSaveTime) {
-              const elapsedSec = (Date.now() - data.lastSaveTime) / 1000;
-              if (elapsedSec > 0) {
-                this.advanceWeather(elapsedSec);
+          if (savedDaily.sameCycle && Array.isArray(savedDaily.objectives) && savedDaily.objectives.length > 0) {
+            dailyManager.dateKey = currentDailyKey;
+            dailyManager.objectives = savedDaily.objectives;
+            dailyManager.dailyBonusCleared = Math.max(0, savedDaily.dailyBonusCleared || 0);
+            dailyManager.bonusObjective = savedDaily.bonusObjective || null;
+            dailyManager.ensureBonusObjectiveState();
+          } else {
+            dailyManager.dateKey = currentDailyKey;
+            dailyManager.dailyBonusCleared = 0;
+            dailyManager.bonusObjective = null;
+            dailyManager.objectives = dailyManager.getDefaultObjectives(currentDailyKey, dailyManager.totalGoalsCompleted);
+          }
+
+          this.totalAuroraBlessingsClaimed = data.totalAuroraBlessingsClaimed || 0;
+          this.totalManualClicks = data.totalManualClicks || 0;
+          this.totalDives = data.totalDives || 0;
+          this.totalSlides = data.totalSlides || 0;
+          this.gameStartTime = data.gameStartTime || nowMs;
+          this.highestDPS = data.highestDPS || 0;
+
+          if (typeof data.weatherIndex === 'number' && data.weatherIndex >= 0 && data.weatherIndex < WEATHER_TYPES.length) {
+            this.weatherIndex = data.weatherIndex;
+          }
+          if (typeof data.weatherTimer === 'number' && data.weatherTimer > 0) {
+            this.weatherTimer = Math.min(WEATHER_CYCLE_SECONDS, data.weatherTimer);
+          }
+          if (typeof pushReminders !== 'undefined') {
+            if (typeof data.dailyReminderEnabled === 'boolean') pushReminders.enabled = data.dailyReminderEnabled;
+            if (typeof data.lastDailyReminderDateKey === 'string') pushReminders.lastNotifiedDateKey = data.lastDailyReminderDateKey;
+          }
+          if (data.speechLog && typeof data.speechLog === 'object') {
+            PENGUIN_SPECIES.forEach(sp => {
+              this.speechLog[sp.id] = Array.isArray(data.speechLog[sp.id]) ? data.speechLog[sp.id].slice(0, 50) : [];
+            });
+          }
+          if (data.speechLogExpanded && typeof data.speechLogExpanded === 'object') {
+            PENGUIN_SPECIES.forEach(sp => {
+              if (typeof data.speechLogExpanded[sp.id] === 'boolean') {
+                this.speechLogExpanded[sp.id] = data.speechLogExpanded[sp.id];
               }
-              if (elapsedSec > 10) {
-                this.calculateDPS();
-                const offlineEarned = Math.floor(this.dps * elapsedSec * (2 / 3));
-                if (offlineEarned > 5) {
-                  this.pendingOfflineFish += offlineEarned;
-                }
-              }
+            });
+          }
+          this.lastColonySpeechEndedAt = Math.max(0, data.lastColonySpeechEndedAt || 0);
+          this.pendingOfflineFish = Math.max(0, Math.floor(data.pendingOfflineFish || 0));
+          this.lastSeenFeatureReleaseId = data.lastSeenFeatureReleaseId || '';
+          this.disableRoutineToasts = Boolean(data.disableRoutineToasts);
+
+          this._getPersistenceController().markLoaded(this.buildSavePayload());
+
+          if (data.lastSaveTime > 0 && !recovered.futureClockDetected) {
+            this.calculateDPS();
+            const offlineRes = CoreEconomy
+              ? CoreEconomy.calculateOfflineEarnings({
+                  dps: this.dps,
+                  lastSaveTimeMs: data.lastSaveTime,
+                  nowMs
+                })
+              : {
+                  earned: ((nowMs - data.lastSaveTime) / 1000 > 10)
+                    ? Math.floor(this.dps * Math.min(86400, (nowMs - data.lastSaveTime) / 1000) * (2 / 3))
+                    : 0,
+                  rawElapsedSec: (nowMs - data.lastSaveTime) / 1000,
+                  clockMovedBackward: nowMs < data.lastSaveTime
+                };
+
+            if (offlineRes.rawElapsedSec > 0 && !offlineRes.clockMovedBackward) {
+              this.advanceWeather(Math.min(offlineRes.rawElapsedSec, 86400));
             }
-            if (this.pendingOfflineFish > 0) {
-              this.lastSaveTime = Date.now();
-              this.save();
-              showOfflineModal(0);
+            if (offlineRes.earned > 0) {
+              const safeAdd = CoreEconomy ? CoreEconomy.safeAddResource : ((a, b) => a + b);
+              this.pendingOfflineFish = Math.floor(safeAdd(this.pendingOfflineFish, offlineRes.earned));
             }
+          }
+
+          if (this.pendingOfflineFish > 0) {
+            this.lastSaveTime = nowMs;
+            this.save({ immediate: true, force: true });
+            // Populate offline value now; LaunchSplash will reveal it seamlessly before fade-out
+            showOfflineModal(0);
+          } else if (recovered.recoveredFromBackup || recovered.migrated) {
+            this.save({ immediate: true, force: true });
+          }
+
+          if (recovered.recoveredFromBackup && typeof showToast === 'function') {
+            showToast('🛡️ Save recovered automatically from backup!', '🛡️', { category: 'system', durationMs: 4500 });
           }
         } catch (e) {
           console.warn('Load failed:', e);
@@ -7007,10 +7217,20 @@
 
     const state = new GameState();
 
+    window.flushGameSaveNow = function() {
+      if (typeof state !== 'undefined' && state && !state.isFactoryResetting) {
+        state.lastSaveTime = Date.now();
+        state.save({ immediate: true, sync: true, force: true });
+      }
+    };
+
     function formatNumber(num) {
+      if (CoreEconomy) return CoreEconomy.formatNumber(num);
+      if (!Number.isFinite(num)) return '0';
       if (num < 1000) return Math.floor(num).toLocaleString();
-      const units = ['K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp'];
+      const units = ['K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
       const uIdx = Math.floor(Math.log10(num) / 3) - 1;
+      if (uIdx >= units.length) return num.toExponential(2);
       const formatted = (num / Math.pow(10, (uIdx + 1) * 3)).toFixed(1);
       return formatted + (units[uIdx] || '');
     }
@@ -7021,7 +7241,7 @@
     const ctx = canvas.getContext('2d');
     let width = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 360);
     let height = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 640);
-    let dpr = window.devicePixelRatio || 1;
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     function resizeCanvas() {
       const container = document.getElementById('canvas-container');
@@ -7032,7 +7252,7 @@
       const hadZero = (width <= 1 || height <= 1);
       width = w;
       height = h;
-      dpr = window.devicePixelRatio || 1;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -9687,33 +9907,87 @@
       }
     }
 
+    function getVisibleGlacierBottomY() {
+      const sheet = document.getElementById('bottom-sheet');
+      if (!sheet || sheet.classList.contains('collapsed')) {
+        return height - 24;
+      }
+      if (sheet.classList.contains('expanded')) {
+        return 0; // Full-screen expanded menu obscures the glacier
+      }
+      try {
+        const rect = sheet.getBoundingClientRect();
+        if (rect && rect.top > 110 && rect.top < height) {
+          return rect.top;
+        }
+      } catch (_) {}
+      return Math.floor(height * 0.48);
+    }
+
     function spawnGoldenFishEvent() {
       const hole = FISHING_HOLES[Math.floor(Math.random() * FISHING_HOLES.length)] || FISHING_HOLES[1];
       const dir = hole.xRatio > 0.6 ? -1 : (hole.xRatio < 0.4 ? 1 : (Math.random() < 0.5 ? -1 : 1));
+      const duration = CoreEconomy ? CoreEconomy.GOLDEN_FISH_DURATION_SEC : 7.2;
+      const visibleBottomY = getVisibleGlacierBottomY();
+      const pos = CoreEconomy
+        ? CoreEconomy.computeGoldenFishPosition({
+            width,
+            height,
+            hole,
+            elapsed: 0,
+            duration,
+            dir,
+            visibleTopY: 92,
+            visibleBottomY
+          })
+        : { x: width * hole.xRatio, y: Math.min(height * hole.yRatio, Math.max(150, visibleBottomY - 26)) };
+
       goldenFishEvent = {
         hole,
         dir,
         elapsed: 0,
-        duration: 5.5,
-        x: width * hole.xRatio,
-        y: height * hole.yRatio,
+        duration,
+        x: pos.x,
+        y: pos.y,
         caught: false
       };
       spawnHoleRipple(hole, 'rgba(253, 224, 71, 0.95)');
+      if (typeof addTapParticle === 'function') {
+        addTapParticle(pos.x, pos.y - 24, '✨ Golden Fish!', '#fef08a', 13);
+      }
       if (typeof sound !== 'undefined' && sound.playSplash) sound.playSplash();
     }
 
     function updateAndDrawGoldenFish(ctx, dt) {
+      const sheet = document.getElementById('bottom-sheet');
+      const sheetExpanded = Boolean(sheet && sheet.classList.contains('expanded'));
       const blocking = (typeof isModalBlockingAurora === 'function' && isModalBlockingAurora()) ||
         (typeof launchSplash !== 'undefined' && launchSplash && launchSplash.isActive) ||
-        state.isAuroraModalOpen;
+        state.isAuroraModalOpen ||
+        sheetExpanded;
 
       if (!goldenFishEvent) {
-        if (!blocking) {
-          nextGoldenFishCooldown -= dt;
+        if (CoreEconomy) {
+          const step = CoreEconomy.computeGoldenFishCooldownStep({
+            cooldownSec: nextGoldenFishCooldown,
+            dtSec: dt,
+            goldenFishTimerSec: state.goldenFishTimer || 0,
+            isBlocked: blocking
+          });
+          nextGoldenFishCooldown = step.nextCooldownSec;
+          if (step.shouldSpawn) {
+            spawnGoldenFishEvent();
+            nextGoldenFishCooldown = CoreEconomy.computeGoldenFishNextCooldown({
+              goldenFishTimerSec: state.goldenFishTimer || 0
+            });
+          }
+        } else if (!blocking) {
+          const rate = (state.goldenFishTimer || 0) > 0 ? 2 : 1;
+          nextGoldenFishCooldown -= dt * rate;
           if (nextGoldenFishCooldown <= 0) {
             spawnGoldenFishEvent();
-            nextGoldenFishCooldown = 78 + Math.random() * 36;
+            const baseCd = 78 + Math.random() * 36;
+            nextGoldenFishCooldown = (state.goldenFishTimer || 0) > 0 ? baseCd / 2 : baseCd;
           }
         }
         return;
@@ -9725,29 +9999,49 @@
         return;
       }
 
-      const hole = goldenFishEvent.hole;
-      const hx = width * hole.xRatio;
-      const hy = height * hole.yRatio;
-      const t = goldenFishEvent.elapsed / goldenFishEvent.duration;
-      // Graceful triple-leap shimmer arc above the fishing hole
-      const hopPhase = (t * 2.5) % 1;
-      const arcY = Math.sin(hopPhase * Math.PI) * 58;
-      const swayX = Math.sin(t * Math.PI * 2) * 34 * goldenFishEvent.dir;
-      goldenFishEvent.x = hx + swayX;
-      goldenFishEvent.y = hy - 14 - arcY;
+      const visibleBottomY = getVisibleGlacierBottomY();
+      if (visibleBottomY <= 100) {
+        return; // Don't render behind a full-screen expanded menu
+      }
+
+      const pos = CoreEconomy
+        ? CoreEconomy.computeGoldenFishPosition({
+            width,
+            height,
+            hole: goldenFishEvent.hole,
+            elapsed: goldenFishEvent.elapsed,
+            duration: goldenFishEvent.duration,
+            dir: goldenFishEvent.dir,
+            visibleTopY: 92,
+            visibleBottomY
+          })
+        : (() => {
+            const hole = goldenFishEvent.hole;
+            const hx = width * hole.xRatio;
+            const hy = Math.min(height * hole.yRatio, Math.max(150, visibleBottomY - 26));
+            const t = goldenFishEvent.elapsed / goldenFishEvent.duration;
+            const hopPhase = (t * 2.5) % 1;
+            const arcY = Math.sin(hopPhase * Math.PI) * 52;
+            const swayX = Math.sin(t * Math.PI * 2) * 34 * goldenFishEvent.dir;
+            return { x: hx + swayX, y: hy - 14 - arcY, hopPhase };
+          })();
+
+      goldenFishEvent.x = pos.x;
+      goldenFishEvent.y = pos.y;
+      const hopPhase = pos.hopPhase;
 
       ctx.save();
       ctx.translate(goldenFishEvent.x, goldenFishEvent.y);
 
       // Pulsing golden halo ring so players spot it effortlessly
       const pulse = 0.65 + 0.35 * Math.sin(auroraWavePhase * 9);
-      const halo = ctx.createRadialGradient(0, 0, 3, 0, 0, 28 + pulse * 6);
-      halo.addColorStop(0, 'rgba(254, 240, 138, 0.85)');
-      halo.addColorStop(0.5, 'rgba(251, 191, 36, 0.38)');
+      const halo = ctx.createRadialGradient(0, 0, 3, 0, 0, 32 + pulse * 6);
+      halo.addColorStop(0, 'rgba(254, 240, 138, 0.92)');
+      halo.addColorStop(0.5, 'rgba(251, 191, 36, 0.45)');
       halo.addColorStop(1, 'rgba(251, 191, 36, 0)');
       ctx.fillStyle = halo;
       ctx.beginPath();
-      ctx.arc(0, 0, 32, 0, Math.PI * 2);
+      ctx.arc(0, 0, 36, 0, Math.PI * 2);
       ctx.fill();
 
       // Gleaming Golden Fish silhouette
@@ -9786,8 +10080,8 @@
       ctx.fill();
       ctx.restore();
 
-      // Subtle sparkle trail
-      if (Math.random() < 0.3 && tapParticles.length < 35) {
+      // Subtle sparkle trail (reduced when prefers-reduced-motion is enabled)
+      if (!prefersReducedMotion() && Math.random() < 0.3 && tapParticles.length < 35) {
         tapParticles.push({
           x: goldenFishEvent.x + (Math.random() - 0.5) * 14,
           y: goldenFishEvent.y + (Math.random() - 0.5) * 10,
@@ -9846,17 +10140,18 @@
         } else {
           showToast('☀️ The polar skies have Cleared!', '☀️', { category: 'weather', durationMs: 4000 });
         }
-        state.save();
+        state.save({ routine: true });
         if (state.currentTab === 'stats') {
           updateSheetContent();
         }
       }
       sound.setWeather(state.getCurrentWeather().id);
 
-      if ((typeof document === 'undefined' || !document.hidden) && (now - lastAutoSavePerfNow > 3000)) {
+      // Debounced routine autosave (~15s interval, skips unchanged state)
+      if ((typeof document === 'undefined' || !document.hidden) && (now - lastAutoSavePerfNow > 15000)) {
         lastAutoSavePerfNow = now;
         state.lastSaveTime = Date.now();
-        state.save();
+        state.save({ routine: true });
         if (typeof pushReminders !== 'undefined') {
           pushReminders.checkForeground8AmReminder();
         }
@@ -10632,15 +10927,19 @@
       dailyManager.track('taps', 1);
       state.totalManualClicks = (state.totalManualClicks || 0) + 1;
 
-      // Priority 1: Check Golden Fish School mini-event tap
-      if (goldenFishEvent && !goldenFishEvent.caught && Math.hypot(goldenFishEvent.x - x, goldenFishEvent.y - y) < 48) {
-        goldenFishEvent.caught = true;
-        const gx = goldenFishEvent.x;
-        const gy = goldenFishEvent.y;
+      // Priority 1: Check Golden Fish School mini-event tap (generous 54px touch radius + single-catch guard)
+      if (goldenFishEvent && !goldenFishEvent.caught && Math.hypot(goldenFishEvent.x - x, goldenFishEvent.y - y) < 54) {
+        const caughtEvent = goldenFishEvent;
+        caughtEvent.caught = true;
+        const gx = caughtEvent.x;
+        const gy = caughtEvent.y;
         goldenFishEvent = null;
         state.calculateDPS();
-        const burstFish = Math.max(50, Math.round(state.dps * 30));
+        const burstFish = CoreEconomy
+          ? CoreEconomy.calculateGoldenFishReward(state.dps)
+          : Math.max(50, Math.round(state.dps * 30));
         state.addFish(burstFish);
+        state.save({ immediate: true });
         sound.playLevelUp();
         sound.triggerHaptic('collect');
         for (let i = 0; i < 18; i++) {
@@ -11443,12 +11742,17 @@
 
     function claimOfflineCatch() {
       const modal = document.getElementById('offline-modal');
+      const modalVisible = Boolean(modal && modal.style.display === 'flex');
       const toClaim = Math.max(0, Math.floor((state && state.pendingOfflineFish) || 0));
+      if (!modalVisible && toClaim <= 0) return;
       if (state) {
         state.pendingOfflineFish = 0;
       }
       if (modal) {
         modal.style.display = 'none';
+        if (typeof restoreFocusAfterModal === 'function') {
+          restoreFocusAfterModal(modal);
+        }
       }
       sound.init();
       if (toClaim > 0 && state) {
@@ -11459,14 +11763,11 @@
       sound.playLevelUp();
       if (state) {
         state.lastSaveTime = Date.now();
-        state.save();
+        state.save({ immediate: true, force: true });
       }
       if (typeof updateHUD === 'function') updateHUD();
       if (typeof updateSheetContent === 'function') updateSheetContent();
-      const openedWhatsNew = maybeShowWhatsNewModal();
-      if (!openedWhatsNew && typeof window.flushPendingSwReload === 'function') {
-        window.flushPendingSwReload();
-      }
+      maybeShowWhatsNewModal();
     }
 
     // =========================================================================
@@ -11526,7 +11827,7 @@
       state.tempSpeedBoost = 0;
 
       checkAchievements();
-      state.save();
+      state.save({ immediate: true, force: true });
       syncActivePenguins();
       updateSheetContent();
       updateHUD();
@@ -12549,23 +12850,25 @@
 
     const prestigeCutscene = new PrestigeCutsceneController();
 
-    function showOfflineModal(amount = 0) {
+    function showOfflineModal(amount = 0, options = {}) {
       const added = Math.max(0, Math.floor(amount || 0));
       if (added > 0) {
-        state.pendingOfflineFish = Math.max(0, Math.floor(state.pendingOfflineFish || 0)) + added;
+        const safeAdd = CoreEconomy ? CoreEconomy.safeAddResource : ((a, b) => a + b);
+        state.pendingOfflineFish = Math.floor(safeAdd(Math.max(0, Math.floor(state.pendingOfflineFish || 0)), added));
         state.lastSaveTime = Date.now();
-        state.save();
+        state.save({ immediate: true, force: true });
       }
       const pendingTotal = Math.max(0, Math.floor(state.pendingOfflineFish || 0));
-      if (pendingTotal <= 0) return;
+      if (pendingTotal <= 0) return false;
 
       const modal = document.getElementById('offline-modal');
       const valEl = document.getElementById('offline-fish-val');
       if (valEl) {
         valEl.textContent = `+${formatNumber(pendingTotal)} 🐟`;
       }
-      if (typeof launchSplash !== 'undefined' && launchSplash && launchSplash.isActive) {
-        return; // Deferred cleanly until launch splash fade-out finishes
+      // Allow pre-mounting directly underneath the opaque splash before fade-out so there is zero game flash
+      if (!options.allowUnderSplash && typeof launchSplash !== 'undefined' && launchSplash && launchSplash.isActive) {
+        return false;
       }
       if (modal) {
         modal.style.display = 'flex';
@@ -12577,17 +12880,21 @@
         claimBtn.onclick = () => {
           claimOfflineCatch();
         };
+        if (!options.allowUnderSplash && typeof claimBtn.focus === 'function') {
+          try { claimBtn.focus({ preventScroll: true }); } catch (_) {}
+        }
       }
+      return true;
     }
 
-    function maybeShowWhatsNewModal(forceOpen = false) {
+    function maybeShowWhatsNewModal(forceOpen = false, options = {}) {
       if (typeof LATEST_FEATURE_RELEASE === 'undefined' || !LATEST_FEATURE_RELEASE) return false;
       const modal = document.getElementById('whats-new-modal');
       if (!modal) return false;
 
       if (!forceOpen) {
-        if (typeof launchSplash !== 'undefined' && launchSplash && launchSplash.isActive) {
-          return false; // Wait until launch splash completes
+        if (!options.allowUnderSplash && typeof launchSplash !== 'undefined' && launchSplash && launchSplash.isActive) {
+          return false; // Wait until launch splash completes or pre-fade handoff
         }
         if (state.lastSeenFeatureReleaseId === LATEST_FEATURE_RELEASE.id) return false;
         const offlineModal = document.getElementById('offline-modal');
@@ -12627,12 +12934,12 @@
           sound.triggerHaptic('collect');
           sound.playChirp();
           state.lastSeenFeatureReleaseId = LATEST_FEATURE_RELEASE.id;
-          state.save();
+          state.save({ immediate: true });
           modal.style.display = 'none';
-          if (typeof window.flushPendingSwReload === 'function') {
-            window.flushPendingSwReload();
-          }
         };
+        if (!options.allowUnderSplash && typeof dismissBtn.focus === 'function') {
+          try { dismissBtn.focus({ preventScroll: true }); } catch (_) {}
+        }
       }
       return true;
     }
@@ -12647,18 +12954,23 @@
       state.isFactoryResetting = true;
       closeFactoryResetModal();
 
-      // Clear native Android SharedPreferences & backup JSON
+      // Clear native Android SharedPreferences & atomic backup files via dedicated clearSave()
       try {
-        if (window.AndroidBridge && typeof window.AndroidBridge.saveGame === 'function') {
-          window.AndroidBridge.saveGame('');
+        if (window.AndroidBridge && typeof window.AndroidBridge.clearSave === 'function') {
+          window.AndroidBridge.clearSave();
         }
       } catch (e) {
         console.warn('AndroidBridge factory wipe warning:', e);
       }
 
-      // Clear browser localStorage save
+      // Clear browser localStorage primary, backup, and quarantine slots
       try {
-        localStorage.removeItem('PENGUIN_GLACIAL_SAVE');
+        const primaryKey = CoreSave ? CoreSave.STORAGE_KEY : 'PENGUIN_GLACIAL_SAVE';
+        const backupKey = CoreSave ? CoreSave.BACKUP_STORAGE_KEY : 'PENGUIN_GLACIAL_SAVE_BACKUP';
+        const quarantineKey = CoreSave ? CoreSave.QUARANTINE_STORAGE_KEY : 'PENGUIN_GLACIAL_SAVE_CORRUPT';
+        localStorage.removeItem(primaryKey);
+        localStorage.removeItem(backupKey);
+        localStorage.removeItem(quarantineKey);
       } catch (e) {
         console.warn('localStorage factory wipe warning:', e);
       }
@@ -12951,37 +13263,54 @@
           const nextTrait = getTraitDef(pData.nextTrait);
           const card = document.createElement('div');
           
-          let qty = typeof state.buyMultiplier === 'number' ? state.buyMultiplier : 1;
+          const firstCostMult = (nextTrait && Number.isFinite(nextTrait.costMult)) ? nextTrait.costMult : 1.0;
+          let qty = 1;
           let cost = 0;
-          let affordableQty = 0;
+          let canAfford = false;
 
-          if (state.buyMultiplier === 'MAX') {
-            let tempFish = state.fish;
-            let tempCount = pData.count;
-            while (true) {
-              let nextCost = state.getPenguinCost(sp.id, tempCount, affordableQty === 0);
-              if (tempFish >= nextCost && affordableQty < 100) {
-                tempFish -= nextCost;
-                cost += nextCost;
-                tempCount++;
-                affordableQty++;
+          if (CoreEconomy && typeof CoreEconomy.calculateBulkPenguinPurchase === 'function') {
+            const bulk = CoreEconomy.calculateBulkPenguinPurchase(
+              sp,
+              pData.count,
+              state.fish,
+              state.buyMultiplier,
+              firstCostMult,
+              100
+            );
+            qty = bulk.qty;
+            cost = bulk.cost;
+            canAfford = bulk.canAfford;
+          } else {
+            qty = typeof state.buyMultiplier === 'number' ? state.buyMultiplier : 1;
+            let affordableQty = 0;
+            if (state.buyMultiplier === 'MAX') {
+              let tempFish = state.fish;
+              let tempCount = pData.count;
+              while (true) {
+                let nextCost = state.getPenguinCost(sp.id, tempCount, affordableQty === 0);
+                if (tempFish >= nextCost && affordableQty < 100) {
+                  tempFish -= nextCost;
+                  cost += nextCost;
+                  tempCount++;
+                  affordableQty++;
+                } else {
+                  break;
+                }
+              }
+              if (affordableQty === 0) {
+                cost = state.getPenguinCost(sp.id, pData.count, true);
+                qty = 1;
               } else {
-                break;
+                qty = affordableQty;
+              }
+            } else {
+              for (let i = 0; i < qty; i++) {
+                cost += state.getPenguinCost(sp.id, pData.count + i, i === 0);
               }
             }
-            if (affordableQty === 0) {
-              cost = state.getPenguinCost(sp.id, pData.count, true);
-              qty = 1;
-            } else {
-              qty = affordableQty;
-            }
-          } else {
-            for (let i = 0; i < qty; i++) {
-              cost += state.getPenguinCost(sp.id, pData.count + i, i === 0);
-            }
+            canAfford = state.fish >= cost;
           }
 
-          const canAfford = state.fish >= cost;
           card.className = `roster-card ${canAfford ? 'can-afford' : ''}`;
 
           const squadTraitsHtml = Object.entries(pData.traitCounts || {})
@@ -13026,8 +13355,8 @@
 
           const btn = card.querySelector('.buy-btn');
           btn.addEventListener('click', () => {
-            if (state.fish >= cost) {
-              state.fish -= cost;
+            if (Number.isFinite(cost) && cost > 0 && state.fish >= cost) {
+              state.fish = Math.max(0, state.fish - cost);
               pData.count += qty;
               pData.level = Math.floor(1 + pData.count / 10);
 
@@ -13044,7 +13373,7 @@
               showToast(`Recruited ${nextTrait.icon} ${nextTrait.name} ${sp.name}${qty > 1 ? ` (+${qty - 1} more)` : ''}!`, '🐧', { category: 'purchase' });
               dailyManager.track('recruits', qty);
               checkAchievements();
-              state.save();
+              state.save({ immediate: true });
 
               // Enforce 6 visible penguins per colony: if species is already at 6 on ice, swap oldest of this species
               const sameSpeciesSprites = activePenguins.filter(p => p.speciesId === sp.id);
@@ -13068,37 +13397,52 @@
       } else if (state.currentTab === 'tech') {
         GLACIER_TECH.forEach(tech => {
           const currentLvl = state.tech[tech.id] || 0;
-          let qty = typeof state.buyMultiplier === 'number' ? state.buyMultiplier : 1;
+          let qty = 1;
           let cost = 0;
-          let affordableQty = 0;
+          let canAfford = false;
 
-          if (state.buyMultiplier === 'MAX') {
-            let tempFish = state.fish;
-            let tempLvl = currentLvl;
-            while (affordableQty < 500) {
-              const nextCost = state.getTechCost(tech.id, tempLvl);
-              if (tempFish >= nextCost) {
-                tempFish -= nextCost;
-                cost += nextCost;
-                tempLvl++;
-                affordableQty++;
+          if (CoreEconomy && typeof CoreEconomy.calculateBulkTechPurchase === 'function') {
+            const bulk = CoreEconomy.calculateBulkTechPurchase(
+              tech,
+              currentLvl,
+              state.fish,
+              state.buyMultiplier,
+              500
+            );
+            qty = bulk.qty;
+            cost = bulk.cost;
+            canAfford = bulk.canAfford;
+          } else {
+            qty = typeof state.buyMultiplier === 'number' ? state.buyMultiplier : 1;
+            let affordableQty = 0;
+            if (state.buyMultiplier === 'MAX') {
+              let tempFish = state.fish;
+              let tempLvl = currentLvl;
+              while (affordableQty < 500) {
+                const nextCost = state.getTechCost(tech.id, tempLvl);
+                if (tempFish >= nextCost) {
+                  tempFish -= nextCost;
+                  cost += nextCost;
+                  tempLvl++;
+                  affordableQty++;
+                } else {
+                  break;
+                }
+              }
+              if (affordableQty === 0) {
+                cost = state.getTechCost(tech.id, currentLvl);
+                qty = 1;
               } else {
-                break;
+                qty = affordableQty;
+              }
+            } else {
+              for (let i = 0; i < qty; i++) {
+                cost += state.getTechCost(tech.id, currentLvl + i);
               }
             }
-            if (affordableQty === 0) {
-              cost = state.getTechCost(tech.id, currentLvl);
-              qty = 1;
-            } else {
-              qty = affordableQty;
-            }
-          } else {
-            for (let i = 0; i < qty; i++) {
-              cost += state.getTechCost(tech.id, currentLvl + i);
-            }
+            canAfford = state.fish >= cost;
           }
 
-          const canAfford = state.fish >= cost;
           const tierLabel = qty > 1 ? `Tier ${currentLvl} → ${currentLvl + qty}` : `Tier ${currentLvl}`;
 
           const card = document.createElement('div');
@@ -13121,14 +13465,14 @@
 
           const btn = card.querySelector('.buy-btn');
           btn.addEventListener('click', () => {
-            if (state.fish >= cost) {
-              state.fish -= cost;
+            if (Number.isFinite(cost) && cost > 0 && state.fish >= cost) {
+              state.fish = Math.max(0, state.fish - cost);
               state.tech[tech.id] = currentLvl + qty;
               sound.playLevelUp();
               showToast(`🔬 Researched ${tech.name} Tier ${currentLvl + qty}${qty > 1 ? ` (+${qty})` : ''}!`, '🔬', { category: 'purchase' });
               dailyManager.track('tech_upgrades', qty);
               checkAchievements();
-              state.save();
+              state.save({ immediate: true });
               updateSheetContent();
             }
           });
@@ -14328,17 +14672,30 @@
         }
       }
 
-      start(onComplete) {
+      start(onComplete, onBeforeFadeOut) {
         const root = document.getElementById('launch-splash-screen');
-        if (!root) {
+        let skipOnce = false;
+        try {
+          if (sessionStorage.getItem('PGE_SKIP_SPLASH_ONCE') === '1') {
+            sessionStorage.removeItem('PGE_SKIP_SPLASH_ONCE');
+            skipOnce = true;
+          }
+        } catch (_) {}
+
+        if (!root || skipOnce) {
+          if (root) {
+            root.classList.add('splash-hidden');
+          }
           this.isActive = false;
+          if (typeof onBeforeFadeOut === 'function') onBeforeFadeOut();
           if (typeof onComplete === 'function') onComplete();
           return;
         }
 
         this.isActive = true;
         this.onCompleteCallback = typeof onComplete === 'function' ? onComplete : null;
-        this.durationMs = this.generateRandomDurationMs();
+        this.onBeforeFadeOutCallback = typeof onBeforeFadeOut === 'function' ? onBeforeFadeOut : null;
+        this.durationMs = prefersReducedMotion() ? 650 : this.generateRandomDurationMs();
         this.progress = 0;
 
         const versionEl = document.getElementById('splash-version-label');
@@ -14363,7 +14720,15 @@
             cancelAnimationFrame(this.rafId);
             this.rafId = null;
           }
+          // Reveal idle fish or release modal directly underneath the opaque splash BEFORE fading out
+          // so the live game never flashes between splash and idle reward modal.
+          if (this.onBeforeFadeOutCallback) {
+            const preCb = this.onBeforeFadeOutCallback;
+            this.onBeforeFadeOutCallback = null;
+            preCb();
+          }
           root.classList.add('splash-fade-out');
+          const fadeDelayMs = prefersReducedMotion() ? 40 : 480;
           setTimeout(() => {
             root.classList.add('splash-hidden');
             if (this._boundResize) {
@@ -14376,13 +14741,15 @@
               this.onCompleteCallback = null;
               cb();
             }
-          }, 480);
+          }, fadeDelayMs);
         };
 
         const tick = (now) => {
           const dtSec = Math.min(0.05, Math.max(0.001, (now - this.lastFrameTime) / 1000));
           this.lastFrameTime = now;
-          this.renderSnow(dtSec);
+          if (!prefersReducedMotion()) {
+            this.renderSnow(dtSec);
+          }
 
           const elapsed = now - startPerf;
           const normT = elapsed >= this.durationMs - 1 ? 1 : Math.min(1, Math.max(0, elapsed / this.durationMs));
@@ -14403,7 +14770,7 @@
           }
 
           if (normT >= 1) {
-            setTimeout(finishSplash, 180);
+            setTimeout(finishSplash, prefersReducedMotion() ? 40 : 180);
             return;
           }
           this.rafId = requestAnimationFrame(tick);
@@ -14414,6 +14781,54 @@
     }
 
     const launchSplash = new LaunchSplashController();
+
+    // Global Android Back & Keyboard Escape handler
+    window.handleAndroidBackButton = function() {
+      const factoryModal = document.getElementById('factory-reset-modal');
+      if (factoryModal && factoryModal.style.display === 'flex') {
+        closeFactoryResetModal();
+        return true;
+      }
+      const whatsNewModal = document.getElementById('whats-new-modal');
+      if (whatsNewModal && whatsNewModal.style.display === 'flex') {
+        const dismissBtn = document.getElementById('whats-new-dismiss-btn');
+        if (dismissBtn) dismissBtn.click();
+        else whatsNewModal.style.display = 'none';
+        return true;
+      }
+      const offlineModal = document.getElementById('offline-modal');
+      if (offlineModal && offlineModal.style.display === 'flex') {
+        return true; // Keep offline catch modal open until explicitly claimed
+      }
+      const auroraModal = document.getElementById('aurora-modal');
+      if (auroraModal && auroraModal.classList.contains('open')) {
+        return true; // Wait for perk choice
+      }
+      const sheet = document.getElementById('bottom-sheet');
+      const pill = document.getElementById('collapsed-pill');
+      if (sheet && !sheet.classList.contains('collapsed')) {
+        sheet.classList.remove('expanded');
+        sheet.classList.add('collapsed');
+        if (pill) pill.classList.remove('hidden');
+        return true;
+      }
+      return false;
+    };
+
+    // Keyboard accessibility: activate role="button" controls on Enter/Space & dismiss modals on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (typeof window.handleAndroidBackButton === 'function') {
+          window.handleAndroidBackButton();
+        }
+        return;
+      }
+      if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('role') === 'button') {
+        if (e.target.getAttribute('aria-disabled') === 'true') return;
+        e.preventDefault();
+        e.target.click();
+      }
+    });
 
     let gameInitialized = false;
     function init() {
@@ -14438,16 +14853,33 @@
       checkAchievements();
       updateSheetContent();
 
-      launchSplash.start(() => {
-        if (state && state.pendingOfflineFish > 0) {
-          showOfflineModal(0);
-        } else {
-          maybeShowWhatsNewModal(false);
+      launchSplash.start(
+        // onComplete (after fade-out finishes)
+        () => {
+          if (state && state.pendingOfflineFish > 0) {
+            const claimBtn = document.getElementById('offline-claim-btn');
+            if (claimBtn && typeof claimBtn.focus === 'function') {
+              try { claimBtn.focus({ preventScroll: true }); } catch (_) {}
+            }
+          } else {
+            const whatsNewModal = document.getElementById('whats-new-modal');
+            if (whatsNewModal && whatsNewModal.style.display === 'flex') {
+              const dismissBtn = document.getElementById('whats-new-dismiss-btn');
+              if (dismissBtn && typeof dismissBtn.focus === 'function') {
+                try { dismissBtn.focus({ preventScroll: true }); } catch (_) {}
+              }
+            }
+          }
+        },
+        // onBeforeFadeOut (pre-mounts modal underneath opaque splash to prevent live-game flash)
+        () => {
+          if (state && state.pendingOfflineFish > 0) {
+            showOfflineModal(0, { allowUnderSplash: true });
+          } else {
+            maybeShowWhatsNewModal(false, { allowUnderSplash: true });
+          }
         }
-        if (typeof window.flushPendingSwReload === 'function') {
-          window.flushPendingSwReload();
-        }
-      });
+      );
 
       if (typeof pushReminders !== 'undefined') {
         pushReminders.loadConfig().then(() => {
@@ -14471,8 +14903,8 @@
         if (typeof sound !== 'undefined' && sound.setBackgrounded) {
           sound.setBackgrounded(true);
         }
-        if (typeof state !== 'undefined' && state.save) {
-          state.save();
+        if (typeof window.flushGameSaveNow === 'function') {
+          window.flushGameSaveNow();
         }
       } else {
         lastTime = performance.now();
@@ -14491,19 +14923,29 @@
           const awayStart = backgroundedAt || state.lastSaveTime;
           backgroundedAt = null;
           if (awayStart) {
-            const elapsedSec = (resumeNow - awayStart) / 1000;
-            if (elapsedSec > 0) {
-              state.advanceWeather(elapsedSec);
+            state.calculateDPS();
+            const offlineRes = CoreEconomy
+              ? CoreEconomy.calculateOfflineEarnings({
+                  dps: state.dps,
+                  lastSaveTimeMs: awayStart,
+                  nowMs: resumeNow
+                })
+              : {
+                  earned: ((resumeNow - awayStart) / 1000 > 10)
+                    ? Math.floor(state.dps * Math.min(86400, (resumeNow - awayStart) / 1000) * (2 / 3))
+                    : 0,
+                  rawElapsedSec: (resumeNow - awayStart) / 1000,
+                  clockMovedBackward: resumeNow < awayStart
+                };
+
+            if (offlineRes.rawElapsedSec > 0 && !offlineRes.clockMovedBackward) {
+              state.advanceWeather(Math.min(offlineRes.rawElapsedSec, 86400));
             }
-            if (elapsedSec > 10) {
-              state.calculateDPS();
-              const offlineEarned = Math.floor(state.dps * elapsedSec * (2 / 3));
-              if (offlineEarned > 5) {
-                showOfflineModal(offlineEarned);
-              }
+            if (offlineRes.earned > 0) {
+              showOfflineModal(offlineRes.earned);
             }
             state.lastSaveTime = resumeNow;
-            state.save();
+            state.save({ immediate: true });
           }
           if (state.pendingOfflineFish > 0) {
             showOfflineModal(0);
@@ -14514,14 +14956,14 @@
 
     window.addEventListener('pagehide', () => {
       if (!backgroundedAt) backgroundedAt = Date.now();
-      if (typeof state !== 'undefined' && state.save) {
-        state.save();
+      if (typeof window.flushGameSaveNow === 'function') {
+        window.flushGameSaveNow();
       }
     });
 
     window.addEventListener('beforeunload', () => {
-      if (typeof state !== 'undefined' && state.save) {
-        state.save();
+      if (typeof window.flushGameSaveNow === 'function') {
+        window.flushGameSaveNow();
       }
     });
 
@@ -14532,52 +14974,23 @@
       }
     }, { passive: true, once: true });
 
-    // Register Offline Service Worker when hosted over HTTPS or localhost (skipped on Android file:// WebView)
-    if (
-      'serviceWorker' in navigator &&
-      (window.location.protocol === 'https:' ||
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1')
-    ) {
-      const hadSwController = Boolean(navigator.serviceWorker.controller);
-      let swReloading = false;
-      let pendingSwReload = false;
+    // Register Offline Service Worker ONLY when hosted as a web PWA (never inside Android WebViewAssetLoader)
+    const isHostedWebForSw = CorePush
+      ? CorePush.isHostedWebPwa(window.location, Boolean(window.AndroidBridge))
+      : (!window.AndroidBridge &&
+          window.location.hostname !== 'appassets.androidplatform.net' &&
+          (window.location.protocol === 'https:' ||
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1'));
+
+    // Keep no-op flushPendingSwReload so claiming idle fish NEVER unexpectedly reloads the page
+    // or replays the launch splash screen mid-session. Updates apply cleanly on next launch.
+    window.flushPendingSwReload = function() {
+      return false;
+    };
+
+    if ('serviceWorker' in navigator && isHostedWebForSw) {
       let activeSwReg = null;
-
-      function hasBlockingModalOrPendingReward() {
-        const offlineEl = document.getElementById('offline-modal');
-        const whatsNewEl = document.getElementById('whats-new-modal');
-        const offlineOpen = Boolean(offlineEl && offlineEl.style.display === 'flex');
-        const whatsNewOpen = Boolean(whatsNewEl && whatsNewEl.style.display === 'flex');
-        const splashOpen = Boolean(typeof launchSplash !== 'undefined' && launchSplash && launchSplash.isActive);
-        return (
-          splashOpen ||
-          offlineOpen ||
-          whatsNewOpen ||
-          (typeof state !== 'undefined' && (state.pendingOfflineFish > 0 || state.isAuroraModalOpen || state.isAuroraAlertActive))
-        );
-      }
-
-      window.flushPendingSwReload = function() {
-        if (!pendingSwReload || swReloading) return;
-        if (hasBlockingModalOrPendingReward()) return;
-        pendingSwReload = false;
-        swReloading = true;
-        if (typeof state !== 'undefined' && state.save) {
-          state.save();
-        }
-        window.location.reload();
-      };
-
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!hadSwController || swReloading) return;
-        if (hasBlockingModalOrPendingReward()) {
-          pendingSwReload = true;
-          return;
-        }
-        swReloading = true;
-        window.location.reload();
-      });
 
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data && event.data.type === 'OPEN_DAILY_TAB') {

@@ -98,6 +98,7 @@ dependencies {
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.webkit)
   // implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -141,4 +142,27 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.tooling)
   // "ksp"(libs.androidx.room.compiler)
   // "ksp"(libs.moshi.kotlin.codegen)
+}
+
+// Automatically sync canonical root web assets into Android assets before building so
+// PWA and Android WebView never drift out of sync.
+val syncWebAssets by tasks.registering(Copy::class) {
+  group = "build"
+  description = "Sync canonical root web files (HTML, modular JS, manifest, push config, icons) into Android assets"
+  from(rootDir) {
+    include("index.html", "manifest.webmanifest", "push-config.json")
+  }
+  from(file("${rootDir}/js")) {
+    into("js")
+    include("**/*.js")
+  }
+  from(file("${rootDir}/icons")) {
+    into("icons")
+    include("**/*")
+  }
+  into(file("${projectDir}/src/main/assets"))
+}
+
+tasks.named("preBuild") {
+  dependsOn(syncWebAssets)
 }

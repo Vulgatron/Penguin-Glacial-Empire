@@ -2683,13 +2683,16 @@
 
     let canvasReady = false;
 
+    const snowParticles = [];
+    let gameInitialized = false;
+
     function forceRenderFrameNow() {
-      if (!ctx || width <= 1 || height <= 1 || canvas.width <= 1 || canvas.height <= 1) return false;
+      if (!gameInitialized || !ctx || width <= 1 || height <= 1 || canvas.width <= 1 || canvas.height <= 1) return false;
       try {
         if (typeof drawScene === 'function') {
           drawScene(ctx, 0);
         }
-        if (typeof activePenguins !== 'undefined' && Array.isArray(activePenguins)) {
+        if (Array.isArray(activePenguins)) {
           activePenguins.forEach(p => p.draw(ctx));
         }
         return true;
@@ -2725,13 +2728,13 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       canvasReady = true;
 
-      if (wasUnready && typeof snowParticles !== 'undefined') {
+      if (wasUnready && snowParticles.length > 0) {
         snowParticles.forEach(p => {
           p.x = Math.random() * width;
           p.y = Math.random() * height;
         });
       }
-      if (typeof gameInitialized !== 'undefined' && gameInitialized) {
+      if (gameInitialized) {
         forceRenderFrameNow();
       }
       return true;
@@ -2919,7 +2922,6 @@
       ];
     }
 
-    const snowParticles = [];
     const MAX_SNOW = 190;
     for (let i = 0; i < MAX_SNOW; i++) {
       snowParticles.push({
@@ -9241,7 +9243,6 @@
       }
     });
 
-    let gameInitialized = false;
     function init() {
       if (gameInitialized) return;
       gameInitialized = true;

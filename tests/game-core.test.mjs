@@ -815,3 +815,149 @@ test('Integration invariants: viewport zoom policy, modular CSS, offline PWA cac
     );
   }
 });
+
+test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors, finishes splash, and runs Parade', async () => {
+  const vm = await import('node:vm');
+  const noop = () => {};
+  const makeEl = (id = '') => ({
+    id,
+    style: {},
+    classList: {
+      _s: new Set(),
+      add(c) { this._s.add(c); },
+      remove(c) { this._s.delete(c); },
+      contains(c) { return this._s.has(c); },
+      toggle(c, v) {
+        if (v === undefined) {
+          if (this._s.has(c)) this._s.delete(c);
+          else this._s.add(c);
+        } else if (v) {
+          this._s.add(c);
+        } else {
+          this._s.delete(c);
+        }
+      }
+    },
+    setAttribute: noop,
+    getAttribute: () => null,
+    removeAttribute: noop,
+    hasAttribute: () => false,
+    addEventListener: noop,
+    removeEventListener: noop,
+    querySelector: () => makeEl(),
+    querySelectorAll: () => [],
+    appendChild: noop,
+    removeChild: noop,
+    focus: noop,
+    click: noop,
+    getBoundingClientRect: () => ({ top: 420, bottom: 800, left: 0, right: 390, width: 390, height: 380 }),
+    getContext: () => ({
+      setTransform: noop, clearRect: noop, fillRect: noop, strokeRect: noop,
+      beginPath: noop, closePath: noop, moveTo: noop, lineTo: noop,
+      quadraticCurveTo: noop, bezierCurveTo: noop, arc: noop, ellipse: noop,
+      fill: noop, stroke: noop, save: noop, restore: noop, translate: noop,
+      scale: noop, rotate: noop, clip: noop,
+      createLinearGradient: () => ({ addColorStop: noop }),
+      createRadialGradient: () => ({ addColorStop: noop }),
+      measureText: (t) => ({ width: String(t).length * 6 }),
+      fillText: noop, strokeText: noop, roundRect: noop
+    }),
+    width: 390,
+    height: 800,
+    clientWidth: 390,
+    clientHeight: 800,
+    textContent: '',
+    innerHTML: '',
+    value: ''
+  });
+
+  const els = new Map();
+  const getEl = (id) => {
+    if (!els.has(id)) els.set(id, makeEl(id));
+    return els.get(id);
+  };
+  const timers = [];
+  const rafs = [];
+  const sandbox = {
+    console, Math, Date, JSON, Number, String, Boolean, Array, Object, Set, Map, RegExp, Error,
+    parseInt, parseFloat, isFinite, isNaN,
+    setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; },
+    clearTimeout: noop,
+    setInterval: () => 1,
+    clearInterval: noop,
+    requestAnimationFrame: (fn) => { rafs.push(fn); return rafs.length; },
+    cancelAnimationFrame: noop,
+    performance: { now: () => 1000 },
+    localStorage: {
+      _m: new Map(),
+      getItem(k) { return this._m.has(k) ? this._m.get(k) : null; },
+      setItem(k, v) { this._m.set(k, String(v)); },
+      removeItem(k) { this._m.delete(k); }
+    },
+    sessionStorage: {
+      _m: new Map(),
+      getItem(k) { return this._m.has(k) ? this._m.get(k) : null; },
+      setItem(k, v) { this._m.set(k, String(v)); },
+      removeItem(k) { this._m.delete(k); }
+    },
+    navigator: { userAgent: 'Android', platform: 'Linux', maxTouchPoints: 5 },
+    matchMedia: () => ({ matches: false }),
+    document: {
+      readyState: 'complete',
+      hidden: false,
+      documentElement: { clientWidth: 390, clientHeight: 800 },
+      body: makeEl('body'),
+      getElementById: getEl,
+      querySelector: () => makeEl(),
+      querySelectorAll: () => [],
+      createElement: (tag) => makeEl(tag),
+      addEventListener: noop
+    },
+    innerWidth: 390,
+    innerHeight: 800,
+    devicePixelRatio: 2,
+    addEventListener: noop,
+    removeEventListener: noop,
+    location: { protocol: 'https:', hostname: 'appassets.androidplatform.net', reload: noop }
+  };
+  sandbox.window = sandbox;
+  sandbox.globalThis = sandbox;
+
+  const ctx = vm.createContext(sandbox);
+  const scripts = [
+    'js/economy.js',
+    'js/daily-system.js',
+    'js/save-system.js',
+    'js/sound-engine.js',
+    'js/castle-renderer.js',
+    'js/parade-event.js',
+    'js/prestige-cutscene.js',
+    'js/launch-splash.js'
+  ];
+  for (const rel of scripts) {
+    vm.runInContext(fs.readFileSync(path.join(ROOT, rel), 'utf8'), ctx, { filename: rel });
+  }
+  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const inlineScript = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  vm.runInContext(inlineScript, ctx, { filename: 'index.html' });
+
+  // Splash started and updates version to v2.5
+  assert.equal(rafs.length >= 2, true, 'Expected splash and gameLoop rAF callbacks');
+  assert.equal(getEl('splash-version-label').textContent, 'v2.5');
+
+  // Complete splash screen
+  const splashRaf = rafs[0];
+  const gameRaf = rafs[1];
+  splashRaf(6500);
+  while (timers.length > 0) {
+    const t = timers.shift();
+    t.fn();
+  }
+  assert.equal(getEl('launch-splash-screen').classList.contains('splash-hidden'), true);
+
+  // Close What's New modal so glacier is unblocked, then verify Parade triggers smoothly
+  getEl('whats-new-modal').style.display = 'none';
+  sandbox.paradeController.countdownSec = 0.01;
+  gameRaf(1040);
+  assert.equal(sandbox.paradeController.isActive(), true);
+});

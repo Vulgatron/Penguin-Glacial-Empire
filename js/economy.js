@@ -11,6 +11,10 @@
   const MAX_SAFE_RESOURCE = 1e300;
   const MAX_COUNT = 1e7;
   const MAX_GLACIER_LEVEL = 10000;
+  const PRESTIGE_BONUS_PER_SHARD = 0.0125;          // +1.25% per Frost Essence (75% reduction from +5%)
+  const MIN_FISHING_HOLES = 3;
+  const MAX_FISHING_HOLES = 6;
+  const MAX_IGLOO_TIER = 5;
   const OFFLINE_BASE_RATE = 2 / 3;
   const OFFLINE_FULL_CAP_SECONDS = 24 * 3600;       // 24 hours at full offline rate (2/3 DPS)
   const OFFLINE_MAX_SECONDS = 7 * 24 * 3600;        // 7-day absolute ceiling
@@ -26,6 +30,201 @@
   const GOLDEN_FISH_DPS_SECONDS = 30;
 
   const NUMBER_UNITS = ['K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
+
+  const IGLOO_TIERS = [
+    {
+      tier: 0,
+      id: 'starter_igloo',
+      name: 'Classic Snow Igloo',
+      cost: 0,
+      icon: '🛖',
+      desc: 'Cozy hand-packed snow-brick depot on the ice shelf.'
+    },
+    {
+      tier: 1,
+      id: 'lantern_igloo',
+      name: 'Lantern-Lit Igloo',
+      cost: 250000,
+      icon: '🏮',
+      desc: 'Adds glowing frost-lantern posts, carved ice steps, and a chimney snow-wisp.'
+    },
+    {
+      tier: 2,
+      id: 'twin_spire_keep',
+      name: 'Twin-Spire Ice Keep',
+      cost: 3000000,
+      icon: '🗼',
+      desc: 'Flanks the depot with sculpted crystal spires and an ornate frosted gatehouse.'
+    },
+    {
+      tier: 3,
+      id: 'frosted_citadel',
+      name: 'Frosted Citadel',
+      cost: 45000000,
+      icon: '🏰',
+      desc: 'Builds crenellated battlements, twin watch turrets, and fluttering colony banners.'
+    },
+    {
+      tier: 4,
+      id: 'aurora_bastion',
+      name: 'Aurora Bastion',
+      cost: 750000000,
+      icon: '🏛️',
+      desc: 'Raises a towering crystalline central keep with a stained-ice rose window and frost motes.'
+    },
+    {
+      tier: 5,
+      id: 'grand_glacial_palace',
+      name: 'Grand Glacial Palace',
+      cost: 15000000000,
+      icon: '👑',
+      desc: 'Completes the full multi-spired Ice Castle with polar star finial, four crystal turrets, and royal aurora halo.'
+    }
+  ];
+
+  const IGLOO_THEMES = [
+    {
+      id: 'glacier',
+      name: 'Glacier Classic',
+      cost: 0,
+      swatchGrad: 'linear-gradient(135deg, #ffffff 0%, #7dd3fc 52%, #0284c7 100%)',
+      domeTop: '#ffffff',
+      domeMid: '#d4ecfc',
+      domeBot: '#60a5fa',
+      mortar: 'rgba(100, 165, 215, 0.45)',
+      rim: 'rgba(224, 242, 254, 0.88)',
+      spireTop: '#e0f2fe',
+      spireMid: '#38bdf8',
+      spireBot: '#0369a1',
+      doorArch: '#b4dcf5',
+      doorCore: '#061a33',
+      lanternGlow: '#fde68a',
+      lanternHalo: 'rgba(251, 191, 36, 0.45)',
+      bannerPrimary: '#0284c7',
+      bannerTrim: '#e0f2fe',
+      haloInner: 'rgba(56, 189, 248, 0.34)',
+      haloOuter: 'rgba(192, 132, 252, 0.22)'
+    },
+    {
+      id: 'aurora_emerald',
+      name: 'Aurora Emerald',
+      cost: 500000,
+      swatchGrad: 'linear-gradient(135deg, #ecfdf5 0%, #34d399 52%, #047857 100%)',
+      domeTop: '#ecfdf5',
+      domeMid: '#a7f3d0',
+      domeBot: '#10b981',
+      mortar: 'rgba(6, 95, 70, 0.36)',
+      rim: 'rgba(167, 243, 208, 0.9)',
+      spireTop: '#d1fae5',
+      spireMid: '#34d399',
+      spireBot: '#065f46',
+      doorArch: '#6ee7b7',
+      doorCore: '#022c22',
+      lanternGlow: '#6ee7b7',
+      lanternHalo: 'rgba(52, 211, 153, 0.5)',
+      bannerPrimary: '#059669',
+      bannerTrim: '#a7f3d0',
+      haloInner: 'rgba(52, 211, 153, 0.38)',
+      haloOuter: 'rgba(56, 189, 248, 0.22)'
+    },
+    {
+      id: 'royal_amethyst',
+      name: 'Royal Amethyst',
+      cost: 5000000,
+      swatchGrad: 'linear-gradient(135deg, #faf5ff 0%, #c084fc 52%, #6d28d9 100%)',
+      domeTop: '#faf5ff',
+      domeMid: '#e9d5ff',
+      domeBot: '#a855f7',
+      mortar: 'rgba(107, 33, 168, 0.35)',
+      rim: 'rgba(233, 213, 255, 0.92)',
+      spireTop: '#f3e8ff',
+      spireMid: '#c084fc',
+      spireBot: '#581c87',
+      doorArch: '#d8b4fe',
+      doorCore: '#1e1038',
+      lanternGlow: '#f5d0fe',
+      lanternHalo: 'rgba(192, 132, 252, 0.52)',
+      bannerPrimary: '#7e22ce',
+      bannerTrim: '#fde047',
+      haloInner: 'rgba(192, 132, 252, 0.42)',
+      haloOuter: 'rgba(244, 114, 182, 0.24)'
+    },
+    {
+      id: 'solar_solstice',
+      name: 'Solar Solstice',
+      cost: 50000000,
+      swatchGrad: 'linear-gradient(135deg, #fffbeb 0%, #fbbf24 52%, #b45309 100%)',
+      domeTop: '#fffbeb',
+      domeMid: '#fde68a',
+      domeBot: '#f59e0b',
+      mortar: 'rgba(146, 64, 14, 0.34)',
+      rim: 'rgba(254, 243, 199, 0.94)',
+      spireTop: '#fef9c3',
+      spireMid: '#fbbf24',
+      spireBot: '#92400e',
+      doorArch: '#fcd34d',
+      doorCore: '#291504',
+      lanternGlow: '#fef08a',
+      lanternHalo: 'rgba(251, 191, 36, 0.6)',
+      bannerPrimary: '#d97706',
+      bannerTrim: '#fef08a',
+      haloInner: 'rgba(251, 191, 36, 0.42)',
+      haloOuter: 'rgba(251, 146, 60, 0.24)'
+    },
+    {
+      id: 'rose_quartz',
+      name: 'Polar Rose',
+      cost: 400000000,
+      swatchGrad: 'linear-gradient(135deg, #fff1f2 0%, #fb7185 52%, #be123c 100%)',
+      domeTop: '#fff1f2',
+      domeMid: '#fecdd3',
+      domeBot: '#fb7185',
+      mortar: 'rgba(159, 18, 57, 0.34)',
+      rim: 'rgba(255, 228, 230, 0.92)',
+      spireTop: '#ffe4e6',
+      spireMid: '#f472b6',
+      spireBot: '#9d174d',
+      doorArch: '#fda4af',
+      doorCore: '#2b0816',
+      lanternGlow: '#fbcfe8',
+      lanternHalo: 'rgba(244, 114, 182, 0.54)',
+      bannerPrimary: '#be185d',
+      bannerTrim: '#fce7f3',
+      haloInner: 'rgba(244, 114, 182, 0.4)',
+      haloOuter: 'rgba(192, 132, 252, 0.24)'
+    },
+    {
+      id: 'midnight_obsidian',
+      name: 'Obsidian Frost',
+      cost: 3000000000,
+      swatchGrad: 'linear-gradient(135deg, #94a3b8 0%, #1e293b 52%, #020617 100%)',
+      domeTop: '#cbd5e1',
+      domeMid: '#475569',
+      domeBot: '#0f172a',
+      mortar: 'rgba(56, 189, 248, 0.36)',
+      rim: 'rgba(56, 189, 248, 0.95)',
+      spireTop: '#7dd3fc',
+      spireMid: '#1e293b',
+      spireBot: '#020617',
+      doorArch: '#334155',
+      doorCore: '#020617',
+      lanternGlow: '#38bdf8',
+      lanternHalo: 'rgba(56, 189, 248, 0.65)',
+      bannerPrimary: '#0f172a',
+      bannerTrim: '#38bdf8',
+      haloInner: 'rgba(56, 189, 248, 0.48)',
+      haloOuter: 'rgba(14, 165, 233, 0.26)'
+    }
+  ];
+
+  const FISHING_HOLE_DEFS = [
+    { id: 1, name: 'West Starter Hole', xRatio: 0.22, yRatio: 0.73, radiusX: 44, radiusY: 20, rippleOffset: 0.0, cost: 0, starter: true },
+    { id: 2, name: 'Center Starter Hole', xRatio: 0.50, yRatio: 0.81, radiusX: 50, radiusY: 22, rippleOffset: 1.2, cost: 0, starter: true },
+    { id: 3, name: 'East Starter Hole', xRatio: 0.78, yRatio: 0.74, radiusX: 44, radiusY: 20, rippleOffset: 2.4, cost: 0, starter: true },
+    { id: 4, name: 'Western Shelf Basin', xRatio: 0.16, yRatio: 0.59, radiusX: 40, radiusY: 18, rippleOffset: 0.6, cost: 25000, starter: false },
+    { id: 5, name: 'Eastern Shelf Basin', xRatio: 0.84, yRatio: 0.59, radiusX: 40, radiusY: 18, rippleOffset: 1.8, cost: 750000, starter: false },
+    { id: 6, name: 'Deep Abyssal Rift', xRatio: 0.50, yRatio: 0.67, radiusX: 44, radiusY: 19, rippleOffset: 3.0, cost: 25000000, starter: false }
+  ];
 
   function sanitizeFiniteNumber(value, fallback = 0, min = 0, max = MAX_SAFE_RESOURCE) {
     const n = typeof value === 'number' ? value : Number(value);
@@ -105,7 +304,59 @@
 
   function calculatePrestigeMultiplier(prestigeShards) {
     const shards = sanitizeFiniteNumber(prestigeShards, 0, 0, 1e12);
-    return 1 + shards * 0.05;
+    return 1 + shards * PRESTIGE_BONUS_PER_SHARD;
+  }
+
+  function calculatePrestigeBonusPct(prestigeShards) {
+    const shards = sanitizeFiniteNumber(prestigeShards, 0, 0, 1e12);
+    return Math.round(shards * PRESTIGE_BONUS_PER_SHARD * 10000) / 100;
+  }
+
+  function formatPrestigeBonusPct(prestigeShards) {
+    const pct = calculatePrestigeBonusPct(prestigeShards);
+    if (pct === 0) return '0';
+    return Number.isInteger(pct) ? String(pct) : String(Number(pct.toFixed(2)));
+  }
+
+  function getIglooTierDef(tier) {
+    const idx = sanitizeInteger(tier, 0, 0, MAX_IGLOO_TIER);
+    return IGLOO_TIERS[idx] || IGLOO_TIERS[0];
+  }
+
+  function getNextIglooTierDef(tier) {
+    const idx = sanitizeInteger(tier, 0, 0, MAX_IGLOO_TIER);
+    return idx < MAX_IGLOO_TIER ? IGLOO_TIERS[idx + 1] : null;
+  }
+
+  function getIglooThemeDef(themeId) {
+    if (typeof themeId === 'string') {
+      const found = IGLOO_THEMES.find((t) => t.id === themeId);
+      if (found) return found;
+    }
+    return IGLOO_THEMES[0];
+  }
+
+  function getActiveFishingHoleDefs(unlockedCount) {
+    const count = sanitizeInteger(unlockedCount, MIN_FISHING_HOLES, MIN_FISHING_HOLES, MAX_FISHING_HOLES);
+    return FISHING_HOLE_DEFS.slice(0, count);
+  }
+
+  function getNextFishingHoleDef(unlockedCount) {
+    const count = sanitizeInteger(unlockedCount, MIN_FISHING_HOLES, MIN_FISHING_HOLES, MAX_FISHING_HOLES);
+    return count < MAX_FISHING_HOLES ? FISHING_HOLE_DEFS[count] : null;
+  }
+
+  function computeSafeFrameDeltaSec(nowMs, lastTimeMs, maxDt = 0.1) {
+    if (!Number.isFinite(nowMs) || !Number.isFinite(lastTimeMs)) return 0;
+    const raw = (nowMs - lastTimeMs) / 1000;
+    if (!Number.isFinite(raw) || raw <= 0) return 0;
+    const ceiling = Number.isFinite(maxDt) && maxDt > 0 ? maxDt : 0.1;
+    return Math.min(ceiling, raw);
+  }
+
+  function positiveModulo(value, mod) {
+    if (!Number.isFinite(value) || !Number.isFinite(mod) || mod <= 0) return 0;
+    return ((value % mod) + mod) % mod;
   }
 
   function calculateGlacierLevelMultiplier(glacierLevel, levelBonusRate = 0.0425) {
@@ -377,6 +628,13 @@
     MAX_SAFE_RESOURCE,
     MAX_COUNT,
     MAX_GLACIER_LEVEL,
+    PRESTIGE_BONUS_PER_SHARD,
+    MIN_FISHING_HOLES,
+    MAX_FISHING_HOLES,
+    MAX_IGLOO_TIER,
+    IGLOO_TIERS,
+    IGLOO_THEMES,
+    FISHING_HOLE_DEFS,
     OFFLINE_BASE_RATE,
     OFFLINE_FULL_CAP_SECONDS,
     OFFLINE_MAX_SECONDS,
@@ -397,6 +655,15 @@
     calculateLevelRequirement,
     calculatePendingPrestigeShards,
     calculatePrestigeMultiplier,
+    calculatePrestigeBonusPct,
+    formatPrestigeBonusPct,
+    getIglooTierDef,
+    getNextIglooTierDef,
+    getIglooThemeDef,
+    getActiveFishingHoleDefs,
+    getNextFishingHoleDef,
+    computeSafeFrameDeltaSec,
+    positiveModulo,
     calculateGlacierLevelMultiplier,
     calculatePenguinCost,
     calculateBulkPenguinPurchase,

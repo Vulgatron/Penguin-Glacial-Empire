@@ -169,3 +169,308 @@ input:focus-visible {
     animation: none !important;
   }
 }
+
+/* ============================================================================
+   GLACIER TAB — IGLOO CASTLE ARCHITECT & FISHING HOLES EXPANSION
+   ============================================================================ */
+.glacier-tab-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 16px;
+}
+
+.glacier-section-card {
+  background: linear-gradient(155deg, rgba(14, 37, 68, 0.88), rgba(9, 24, 48, 0.92));
+  border: 1px solid rgba(125, 211, 252, 0.32);
+  border-radius: 18px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.glacier-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.glacier-section-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.glacier-section-sub {
+  font-size: 11px;
+  color: var(--text-sub);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.glacier-pill-badge {
+  font-size: 10px;
+  font-weight: 800;
+  color: #bae6fd;
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  padding: 4px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.glacier-reset-note {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 10px;
+  padding: 6px 10px;
+  line-height: 1.35;
+}
+
+.castle-preview-stage {
+  background: radial-gradient(ellipse at 50% 72%, rgba(56, 189, 248, 0.24), rgba(5, 18, 38, 0.92));
+  border: 1px solid rgba(160, 240, 255, 0.24);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.castle-preview-svg-wrap {
+  width: 118px;
+  height: 82px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(186, 230, 253, 0.22);
+  background: rgba(2, 12, 28, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.castle-preview-svg-wrap svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.castle-preview-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.castle-tier-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.castle-tier-desc {
+  font-size: 11px;
+  color: #cbd5e1;
+  line-height: 1.35;
+}
+
+.castle-cosmetic-tag {
+  align-self: flex-start;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #e9d5ff;
+  background: rgba(168, 85, 247, 0.22);
+  border: 1px solid rgba(192, 132, 252, 0.42);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.castle-upgrade-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(7, 21, 42, 0.65);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.castle-upgrade-row.can-afford {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(16, 44, 78, 0.78);
+}
+
+.castle-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.castle-theme-swatch {
+  background: rgba(8, 22, 44, 0.76);
+  border: 1.5px solid rgba(148, 163, 184, 0.26);
+  border-radius: 13px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  min-height: 48px;
+  text-align: left;
+  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.castle-theme-swatch:active {
+  transform: scale(0.96);
+}
+
+.castle-theme-swatch.is-equipped {
+  border-color: #34d399;
+  background: rgba(16, 185, 129, 0.16);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.24);
+}
+
+.castle-theme-swatch.is-unlocked:not(.is-equipped) {
+  border-color: rgba(125, 211, 252, 0.45);
+}
+
+.castle-theme-swatch.is-locked.can-afford {
+  border-color: rgba(251, 191, 36, 0.55);
+  background: rgba(45, 36, 18, 0.55);
+}
+
+.castle-theme-swatch.is-locked:not(.can-afford) {
+  opacity: 0.62;
+}
+
+.castle-swatch-orb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.castle-swatch-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.castle-swatch-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.castle-swatch-status {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.castle-theme-swatch.is-equipped .castle-swatch-status {
+  color: #6ee7b7;
+}
+
+.castle-theme-swatch.is-locked.can-afford .castle-swatch-status {
+  color: #fde68a;
+}
+
+.hole-progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.hole-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0284c7, #38bdf8, #34d399);
+  transition: width 0.25s ease;
+}
+
+.hole-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.hole-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(7, 21, 42, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 13px;
+  padding: 9px 11px;
+}
+
+.hole-item-row.is-active {
+  border-color: rgba(52, 211, 153, 0.42);
+  background: rgba(14, 42, 54, 0.62);
+}
+
+.hole-item-row.is-next.can-afford {
+  border-color: rgba(56, 189, 248, 0.6);
+  background: rgba(18, 48, 84, 0.8);
+}
+
+.hole-status-chip {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.hole-status-chip.active {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+}
+
+.hole-status-chip.locked {
+  color: #94a3b8;
+  background: rgba(100, 116, 139, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+@media (max-width: 380px) {
+  .castle-preview-stage {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .castle-preview-svg-wrap {
+    width: 100%;
+    height: 92px;
+  }
+  .castle-theme-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
@@ -47,7 +48,8 @@ class MainActivity : ComponentActivity() {
     private val assetLoader: WebViewAssetLoader,
     private val onCommittedUrlChanged: (String) -> Unit,
     private val onOpenExternalUrl: (Uri) -> Unit,
-    private val onRendererCrash: () -> Unit = {}
+    private val onRendererCrash: () -> Unit = {},
+    private val onPageReady: (WebView) -> Unit = {}
   ) : WebViewClient() {
 
     override fun shouldInterceptRequest(
@@ -92,6 +94,9 @@ class MainActivity : ComponentActivity() {
       super.onPageFinished(view, url)
       if (!url.isNullOrBlank()) {
         onCommittedUrlChanged(url)
+      }
+      if (view != null) {
+        onPageReady(view)
       }
     }
 
@@ -300,6 +305,17 @@ class MainActivity : ComponentActivity() {
     }
   }
 
+  private fun notifySurfaceReady(targetWebView: WebView?) {
+    val activeWebView = targetWebView ?: return
+    if (isDestroyed || activeWebView.width <= 0 || activeWebView.height <= 0) return
+    runCatching {
+      activeWebView.evaluateJavascript(
+        "if (typeof window.notifyAndroidSurfaceReady === 'function') { window.notifyAndroidSurfaceReady(); }",
+        null
+      )
+    }
+  }
+
   private fun requestImmediateSaveFlush() {
     runCatching {
       val activeWebView = webView
@@ -378,6 +394,21 @@ class MainActivity : ComponentActivity() {
                     runCatching { recreate() }
                   }
                 }
+              },
+              onPageReady = { readyView ->
+                readyView.post { notifySurfaceReady(readyView) }
+              }
+            )
+
+            addOnLayoutChangeListener(
+              View.OnLayoutChangeListener { view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+                val newW = right - left
+                val newH = bottom - top
+                val oldW = oldRight - oldLeft
+                val oldH = oldBottom - oldTop
+                if (newW > 0 && newH > 0 && (newW != oldW || newH != oldH)) {
+                  view.post { notifySurfaceReady(this) }
+                }
               }
             )
 
@@ -403,7 +434,10 @@ class MainActivity : ComponentActivity() {
 
   override fun onResume() {
     super.onResume()
-    webView?.onResume()
+    webView?.let { active ->
+      active.onResume()
+      active.post { notifySurfaceReady(active) }
+    }
   }
 
   override fun onDestroy() {

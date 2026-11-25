@@ -1,4 +1,4 @@
-# Penguin Glacial Empire (v2.0)
+# Penguin Glacial Empire (v2.5)
 
 An incremental/idle penguin colony game built with HTML5 Canvas, CSS, modular JavaScript, Progressive Web App (PWA) offline support, and a hardened Android WebView wrapper in Kotlin.
 
@@ -8,11 +8,18 @@ An incremental/idle penguin colony game built with HTML5 Canvas, CSS, modular Ja
 .
 ├── index.html                  # Single canonical web game entrypoint (auto-synced to Android assets)
 ├── styles/
-│   └── game.css                # Responsive polish, accessibility, contrast & reduced-motion styles
+│   ├── core.css                # Core game layout, HUD, bottom sheet, modals & theme styling
+│   ├── splash-cutscene.css     # Animated launch splash screen & Glacial Rebirth cutscene styles
+│   └── game.css                # Glacier tab (Ice Castle & Fishing Holes), responsive polish & accessibility
 ├── js/
-│   ├── economy.js              # Overflow/NaN-safe economy, HUD formatting, bulk buys, offline cap & Golden Fish math
+│   ├── economy.js              # Overflow/NaN-safe economy, +1.25%/shard prestige, castle & fishing hole defs, safe frame timing
 │   ├── daily-system.js         # 3:00 AM daily cycle keys, streak tracking, idempotent claims & sanitization
-│   └── save-system.js          # Schema v2 migrations, validation, multi-slot recovery & throttled persistence
+│   ├── save-system.js          # Schema v3 migrations, validation, multi-slot recovery & throttled persistence
+│   ├── sound-engine.js         # Procedural Web Audio synthesizer, cutscene silence gate & winter Rebirth score
+│   ├── castle-renderer.js      # Procedural Canvas & SVG renderer for the 6-tier Igloo-to-Ice-Castle + 6 palettes
+│   ├── parade-event.js         # 15-minute all-colony Penguin Parade choreography & 60s 2× boost scheduler
+│   ├── prestige-cutscene.js    # 10-second SVG Glacial Rebirth cutscene controller
+│   └── launch-splash.js        # Launch splash screen controller with wall-clock completion guard
 ├── sw.js                       # Offline PWA service worker (precaches core assets; no mid-session forced reload)
 ├── manifest.webmanifest        # PWA web app manifest
 ├── icons/                      # App & PWA icons
@@ -39,8 +46,8 @@ An incremental/idle penguin colony game built with HTML5 Canvas, CSS, modular Ja
 All web code is authored in the **single canonical source** at the repository root:
 
 - `index.html`
-- `styles/game.css`
-- `js/economy.js`, `js/daily-system.js`, `js/save-system.js`
+- `styles/core.css`, `styles/splash-cutscene.css`, `styles/game.css`
+- `js/economy.js`, `js/daily-system.js`, `js/save-system.js`, `js/sound-engine.js`, `js/castle-renderer.js`, `js/parade-event.js`, `js/prestige-cutscene.js`, `js/launch-splash.js`
 - `manifest.webmanifest`
 - `icons/`
 
@@ -59,7 +66,7 @@ gradle :app:syncWebAssets -PforceSyncWebAssets=true
 ### 1. JavaScript Syntax & Unit Tests (Node.js 20+)
 
 ```bash
-node --check js/economy.js js/daily-system.js js/save-system.js sw.js
+node --check js/economy.js js/daily-system.js js/save-system.js js/sound-engine.js js/castle-renderer.js js/parade-event.js js/prestige-cutscene.js js/launch-splash.js sw.js
 node --test tests/game-core.test.mjs
 ```
 
@@ -91,7 +98,7 @@ To build a release bundle or APK, use your configured Android signing environmen
 
 ## Save Reliability, Versioning & Offline Cap
 
-- Saves are schema-versioned (`saveVersion: 2`) with automatic migration from legacy v0/v1 saves and forward-version safety for newer schemas.
+- Saves are schema-versioned (`saveVersion: 3`) with automatic migration from legacy v0/v1/v2 saves (preserving Ice Castle & Fishing Hole defaults) and forward-version safety for newer schemas.
 - Every field is sanitized on load (protecting against `NaN`, `Infinity`, negative balances, prototype pollution keys, 0-penguin deadlocks, and future-tampered device clocks).
 - Routine autosaves run on a throttled 15-second cadence and skip disk I/O when colony state is unchanged; critical milestones (purchases, rebirths, offline catch claims, daily claims, factory reset, and lifecycle pauses) flush immediately.
 - Multi-slot recovery walks native storage, web primary storage, and validated web backup storage before flagging unrecoverable corruption, quarantining damaged payloads without silently wiping progress.

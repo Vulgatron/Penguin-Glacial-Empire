@@ -8,6 +8,9 @@ const require = createRequire(import.meta.url);
 const Economy = require('../js/economy.js');
 const DailySystem = require('../js/daily-system.js');
 const SaveSystem = require('../js/save-system.js');
+const { SoundEngine } = require('../js/sound-engine.js');
+const CastleRenderer = require('../js/castle-renderer.js');
+const ParadeEvent = require('../js/parade-event.js');
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -82,13 +85,61 @@ test('Economy: bulk penguin and tech purchases handle fixed qty, MAX, and insuff
   assert.equal(maxTech.canAfford, true);
 });
 
-test('Economy: prestige shards and glacier level scaling preserve progression rules', () => {
+test('Economy: prestige shards (+1.25% each, 75% reduced) and glacier level scaling preserve progression rules', () => {
+  assert.equal(Economy.PRESTIGE_BONUS_PER_SHARD, 0.0125);
   assert.equal(Economy.calculatePendingPrestigeShards(149_999), 0);
   assert.equal(Economy.calculatePendingPrestigeShards(150_000), 1);
   assert.equal(Economy.calculatePendingPrestigeShards(150_000 * 8), 2);
-  assert.equal(Economy.calculatePrestigeMultiplier(20), 2.0);
+  assert.equal(Economy.calculatePrestigeMultiplier(20), 1.25);
+  assert.equal(Economy.calculatePrestigeMultiplier(80), 2.0);
+  assert.equal(Economy.calculatePrestigeBonusPct(1), 1.25);
+  assert.equal(Economy.formatPrestigeBonusPct(1), '1.25');
+  assert.equal(Economy.formatPrestigeBonusPct(4), '5');
+  assert.equal(Economy.formatPrestigeBonusPct(20), '25');
   assert.equal(Economy.calculateLevelRequirement(1), Math.floor(150 * 1.32));
   assert.equal(Number.isFinite(Economy.calculateLevelRequirement(9999)), true);
+});
+
+test('Economy: Igloo-to-Ice-Castle tiers, color palettes, purchasable fishing holes, and safe frame timing', () => {
+  assert.equal(Economy.MAX_IGLOO_TIER, 5);
+  assert.equal(Economy.IGLOO_TIERS.length, 6);
+  assert.equal(Economy.IGLOO_TIERS[0].cost, 0);
+  for (let i = 1; i < Economy.IGLOO_TIERS.length; i++) {
+    assert.ok(Economy.IGLOO_TIERS[i].cost > Economy.IGLOO_TIERS[i - 1].cost, 'Castle tiers must escalate substantially');
+  }
+  assert.equal(Economy.getNextIglooTierDef(0).tier, 1);
+  assert.equal(Economy.getNextIglooTierDef(5), null);
+
+  assert.equal(Economy.IGLOO_THEMES.length, 6);
+  assert.equal(Economy.getIglooThemeDef('glacier').cost, 0);
+  assert.equal(Economy.getIglooThemeDef('unknown_theme').id, 'glacier');
+
+  // Fishing holes: 3 starter + 3 purchasable = 6 max
+  assert.equal(Economy.MIN_FISHING_HOLES, 3);
+  assert.equal(Economy.MAX_FISHING_HOLES, 6);
+  assert.equal(Economy.FISHING_HOLE_DEFS.length, 6);
+  assert.equal(Economy.getActiveFishingHoleDefs(3).length, 3);
+  assert.equal(Economy.getActiveFishingHoleDefs(1).length, 3);
+  assert.equal(Economy.getActiveFishingHoleDefs(6).length, 6);
+  assert.equal(Economy.getActiveFishingHoleDefs(99).length, 6);
+  assert.equal(Economy.getNextFishingHoleDef(3).id, 4);
+  assert.equal(Economy.getNextFishingHoleDef(5).id, 6);
+  assert.equal(Economy.getNextFishingHoleDef(6), null);
+
+  // Blank-canvas root-cause guards: never negative dt, never negative modulo index
+  assert.equal(Economy.computeSafeFrameDeltaSec(95, 100, 0.1), 0);
+  assert.equal(Economy.computeSafeFrameDeltaSec(NaN, 100, 0.1), 0);
+  assert.equal(Economy.computeSafeFrameDeltaSec(1000, 100, 0.1), 0.1);
+  assert.ok(Math.abs(Economy.computeSafeFrameDeltaSec(116, 100, 0.1) - 0.016) < 1e-6);
+
+  assert.equal(Economy.positiveModulo(-1, 4), 3);
+  assert.equal(Economy.positiveModulo(-0.5, 360), 359.5);
+  assert.equal(Economy.positiveModulo(NaN, 4), 0);
+
+  // Castle SVG preview renders safely across all tiers and palettes
+  const svgPreview = CastleRenderer.getSvgCastlePreviewMarkup(5, 'aurora');
+  assert.match(svgPreview, /<svg/);
+  assert.match(svgPreview, /<\/svg>/);
 });
 
 test('Economy: offline earnings enforce 24h full + diminishing up to 7d and block clock rollback', () => {
@@ -320,10 +371,218 @@ test('SaveSystem: migrates legacy v0 saves, sanitizes corrupt values/NaN/prototy
     lifetimeFish: 5000,
     runFish: 5000,
     glacierLevel: 3,
+    iglooTier: 4,
+    iglooTheme: 'royal_amethyst',
+    unlockedIglooThemes: ['glacier', 'royal_amethyst'],
+    fishingHolesUnlocked: 5,
     penguins: { adelie: { count: 4, level: 1, nextTrait: 'optimistic', traitCounts: { optimistic: 4 } } }
   }, {}, now);
   assert.equal(futureSave.futureVersionDetected, true);
   assert.equal(futureSave.data.fish, 4200);
+  assert.equal(futureSave.data.iglooTier, 4);
+  assert.equal(futureSave.data.iglooTheme, 'royal_amethyst');
+  assert.equal(futureSave.data.fishingHolesUnlocked, 5);
+
+  // v2 -> v3 migration defaults & sanitization of invalid castle/fishing-hole values
+  const migratedV2 = SaveSystem.sanitizeSaveData({
+    saveVersion: 2,
+    fish: 900,
+    lifetimeFish: 1200,
+    runFish: 1200,
+    glacierLevel: 2,
+    penguins: { adelie: { count: 2, level: 1, nextTrait: 'optimistic', traitCounts: { optimistic: 2 } } }
+  }, {}, now);
+  assert.equal(migratedV2.migrated, true);
+  assert.equal(migratedV2.migratedFrom, 2);
+  assert.equal(migratedV2.data.saveVersion, 3);
+  assert.equal(migratedV2.data.iglooTier, 0);
+  assert.equal(migratedV2.data.iglooTheme, 'glacier');
+  assert.deepEqual(migratedV2.data.unlockedIglooThemes, ['glacier']);
+  assert.equal(migratedV2.data.fishingHolesUnlocked, 3);
+
+  const clampedV3 = SaveSystem.sanitizeSaveData({
+    saveVersion: 3,
+    fish: 900,
+    iglooTier: 99,
+    iglooTheme: 'midnight_obsidian',
+    unlockedIglooThemes: ['bogus'],
+    fishingHolesUnlocked: 12,
+    penguins: { adelie: { count: 2, level: 1, nextTrait: 'optimistic', traitCounts: { optimistic: 2 } } }
+  }, {}, now);
+  assert.equal(clampedV3.data.iglooTier, 5);
+  assert.equal(clampedV3.data.iglooTheme, 'glacier'); // midnight_obsidian not unlocked
+  assert.deepEqual(clampedV3.data.unlockedIglooThemes, ['glacier']);
+  assert.equal(clampedV3.data.fishingHolesUnlocked, 6);
+});
+
+test('SoundEngine: cutscene mode silences penguin SFX & gameplay haptics while allowing climax celebration haptic & winter score', () => {
+  const se = new SoundEngine();
+  let hapticCalls = [];
+  se.ctx = {
+    state: 'running',
+    currentTime: 0,
+    destination: {},
+    createGain: () => ({ gain: { setValueAtTime() {}, setTargetAtTime() {} }, connect() {} }),
+    createOscillator: () => ({ type: 'sine', frequency: { setValueAtTime() {}, exponentialRampToValueAtTime() {}, linearRampToValueAtTime() {} }, connect() {}, start() {}, stop() {} }),
+    createBiquadFilter: () => ({ type: 'bandpass', frequency: { setValueAtTime() {}, setTargetAtTime() {} }, Q: { setValueAtTime() {}, setTargetAtTime() {} }, connect() {} })
+  };
+
+  // Mock AndroidBridge haptic receiver temporarily
+  const prevWin = globalThis.window;
+  globalThis.window = {
+    AndroidBridge: {
+      triggerHaptic(kind) {
+        hapticCalls.push(kind);
+        return true;
+      }
+    }
+  };
+  try {
+    assert.equal(se.triggerHaptic('penguin_tap'), true);
+    assert.deepEqual(hapticCalls, ['penguin_tap']);
+
+    // Cutscene mode blocks all background penguin/gameplay haptics
+    se.setCutsceneMode(true);
+    assert.equal(se.triggerHaptic('penguin_tap'), false);
+    assert.equal(se.triggerHaptic('collect'), false);
+    assert.equal(hapticCalls.length, 1);
+
+    // Explicit allowInCutscene celebration haptic is permitted
+    assert.equal(se.triggerHaptic('celebrate', 0, { allowInCutscene: true }), true);
+    assert.deepEqual(hapticCalls, ['penguin_tap', 'celebrate']);
+
+    // Winter soundtrack starts and stops cleanly without throwing
+    const score = se.startPrestigeWinterScore();
+    assert.equal(typeof score.update, 'function');
+    assert.equal(typeof score.triggerClimax, 'function');
+    assert.equal(typeof score.stop, 'function');
+    score.update(2.5);
+    score.triggerClimax();
+    score.stop();
+
+    se.setCutsceneMode(false);
+    assert.equal(se.triggerHaptic('tap'), true);
+
+    // Celebratory Parade chimes run cleanly during gameplay and stay silent during cutsceneMode
+    se.playParadeFanfare();
+    se.playParadeChimeStep(0);
+    se.playParadeChimeStep(3);
+    se.setCutsceneMode(true);
+    se.playParadeFanfare();
+    se.playParadeChimeStep(1);
+    se.setCutsceneMode(false);
+  } finally {
+    globalThis.window = prevWin;
+  }
+});
+
+test('ParadeEvent: 15-minute cadence, full-colony single-file march, chimes, 2x boost, enrollment, and Rebirth cancellation', () => {
+  assert.equal(ParadeEvent.PARADE_INTERVAL_SEC, 900);
+  assert.equal(ParadeEvent.PARADE_BOOST_DURATION_SEC, 60);
+  assert.equal(ParadeEvent.PARADE_BOOST_MULTIPLIER, 2);
+
+  const makePenguin = (uid, speciesId, x, y, carriedFish = 0) => ({
+    uid,
+    speciesId,
+    x,
+    y,
+    facing: 1,
+    stepPhase: 0,
+    state: 'FISHING',
+    claimedTarget: { hole: 1 },
+    carriedFish,
+    happyTimer: 0,
+    departureDelay: 0,
+    resumedTo: null,
+    initiatePathToHoleCount: 0,
+    initiatePathToFishingHole() {
+      this.state = 'NAVIGATE_TO_HOLE';
+      this.resumedTo = 'hole';
+      this.initiatePathToHoleCount += 1;
+    },
+    initiatePathToDepot() {
+      this.state = 'NAVIGATE_TO_DEPOT';
+      this.resumedTo = 'depot';
+    }
+  });
+
+  const penguins = [
+    makePenguin(1, 'adelie', 120, 420, 0),
+    makePenguin(2, 'emperor', 240, 440, 50),
+    makePenguin(3, 'gentoo', 310, 410, 0)
+  ];
+
+  const ctrl = new ParadeEvent.ParadeController({ intervalSec: 10 });
+  const releasedSlots = [];
+  const startEvents = [];
+  let chimeCalls = 0;
+  let endCalls = 0;
+
+  const ctx = {
+    penguins,
+    width: 380,
+    height: 760,
+    visibleBottomY: 500,
+    isPaused: false,
+    isBlocked: true,
+    releaseSlot: (uid) => releasedSlots.push(uid),
+    onParadeStart: (info) => startEvents.push(info),
+    onParadeChime: () => { chimeCalls += 1; },
+    onParadeEnd: () => { endCalls += 1; }
+  };
+
+  // Blocked modal/full-screen sheet pauses countdown
+  ctrl.update(0.25, ctx);
+  assert.equal(ctrl.countdownSec, 10);
+  assert.equal(ctrl.isActive(), false);
+
+  // Unblocked countdown triggers Parade at 0
+  ctx.isBlocked = false;
+  for (let i = 0; i < 40; i++) {
+    ctrl.update(0.25, ctx);
+  }
+  assert.equal(ctrl.isActive(), true);
+  assert.equal(startEvents.length, 1);
+  assert.equal(startEvents[0].participantCount, 3);
+  assert.equal(startEvents[0].boostMultiplier, 2);
+  assert.equal(startEvents[0].boostDurationSec, 60);
+  assert.equal(startEvents[0].direction, 1);
+  assert.deepEqual(releasedSlots.sort((a, b) => a - b), [1, 2, 3]);
+
+  // Emperor leads the line with the leader flag
+  assert.equal(penguins[1].isParadeLeader, true);
+  assert.equal(penguins[0].isParadeLeader, false);
+  assert.equal(penguins.every((p) => p.state === 'PARADE'), true);
+
+  // Newly recruited penguin mid-parade joins at the tail
+  const newbie = makePenguin(4, 'cyber', 180, 340, 0);
+  penguins.push(newbie);
+  assert.equal(ctrl.enrollPenguin(newbie, { width: 380, releaseSlot: (uid) => releasedSlots.push(uid) }), true);
+  assert.equal(newbie.state, 'PARADE');
+
+  // Step through GATHER -> MARCH -> completion
+  let completed = false;
+  for (let step = 0; step < 300 && !completed; step++) {
+    const res = ctrl.update(0.1, ctx);
+    if (res.completed) completed = true;
+  }
+  assert.equal(completed, true);
+  assert.equal(ctrl.isActive(), false);
+  assert.equal(endCalls, 1);
+  assert.ok(chimeCalls >= 1, 'Expected celebratory chimes while marching across screen');
+
+  // Penguins return cleanly to depot (if carrying fish) or fishing holes
+  assert.equal(penguins[1].resumedTo, 'depot');
+  assert.equal(penguins[0].resumedTo, 'hole');
+  assert.equal(penguins.every((p) => !p.isParadeLeader && p.state !== 'PARADE'), true);
+
+  // Second parade alternates direction (right -> left) and cancelAndReset aborts cleanly for Rebirth
+  assert.equal(ctrl.startParade(ctx), true);
+  assert.equal(ctrl.direction, -1);
+  ctrl.cancelAndReset(penguins);
+  assert.equal(ctrl.isActive(), false);
+  assert.equal(ctrl.countdownSec, 10);
+  assert.equal(penguins.every((p) => !p.isParadeLeader && p.state !== 'PARADE'), true);
 });
 
 test('SaveSystem: multi-slot backup recovery on corrupted primary/backup and non-destructive unrecoverable detection', () => {
@@ -459,12 +718,50 @@ test('Integration invariants: viewport zoom policy, modular CSS, offline PWA cac
   // Explicit exclusion: keep user-scalable=no intact
   assert.match(html, /<meta\s+name="viewport"[^>]*user-scalable=no/i);
 
-  // Modular stylesheet linked and precached by offline service worker
+  // Modular stylesheets & scripts linked and precached by offline service worker
+  assert.match(html, /<link\s+rel="stylesheet"\s+href="\.\/styles\/core\.css"/);
+  assert.match(html, /<link\s+rel="stylesheet"\s+href="\.\/styles\/splash-cutscene\.css"/);
   assert.match(html, /<link\s+rel="stylesheet"\s+href="\.\/styles\/game\.css"/);
+  assert.match(html, /<script\s+src="\.\/js\/sound-engine\.js"/);
+  assert.match(html, /<script\s+src="\.\/js\/castle-renderer\.js"/);
+  assert.match(html, /<script\s+src="\.\/js\/parade-event\.js"/);
+  assert.match(html, /<script\s+src="\.\/js\/prestige-cutscene\.js"/);
+  assert.match(html, /<script\s+src="\.\/js\/launch-splash\.js"/);
+  assert.doesNotMatch(html, /<style>/i, 'Inline <style> block should be fully extracted into styles/*.css');
+
+  // Version 2.5 consistency across HTML, Android Gradle, and README
+  const gradleKts = fs.readFileSync(path.join(ROOT, 'app/build.gradle.kts'), 'utf8');
+  const readmeMd = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+  assert.match(html, /id="splash-version-label"[^>]*>v2\.5</);
+  assert.match(html, /version:\s*'2\.5'/);
+  assert.match(gradleKts, /versionName\s*=\s*"2\.5"/);
+  assert.match(readmeMd, /Penguin Glacial Empire \(v2\.5\)/);
+
+  // Non-blocking Google Fonts to prevent launch blank screen on slow/offline networks
+  assert.match(html, /fonts\.googleapis\.com[^>]*media="print"/);
+
+  // Rebirth pause gate & castle/hole/parade reset invariants
+  assert.match(html, /prestigeCutscene\.isActive/);
+  assert.match(html, /state\.iglooTier\s*=\s*0/);
+  assert.match(html, /state\.iglooTheme\s*=\s*'glacier'/);
+  assert.match(html, /state\.fishingHolesUnlocked\s*=\s*CoreEconomy/);
+  assert.match(html, /paradeController\.cancelAndReset/);
+  assert.match(html, /computeSafeFrameDeltaSec/);
+  assert.match(html, /finally\s*\{\s*requestAnimationFrame\(gameLoop\)/);
+  assert.match(html, /window\.notifyAndroidSurfaceReady/);
+
+  // Service worker precaches all modular CSS & JS files
+  assert.match(sw, /'\.\/styles\/core\.css'/);
+  assert.match(sw, /'\.\/styles\/splash-cutscene\.css'/);
   assert.match(sw, /'\.\/styles\/game\.css'/);
   assert.match(sw, /'\.\/js\/economy\.js'/);
   assert.match(sw, /'\.\/js\/daily-system\.js'/);
   assert.match(sw, /'\.\/js\/save-system\.js'/);
+  assert.match(sw, /'\.\/js\/sound-engine\.js'/);
+  assert.match(sw, /'\.\/js\/castle-renderer\.js'/);
+  assert.match(sw, /'\.\/js\/parade-event\.js'/);
+  assert.match(sw, /'\.\/js\/prestige-cutscene\.js'/);
+  assert.match(sw, /'\.\/js\/launch-splash\.js'/);
   assert.match(sw, /'\.\/manifest\.webmanifest'/);
 
   // Splash-to-idle-fish flash fix: pre-mounts modal before splash fade-out
@@ -478,7 +775,8 @@ test('Integration invariants: viewport zoom policy, modular CSS, offline PWA cac
   );
   assert.ok(installBlock.length > 0);
   assert.doesNotMatch(installBlock, /self\.skipWaiting\(\)/);
-  assert.match(html, /PGE_SKIP_SPLASH_ONCE/);
+  const splashJs = fs.readFileSync(path.join(ROOT, 'js/launch-splash.js'), 'utf8');
+  assert.match(splashJs, /PGE_SKIP_SPLASH_ONCE/);
   const claimIdx = html.indexOf('function claimOfflineCatch()');
   const claimBlock = html.slice(claimIdx, claimIdx + 1200);
   assert.ok(claimIdx > 0);
@@ -493,10 +791,17 @@ test('Integration invariants: viewport zoom policy, modular CSS, offline PWA cac
   // Canonical web assets match synced Android assets byte-for-byte
   const syncedFiles = [
     'index.html',
+    'styles/core.css',
+    'styles/splash-cutscene.css',
     'styles/game.css',
     'js/economy.js',
     'js/daily-system.js',
     'js/save-system.js',
+    'js/sound-engine.js',
+    'js/castle-renderer.js',
+    'js/parade-event.js',
+    'js/prestige-cutscene.js',
+    'js/launch-splash.js',
     'manifest.webmanifest'
   ];
   for (const rel of syncedFiles) {

@@ -1,11 +1,18 @@
-const CACHE_NAME = 'penguin-glacial-empire-v23';
+const CACHE_NAME = 'penguin-glacial-empire-v25';
 const CORE_ASSETS = [
   './',
   './index.html',
+  './styles/core.css',
+  './styles/splash-cutscene.css',
   './styles/game.css',
   './js/economy.js',
   './js/daily-system.js',
   './js/save-system.js',
+  './js/sound-engine.js',
+  './js/castle-renderer.js',
+  './js/parade-event.js',
+  './js/prestige-cutscene.js',
+  './js/launch-splash.js',
   './manifest.webmanifest',
   './icons/apple-touch-icon.png',
   './icons/favicon-32.png',

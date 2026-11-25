@@ -14,12 +14,15 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (Economy, DailySystem) {
   'use strict';
 
-  const CURRENT_SAVE_VERSION = 2;
+  const CURRENT_SAVE_VERSION = 3;
   const STORAGE_KEY = 'PENGUIN_GLACIAL_SAVE';
   const BACKUP_STORAGE_KEY = 'PENGUIN_GLACIAL_SAVE_BACKUP';
   const QUARANTINE_STORAGE_KEY = 'PENGUIN_GLACIAL_SAVE_CORRUPT';
   const MAX_SAVE_BYTES = 512 * 1024;
   const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+  const VALID_IGLOO_THEMES = (Economy && Array.isArray(Economy.IGLOO_THEMES))
+    ? Economy.IGLOO_THEMES.map((t) => t.id)
+    : ['glacier', 'aurora_emerald', 'royal_amethyst', 'solar_solstice', 'rose_quartz', 'midnight_obsidian'];
 
   const DEFAULT_SPECIES_IDS = ['adelie', 'gentoo', 'chinstrap', 'emperor', 'cyber'];
   const DEFAULT_TRAIT_IDS = ['optimistic', 'lazy', 'greedy', 'energetic', 'focused', 'thrifty'];
@@ -93,6 +96,23 @@
         copy.savedAt = safeNum(copy.lastSaveTime, 0, 0, Number.MAX_SAFE_INTEGER);
       }
       version = 2;
+    }
+
+    // v2 -> v3: add cosmetic Ice Castle tiers/themes and expandable fishing holes
+    if (version < 3) {
+      if (typeof copy.iglooTier !== 'number' || !Number.isFinite(copy.iglooTier)) {
+        copy.iglooTier = 0;
+      }
+      if (typeof copy.iglooTheme !== 'string' || !copy.iglooTheme) {
+        copy.iglooTheme = 'glacier';
+      }
+      if (!Array.isArray(copy.unlockedIglooThemes)) {
+        copy.unlockedIglooThemes = ['glacier'];
+      }
+      if (typeof copy.fishingHolesUnlocked !== 'number' || !Number.isFinite(copy.fishingHolesUnlocked)) {
+        copy.fishingHolesUnlocked = Economy ? Economy.MIN_FISHING_HOLES : 3;
+      }
+      version = 3;
     }
 
     const futureVersionDetected = originalVersion > CURRENT_SAVE_VERSION;
@@ -289,6 +309,26 @@
       ? DailySystem.sanitizeDailyObjectivesState(src.dailyObjectives, currentDailyKey)
       : (isPlainObject(src.dailyObjectives) ? src.dailyObjectives : {});
 
+    const maxIglooTier = Economy ? Economy.MAX_IGLOO_TIER : 5;
+    const minHoles = Economy ? Economy.MIN_FISHING_HOLES : 3;
+    const maxHoles = Economy ? Economy.MAX_FISHING_HOLES : 6;
+
+    const iglooTier = safeInt(src.iglooTier, 0, 0, maxIglooTier);
+    const unlockedThemeSet = new Set(['glacier']);
+    if (Array.isArray(src.unlockedIglooThemes)) {
+      for (const themeId of src.unlockedIglooThemes) {
+        if (typeof themeId === 'string' && VALID_IGLOO_THEMES.includes(themeId)) {
+          unlockedThemeSet.add(themeId);
+        }
+      }
+    }
+    const rawTheme = typeof src.iglooTheme === 'string' ? src.iglooTheme : 'glacier';
+    const iglooTheme = VALID_IGLOO_THEMES.includes(rawTheme) && unlockedThemeSet.has(rawTheme)
+      ? rawTheme
+      : 'glacier';
+    const unlockedIglooThemes = Array.from(unlockedThemeSet);
+    const fishingHolesUnlocked = safeInt(src.fishingHolesUnlocked, minHoles, minHoles, maxHoles);
+
     return {
       data: {
         saveVersion: CURRENT_SAVE_VERSION,
@@ -299,6 +339,10 @@
         glacierLevel,
         levelFish,
         prestigeShards,
+        iglooTier,
+        iglooTheme,
+        unlockedIglooThemes,
+        fishingHolesUnlocked,
         penguins,
         tech,
         collectedPerks,

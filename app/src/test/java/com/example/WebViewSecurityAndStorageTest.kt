@@ -51,6 +51,13 @@ class WebViewSecurityAndStorageTest {
   fun `WebViewSecurityPolicy validates trusted local asset URLs and blocks unsafe schemes or traversal`() {
     assertTrue(WebViewSecurityPolicy.isTrustedAppUrl(WebViewSecurityPolicy.APP_ENTRY_URL))
     assertTrue(WebViewSecurityPolicy.isTrustedAppUrl("https://appassets.androidplatform.net/assets/js/economy.js"))
+    assertTrue(WebViewSecurityPolicy.isTrustedAppUrl("https://appassets.androidplatform.net/assets/js/sound-engine.js"))
+    assertTrue(WebViewSecurityPolicy.isTrustedAppUrl("https://appassets.androidplatform.net/assets/js/castle-renderer.js"))
+    assertTrue(WebViewSecurityPolicy.isTrustedAppUrl("https://appassets.androidplatform.net/assets/js/parade-event.js"))
+    assertTrue(WebViewSecurityPolicy.isTrustedAppUrl("https://appassets.androidplatform.net/assets/js/prestige-cutscene.js"))
+    assertTrue(WebViewSecurityPolicy.isTrustedAppUrl("https://appassets.androidplatform.net/assets/js/launch-splash.js"))
+    assertTrue(WebViewSecurityPolicy.isTrustedAppUrl("https://appassets.androidplatform.net/assets/styles/core.css"))
+    assertTrue(WebViewSecurityPolicy.isTrustedAppUrl("https://appassets.androidplatform.net/assets/styles/splash-cutscene.css"))
     assertTrue(WebViewSecurityPolicy.isTrustedAppUrl("https://appassets.androidplatform.net/assets/styles/game.css"))
 
     assertFalse(WebViewSecurityPolicy.isTrustedAppUrl("file:///android_asset/index.html"))

@@ -3564,7 +3564,7 @@
 
     <!-- Safe-Area Version Footer -->
     <footer class="splash-footer">
-      <span id="splash-version-label" class="splash-version-pill">v1.8</span>
+      <span id="splash-version-label" class="splash-version-pill">v1.8.1</span>
     </footer>
   </div>
 
@@ -4517,11 +4517,21 @@
     // Ordered newest-first; contains only the current update notice so launch alerts stay focused
     const APP_FEATURE_RELEASES = [
       {
-        id: '2026-11-update-v18',
-        version: '1.8',
-        title: "What's New in Update 1.8",
-        subtitle: 'Major gameplay polish, accurate colony math, full-screen drawer & polar upgrades!',
+        id: '2026-11-update-v181',
+        version: '1.8.1',
+        title: "What's New in Update 1.8.1",
+        subtitle: 'Collision-free penguin paths, cozy idle naps, staggered fishing waves & all Update 1.8 upgrades!',
         features: [
+          {
+            icon: '🛣️',
+            title: 'Collision-Free Penguin Travel Paths',
+            desc: 'Penguins now follow divided right-hand outbound and inbound lanes, pick evenly spaced spots around fishing holes, and smoothly steer around flockmates so they no longer run into each other on the ice.'
+          },
+          {
+            icon: '💤',
+            title: 'Idle Penguin Sleep & Offset Fishing Cycles',
+            desc: 'Idle penguins occasionally tuck their heads for a cozy nap with floating zZz particles (tap to gently wake them!), and colony fishing cycles are offset so each species weaves across the ice in natural waves without lowering Fish/min.'
+          },
           {
             icon: '🐧',
             title: 'Sliding Splash Penguin & Colony Cap (6 Each)',
@@ -6238,7 +6248,7 @@
         holes.forEach(hole => {
           distSum += Math.hypot(w * hole.xRatio - depX, h * hole.yRatio - depY);
         });
-        return Math.max(40, (distSum / holes.length) * 0.97);
+        return Math.max(40, (distSum / holes.length) * 1.00);
       }
 
       getGlobalOutputMultiplier(synergies = null) {
@@ -6729,7 +6739,8 @@
     ];
 
     function claimAvailableSlot(penguinId) {
-      // Spread penguins evenly across holes by picking the least-crowded hole with a free slot
+      // Spread penguins evenly across holes by picking the least-crowded hole with a free slot,
+      // and within that hole pick the free slot furthest from already-occupied slots.
       let bestHole = null;
       let bestOccupied = Infinity;
       for (let hole of FISHING_HOLES) {
@@ -6745,10 +6756,28 @@
         }
       }
       if (bestHole) {
-        const freeSlot = bestHole.slots.find(s => s.occupiedBy === null);
-        if (freeSlot) {
-          freeSlot.occupiedBy = penguinId;
-          return { hole: bestHole, slot: freeSlot };
+        const freeSlots = bestHole.slots.filter(s => s.occupiedBy === null);
+        const occupiedSlots = bestHole.slots.filter(s => s.occupiedBy !== null);
+        if (freeSlots.length > 0) {
+          let chosenSlot = freeSlots[Math.floor(Math.random() * freeSlots.length)];
+          if (occupiedSlots.length > 0) {
+            let bestMinAngularDist = -1;
+            for (let candidate of freeSlots) {
+              let minAngularDist = Infinity;
+              for (let occ of occupiedSlots) {
+                let diff = Math.abs(candidate.angle - occ.angle);
+                if (diff > Math.PI) diff = Math.PI * 2 - diff;
+                if (diff < minAngularDist) minAngularDist = diff;
+              }
+              const jitter = Math.random() * 0.08;
+              if (minAngularDist + jitter > bestMinAngularDist) {
+                bestMinAngularDist = minAngularDist + jitter;
+                chosenSlot = candidate;
+              }
+            }
+          }
+          chosenSlot.occupiedBy = penguinId;
+          return { hole: bestHole, slot: chosenSlot };
         }
       }
       return null;
@@ -6771,6 +6800,36 @@
         x: hx + Math.cos(slot.angle) * (hole.radiusX + 6),
         y: hy + Math.sin(slot.angle) * (hole.radiusY + 4)
       };
+    }
+
+    function buildCurvedLaneWaypoints(startX, startY, endX, endY, laneShiftPx = 22) {
+      const dx = endX - startX;
+      const dy = endY - startY;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 32) {
+        return [{ x: endX, y: endY }];
+      }
+      const ux = dx / dist;
+      const uy = dy / dist;
+      // Right-hand normal in screen coordinates (+y down): keeps outbound & inbound traffic on opposite sides
+      const nx = -uy;
+      const ny = ux;
+      const offset = Math.min(dist * 0.22, Math.max(14, laneShiftPx));
+      const minX = 22;
+      const maxX = Math.max(minX + 10, width - 22);
+      const minY = height * 0.42;
+      const maxY = Math.max(minY + 10, height * 0.89);
+
+      const makePoint = (t, bowWeight) => ({
+        x: Math.max(minX, Math.min(maxX, startX + dx * t + nx * offset * bowWeight)),
+        y: Math.max(minY, Math.min(maxY, startY + dy * t + ny * offset * bowWeight))
+      });
+
+      return [
+        makePoint(0.34, 0.92),
+        makePoint(0.68, 0.92),
+        { x: endX, y: endY }
+      ];
     }
 
     const snowParticles = [];
@@ -6820,6 +6879,23 @@
         life: 1.0,
         vy: -2.0 - Math.random() * 1.5,
         vx: (Math.random() - 0.5) * 1.5
+      });
+    }
+
+    const sleepZzzParticles = [];
+    function spawnSleepZzzParticle(x, y, speciesId = 'adelie') {
+      if (sleepZzzParticles.length > 24) sleepZzzParticles.shift();
+      const isCyber = speciesId === 'cyber';
+      sleepZzzParticles.push({
+        x: x + (Math.random() - 0.5) * 4,
+        y: y + (Math.random() - 0.5) * 2,
+        text: 'zZz',
+        color: isCyber ? '#67e8f9' : '#e0f2fe',
+        baseSize: 9 + Math.random() * 2,
+        vy: -(16 + Math.random() * 6),
+        age: 0,
+        maxLife: 1.65 + Math.random() * 0.55,
+        phase: Math.random() * Math.PI * 2
       });
     }
 
@@ -7848,6 +7924,270 @@
         ctx.restore();
       },
 
+      drawBodyAndGearSleeping(ctx, opts) {
+        const {
+          speciesId = 'adelie',
+          stepPhase = 0,
+          time = 0
+        } = opts;
+
+        const breathe = Math.sin(time * 2.1 + stepPhase * 0.25) * 0.85;
+        const headBob = Math.sin(time * 2.1 + stepPhase * 0.25 - 0.5) * 0.55;
+
+        // Soft cozy snow contact shadow
+        ctx.fillStyle = 'rgba(6, 20, 44, 0.34)';
+        ctx.beginPath();
+        ctx.ellipse(0, 14.5, 16.5, 5.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Subtle resting Emperor / Cyber ground aura
+        if (speciesId === 'emperor') {
+          ctx.save();
+          const auraPulse = 0.75 + Math.sin(time * 2.0) * 0.12;
+          ctx.strokeStyle = `rgba(251, 191, 36, ${0.26 * auraPulse})`;
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.ellipse(0, 14.5, 24 * auraPulse, 8.5 * auraPulse, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        } else if (speciesId === 'cyber') {
+          ctx.save();
+          const pulse = 0.75 + Math.sin(time * 2.2) * 0.15;
+          ctx.strokeStyle = `rgba(56, 189, 248, ${0.28 * pulse})`;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(0, 14.5, 16 * pulse, 5.5 * pulse, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Back accessories (resting calmly)
+        if (speciesId === 'emperor') {
+          ctx.save();
+          ctx.fillStyle = '#7e22ce';
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 1.0;
+          ctx.beginPath();
+          ctx.moveTo(-4, -3.5);
+          ctx.quadraticCurveTo(-15, 2, -16, 11);
+          ctx.quadraticCurveTo(-9, 13.5, -2, 10.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        } else if (speciesId === 'chinstrap') {
+          ctx.save();
+          ctx.fillStyle = '#cbd5e1';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.roundRect(-14.2, -3.5, 6.4, 12.2, 3.0);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#0ea5e9';
+          ctx.fillRect(-13.9, 0.2, 5.8, 2.5);
+          ctx.restore();
+        } else if (speciesId === 'cyber') {
+          // Standby jetpack (flame off while sleeping)
+          ctx.save();
+          ctx.fillStyle = '#334155';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.roundRect(-14.0, -3.0, 6.0, 10.8, 2.4);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+          ctx.fillRect(-12.8, -0.5, 3.6, 2.6);
+          ctx.restore();
+        }
+
+        // Tucked resting feet
+        this.drawFootGear(ctx, -4.0, 12.8, speciesId, -0.04);
+        this.drawFootGear(ctx, 4.6, 13.0, speciesId, 0.04);
+
+        // Tail tuft
+        ctx.fillStyle = speciesId === 'cyber' ? '#475569' : '#0b1528';
+        ctx.beginPath();
+        ctx.moveTo(-7, 8);
+        ctx.lineTo(-14.2, 11.2);
+        ctx.lineTo(-9, 12.6);
+        ctx.closePath();
+        ctx.fill();
+
+        // Cozy puffed/settled sleeping torso (slightly wider & lower)
+        ctx.save();
+        ctx.translate(0, 1.8);
+        const bodyGrad = ctx.createLinearGradient(-12, -12, 12, 13);
+        if (speciesId === 'cyber') {
+          bodyGrad.addColorStop(0, '#64748b');
+          bodyGrad.addColorStop(0.55, '#334155');
+          bodyGrad.addColorStop(1, '#0f172a');
+        } else {
+          bodyGrad.addColorStop(0, '#1e293b');
+          bodyGrad.addColorStop(0.6, '#0f172a');
+          bodyGrad.addColorStop(1, '#050a14');
+        }
+        ctx.fillStyle = bodyGrad;
+        ctx.strokeStyle = 'rgba(2, 10, 24, 0.72)';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.ellipse(0, 1.5 - breathe * 0.25, 13.0 + breathe * 0.35, 11.8 + breathe * 0.25, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Cozy belly
+        if (speciesId === 'cyber') {
+          ctx.fillStyle = '#94a3b8';
+          ctx.beginPath();
+          ctx.ellipse(2.2, 3.2, 7.6, 8.2, 0.05, 0, Math.PI * 2);
+          ctx.fill();
+          // Soft dim standby arc core
+          const coreAlpha = 0.35 + (Math.sin(time * 2.1) + 1) * 0.22;
+          ctx.fillStyle = `rgba(56, 189, 248, ${coreAlpha.toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(3.2, 1.5, 2.8, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = speciesId === 'emperor' ? '#fef3c7' : '#f8fafc';
+          ctx.beginPath();
+          ctx.ellipse(2.2, 3.0, 7.8, 8.4, 0.06, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Tucked Head Group — tilted snugly downward toward chest/flipper
+        ctx.save();
+        ctx.translate(1.8, -7.8 + headBob);
+        ctx.rotate(0.42);
+
+        // Rounded tucked head silhouette
+        ctx.fillStyle = speciesId === 'cyber' ? '#475569' : '#0f172a';
+        ctx.strokeStyle = 'rgba(2, 10, 24, 0.72)';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 8.4, 7.5, -0.08, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Species head details tilted cozily with tucked head
+        if (speciesId === 'emperor') {
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.ellipse(2.2, 2.2, 3.5, 2.2, 0.25, 0, Math.PI * 2);
+          ctx.fill();
+          // Tilted mini crown
+          ctx.fillStyle = '#f59e0b';
+          ctx.strokeStyle = '#78350f';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(-4.8, -5.6);
+          ctx.lineTo(-5.5, -11.2);
+          ctx.lineTo(-1.8, -8.5);
+          ctx.lineTo(0.4, -12.4);
+          ctx.lineTo(2.8, -8.5);
+          ctx.lineTo(5.8, -11.0);
+          ctx.lineTo(5.0, -5.6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        } else if (speciesId === 'chinstrap') {
+          ctx.fillStyle = '#f8fafc';
+          ctx.beginPath();
+          ctx.ellipse(3.0, 1.0, 5.2, 3.8, 0.1, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#090d16';
+          ctx.lineWidth = 1.45;
+          ctx.beginPath();
+          ctx.moveTo(-1.0, -0.8);
+          ctx.quadraticCurveTo(2.2, 4.2, 7.0, 2.6);
+          ctx.stroke();
+        } else if (speciesId === 'gentoo') {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.ellipse(0.8, -3.5, 4.8, 2.0, -0.15, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (speciesId === 'adelie') {
+          ctx.fillStyle = '#0f766e';
+          ctx.strokeStyle = '#042f2e';
+          ctx.lineWidth = 0.75;
+          ctx.beginPath();
+          ctx.arc(0, -4.6, 6.6, Math.PI, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#d97706';
+          ctx.beginPath();
+          ctx.ellipse(3.2, -4.6, 7.6, 1.8, -0.05, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (speciesId === 'cyber') {
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(-1, -7.2);
+          ctx.lineTo(-2.2, -12.5);
+          ctx.stroke();
+          const sleepLed = 0.25 + (Math.sin(time * 2.2) + 1) * 0.35;
+          ctx.fillStyle = `rgba(56, 189, 248, ${sleepLed.toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(-2.2, -13.0, 2.0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Warm sleeping cheek blush
+        if (speciesId !== 'cyber') {
+          ctx.fillStyle = 'rgba(251, 113, 133, 0.30)';
+          ctx.beginPath();
+          ctx.ellipse(1.8, 1.8, 2.0, 1.15, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Tucked downward beak
+        this.drawBeak(ctx, 6.8, 1.4, speciesId, 0.34);
+
+        // Peaceful closed sleeping eye (downward curved arc)
+        if (speciesId === 'cyber') {
+          ctx.strokeStyle = 'rgba(125, 211, 252, 0.75)';
+          ctx.lineWidth = 1.6;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(1.6, -0.6);
+          ctx.lineTo(5.8, -0.2);
+          ctx.stroke();
+        } else {
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1.45;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.arc(3.8, -1.0, 2.1, 0.15 * Math.PI, 0.85 * Math.PI);
+          ctx.stroke();
+        }
+
+        ctx.restore(); // end tucked head
+
+        // Cozy scarf collar for Gentoo / Adélie
+        if (speciesId === 'gentoo' || speciesId === 'adelie') {
+          ctx.fillStyle = speciesId === 'gentoo' ? '#ea580c' : '#0d9488';
+          ctx.beginPath();
+          ctx.roundRect(-7.2, -4.8, 15.0, 3.0, 1.5);
+          ctx.fill();
+        }
+
+        // Near flipper tucked snugly forward up over chest/chin like a blanket
+        ctx.save();
+        ctx.translate(-2.2, -1.2);
+        ctx.rotate(-0.62 + breathe * 0.04);
+        ctx.fillStyle = speciesId === 'cyber' ? '#334155' : '#0f172a';
+        ctx.strokeStyle = speciesId === 'cyber' ? '#38bdf8' : 'rgba(2, 10, 24, 0.65)';
+        ctx.lineWidth = 0.85;
+        ctx.beginPath();
+        ctx.ellipse(1.5, 4.2, 3.2, 7.6, -0.22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.restore(); // end torso translate
+      },
+
       draw(ctx, opts = {}) {
         const speciesId = opts.speciesId || 'adelie';
         const pose = opts.pose || 'waddle';
@@ -7858,6 +8198,8 @@
 
         if (pose === 'slide') {
           this.drawBodyAndGearSliding(ctx, opts);
+        } else if (pose === 'sleep') {
+          this.drawBodyAndGearSleeping(ctx, opts);
         } else {
           this.drawBodyAndGearStanding(ctx, { ...opts, isPortrait: pose === 'portrait' });
         }
@@ -7914,14 +8256,17 @@
     }
 
     class ActivePenguin {
-      constructor(speciesId, forcedTrait = null) {
+      constructor(speciesId, forcedTrait = null, initialCycleOffset = null) {
         this.uid = ++penguinUniqueCounter;
         this.speciesId = speciesId;
         this.species = PENGUIN_SPECIES.find(s => s.id === speciesId) || PENGUIN_SPECIES[0];
         this.trait = forcedTrait || pickRecruitedTrait(speciesId);
+        // Personal sub-lane (-1, 0, +1) keeps same-direction penguins cleanly side-by-side
+        this.laneRank = ((this.uid - 1) % 3) - 1;
+        this.laneShiftPx = 22 + this.laneRank * 8;
 
-        this.x = width * DEPOT.x + (Math.random() - 0.5) * 24;
-        this.y = height * DEPOT.y + DEPOT.doorOffset.y + (Math.random() - 0.5) * 10;
+        this.x = width * DEPOT.x - 10 + this.laneRank * 8;
+        this.y = height * DEPOT.y + DEPOT.doorOffset.y + this.laneRank * 3;
 
         this.claimedTarget = null;
         this.pathWaypoints = [];
@@ -7933,6 +8278,7 @@
         this.state = 'NAVIGATE_TO_HOLE';
         this.isSliding = (this.species.id === 'gentoo' || Math.random() < 0.35);
         this.diveTimer = 0;
+        this.departureDelay = 0;
         this.facing = 1;
         this.stepPhase = Math.random() * 10;
         this.blinkTimer = 2.0 + Math.random() * 3.5;
@@ -7940,6 +8286,14 @@
         this.happyTimer = 0;
         this.carriedFish = 0;
         this.slideEffectTimer = 0;
+
+        // Idle sleep animation state
+        this.sleepTimer = 0;
+        this.sleepCooldown = 10 + Math.random() * 24;
+        this.zzzTimer = 0;
+        this.sleepSpotX = this.x;
+        this.sleepSpotY = this.y;
+        this.isAtSleepSpot = false;
 
         this.speechText = null;
         this.speechCategory = 'fact';
@@ -7950,6 +8304,177 @@
         this.talkSpotY = 0;
         this.isStandingAtTalkSpot = false;
 
+        if (typeof initialCycleOffset === 'number' && isFinite(initialCycleOffset)) {
+          this.applyCycleOffset(((initialCycleOffset % 1) + 1) % 1);
+        } else {
+          this.initiatePathToFishingHole();
+        }
+      }
+
+      computeSingleCatchValue() {
+        const synergies = state.getColonySynergies();
+        const pData = state.penguins[this.species.id] || { count: 1, level: 1 };
+        const useColonyTraitAvg = pData.count > MAX_VISIBLE_PER_COLONY;
+        const speciesTraitAvg = useColonyTraitAvg ? state.getSpeciesTraitAverages(this.species.id) : null;
+        const traitYield = useColonyTraitAvg ? speciesTraitAvg.yieldMult : (this.trait ? this.trait.yieldMult : 1.0);
+        const lineBonus = 1 + (state.tech.reinforced_line * 0.25);
+        const emperorMult = (this.species.id === 'emperor' && state.emperorBoost > 0) ? (1 + state.emperorBoost) : 1;
+        const catchVal = this.species.baseYield * (1 + (pData.level - 1) * COLONY_SIZE_BONUS_RATE) * traitYield * state.perkCatchMult * lineBonus * emperorMult * synergies.catchYieldMult;
+        return Math.max(0.1, catchVal);
+      }
+
+      samplePointOnWaypoints(startX, startY, waypoints, frac01) {
+        const pts = [{ x: startX, y: startY }, ...waypoints];
+        const segLens = [];
+        let totalLen = 0;
+        for (let i = 0; i < pts.length - 1; i++) {
+          const l = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+          segLens.push(l);
+          totalLen += l;
+        }
+        if (totalLen <= 0.001) {
+          return { x: startX, y: startY, nextIdx: Math.max(0, waypoints.length - 1) };
+        }
+        let targetDist = Math.max(0, Math.min(1, frac01)) * totalLen;
+        for (let i = 0; i < segLens.length; i++) {
+          if (targetDist <= segLens[i] || i === segLens.length - 1) {
+            const localT = segLens[i] > 0.001 ? Math.min(1, targetDist / segLens[i]) : 1;
+            return {
+              x: pts[i].x + (pts[i + 1].x - pts[i].x) * localT,
+              y: pts[i].y + (pts[i + 1].y - pts[i].y) * localT,
+              nextIdx: i
+            };
+          }
+          targetDist -= segLens[i];
+        }
+        return { x: startX, y: startY, nextIdx: 0 };
+      }
+
+      applyCycleOffset(phase01) {
+        const outDepotX = width * DEPOT.x - 10 + this.laneRank * 8;
+        const inDepotX = width * DEPOT.x + 12 + this.laneRank * 7;
+        const depotY = height * DEPOT.y + DEPOT.doorOffset.y + this.laneRank * 3;
+
+        if (phase01 < 0.34) {
+          // Partway walking/sliding out along right-hand lane to a fishing hole
+          this.x = outDepotX;
+          this.y = depotY;
+          this.initiatePathToFishingHole();
+          if (this.state === 'NAVIGATE_TO_HOLE' && this.claimedTarget && this.pathWaypoints.length > 0) {
+            const t = Math.min(0.90, Math.max(0.08, phase01 / 0.34));
+            const sampled = this.samplePointOnWaypoints(outDepotX, depotY, this.pathWaypoints, t);
+            this.x = sampled.x;
+            this.y = sampled.y;
+            this.currentWaypointIdx = sampled.nextIdx;
+            const nextWp = this.pathWaypoints[this.currentWaypointIdx] || this.pathWaypoints[this.pathWaypoints.length - 1];
+            this.facing = nextWp.x >= this.x ? 1 : -1;
+          }
+        } else if (phase01 < 0.56) {
+          // Already at a fishing hole diving/preparing
+          const slotData = claimAvailableSlot(this.uid);
+          if (slotData) {
+            this.claimedTarget = slotData;
+            const target = getSlotWorldPos(slotData.hole, slotData.slot);
+            this.x = target.x;
+            this.y = target.y;
+            this.isSliding = false;
+            const localFrac = (phase01 - 0.34) / 0.22;
+            if (localFrac < 0.22) {
+              this.state = 'PREPARE_DIVE';
+              this.diveTimer = Math.max(0.12, (1 - localFrac / 0.22) * 0.5);
+            } else {
+              this.state = 'FISHING';
+              const diveFracRem = Math.max(0.15, 1 - (localFrac - 0.22) / 0.78);
+              this.diveTimer = Math.max(0.25, this.species.diveTime * diveFracRem);
+            }
+          } else {
+            this.initiatePathToFishingHole();
+          }
+        } else if (phase01 < 0.88) {
+          // Returning along right-hand inbound lane to Igloo Depot carrying a fish
+          const hole = FISHING_HOLES[Math.floor(Math.random() * FISHING_HOLES.length)];
+          const slot = hole.slots[Math.floor(Math.random() * hole.slots.length)];
+          const startPos = getSlotWorldPos(hole, slot);
+          const returnWaypoints = buildCurvedLaneWaypoints(startPos.x, startPos.y, inDepotX, depotY, this.laneShiftPx);
+          const t = Math.min(0.86, Math.max(0.10, (phase01 - 0.56) / 0.32));
+          const sampled = this.samplePointOnWaypoints(startPos.x, startPos.y, returnWaypoints, t);
+          this.x = sampled.x;
+          this.y = sampled.y;
+          this.carriedFish = this.computeSingleCatchValue();
+          this.state = 'NAVIGATE_TO_DEPOT';
+          this.isSliding = (this.species.id === 'gentoo' || Math.random() < 0.35);
+          this.pathWaypoints = returnWaypoints;
+          this.currentWaypointIdx = sampled.nextIdx;
+          const nextWp = this.pathWaypoints[this.currentWaypointIdx] || this.pathWaypoints[this.pathWaypoints.length - 1];
+          this.facing = nextWp.x >= this.x ? 1 : -1;
+        } else {
+          // Staggered brief departure offset right outside the Depot
+          this.x = outDepotX;
+          this.y = depotY;
+          this.initiatePathToFishingHole();
+          const tailFrac = (phase01 - 0.88) / 0.12;
+          this.departureDelay = 0.25 + tailFrac * 1.15;
+        }
+      }
+
+      tryStartIdleSleep(fromDepot = true) {
+        if (this.sleepCooldown > 0 || this.carriedFish > 0) return false;
+        if (typeof isModalBlockingAurora === 'function' && isModalBlockingAurora()) return false;
+        const sleepers = activePenguins.filter(p => p !== this && p.state === 'SLEEPING');
+        const maxSleepers = Math.max(1, Math.min(3, Math.floor(activePenguins.length / 4)));
+        if (sleepers.length >= maxSleepers) return false;
+
+        const isLazy = this.trait && this.trait.id === 'lazy';
+        const chance = (fromDepot ? 0.14 : 0.24) + (isLazy ? 0.12 : 0);
+        if (Math.random() >= chance) return false;
+
+        releaseSlot(this.uid);
+        this.claimedTarget = null;
+        this.state = 'SLEEPING';
+        this.isSliding = false;
+        this.sleepTimer = 4.2 + Math.random() * 3.6;
+        this.zzzTimer = 0.55 + Math.random() * 0.65;
+
+        if (fromDepot) {
+          // Pick a cozy spot around the igloo perimeter well-separated from other napping penguins
+          let bestSpot = null;
+          let bestClearance = -1;
+          for (let attempt = 0; attempt < 10; attempt++) {
+            const side = (attempt % 2 === 0 ? -1 : 1) * (Math.random() < 0.5 ? 1 : -1);
+            const cozyOffsetX = side * (30 + Math.random() * 44);
+            const cozyOffsetY = 8 + Math.random() * 22;
+            const cx = Math.max(30, Math.min(width - 30, width * DEPOT.x + cozyOffsetX));
+            const cy = Math.min(height * 0.61, height * DEPOT.y + DEPOT.doorOffset.y + cozyOffsetY);
+            let minDist = Infinity;
+            for (let s of sleepers) {
+              const d = Math.hypot(cx - s.sleepSpotX, cy - s.sleepSpotY);
+              if (d < minDist) minDist = d;
+            }
+            if (minDist > bestClearance) {
+              bestClearance = minDist;
+              bestSpot = { x: cx, y: cy };
+              if (minDist >= 38) break;
+            }
+          }
+          this.sleepSpotX = bestSpot ? bestSpot.x : Math.max(30, width * DEPOT.x - 36);
+          this.sleepSpotY = bestSpot ? bestSpot.y : height * DEPOT.y + DEPOT.doorOffset.y + 12;
+          this.isAtSleepSpot = false;
+        } else {
+          this.sleepSpotX = this.x;
+          this.sleepSpotY = this.y;
+          this.isAtSleepSpot = true;
+        }
+        return true;
+      }
+
+      wakeUpFromSleep(playHappy = false) {
+        if (this.state !== 'SLEEPING') return;
+        this.sleepTimer = 0;
+        this.isAtSleepSpot = false;
+        this.sleepCooldown = 26 + Math.random() * 32;
+        if (playHappy) {
+          this.happyTimer = 0.9;
+        }
         this.initiatePathToFishingHole();
       }
 
@@ -7966,13 +8491,7 @@
           }
 
           const target = getSlotWorldPos(slotData.hole, slotData.slot);
-          const midX = (this.x + target.x) * 0.5 + (Math.random() - 0.5) * 30;
-          const midY = (this.y + target.y) * 0.5;
-
-          this.pathWaypoints = [
-            { x: midX, y: midY },
-            { x: target.x, y: target.y }
-          ];
+          this.pathWaypoints = buildCurvedLaneWaypoints(this.x, this.y, target.x, target.y, this.laneShiftPx);
           this.currentWaypointIdx = 0;
         } else {
           this.state = 'WAITING_NEARBY';
@@ -7996,22 +8515,99 @@
           state.totalSlides = (state.totalSlides || 0) + 1;
         }
 
-        const depotDoorX = width * DEPOT.x + (Math.random() - 0.5) * 20;
-        const depotDoorY = height * DEPOT.y + DEPOT.doorOffset.y;
+        // Slight right-hand offset at the igloo entrance keeps incoming traffic clear of outgoing penguins
+        const depotDoorX = width * DEPOT.x + 12 + this.laneRank * 7;
+        const depotDoorY = height * DEPOT.y + DEPOT.doorOffset.y + this.laneRank * 3;
 
-        const midX = (this.x + depotDoorX) * 0.5 + (Math.random() - 0.5) * 30;
-        const midY = (this.y + depotDoorY) * 0.5;
-
-        this.pathWaypoints = [
-          { x: midX, y: midY },
-          { x: depotDoorX, y: depotDoorY }
-        ];
+        this.pathWaypoints = buildCurvedLaneWaypoints(this.x, this.y, depotDoorX, depotDoorY, this.laneShiftPx);
         this.currentWaypointIdx = 0;
       }
 
+      stepToward(targetX, targetY, step, arriveDist = 6, allowAvoidance = true) {
+        const dx = targetX - this.x;
+        const dy = targetY - this.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist <= step || dist < arriveDist) {
+          this.x = targetX;
+          this.y = targetY;
+          return true;
+        }
+
+        const desX = dx / dist;
+        const desY = dy / dist;
+        let steerX = desX;
+        let steerY = desY;
+
+        if (allowAvoidance && dist > arriveDist + 8 && activePenguins.length > 1) {
+          let avoidX = 0;
+          let avoidY = 0;
+          const avoidRadius = 36;
+          // Dampen steering close to the final goal so penguins always dock crisply
+          const nearGoalFade = Math.min(1, (dist - arriveDist) / 28);
+
+          for (let i = 0; i < activePenguins.length; i++) {
+            const other = activePenguins[i];
+            if (other === this || other.state === 'FISHING') continue;
+            const ox = this.x - other.x;
+            const oy = this.y - other.y;
+            const d = Math.hypot(ox, oy);
+            if (d > 0.001 && d < avoidRadius) {
+              const closeness = (avoidRadius - d) / avoidRadius;
+              const weight = Math.pow(closeness, 1.35) * nearGoalFade;
+              // Radial push away from neighbor
+              avoidX += (ox / d) * weight * 1.45;
+              avoidY += (oy / d) * weight * 1.45;
+              // Right-hand sidestep when another penguin is directly ahead to prevent head-on stalls
+              const aheadDot = (-ox / d) * desX + (-oy / d) * desY;
+              if (aheadDot > 0.15) {
+                avoidX += (-desY) * weight * 0.95;
+                avoidY += (desX) * weight * 0.95;
+              }
+            }
+          }
+
+          // Keep steering primarily lateral so penguins glide smoothly past neighbors without losing trip speed
+          const perpX = -desY;
+          const perpY = desX;
+          const avoidLat = Math.max(-1.05, Math.min(1.05, avoidX * perpX + avoidY * perpY));
+          const avoidFwd = Math.max(-0.18, Math.min(0.25, avoidX * desX + avoidY * desY));
+
+          steerX = desX * (1 + avoidFwd) + perpX * avoidLat;
+          steerY = desY * (1 + avoidFwd) + perpY * avoidLat;
+          const steerLen = Math.hypot(steerX, steerY);
+          if (steerLen < 0.18) {
+            steerX = perpX;
+            steerY = perpY;
+          } else {
+            steerX /= steerLen;
+            steerY /= steerLen;
+          }
+        }
+
+        if (Math.abs(steerX) > 0.12) {
+          this.facing = steerX > 0 ? 1 : -1;
+        } else if (Math.abs(dx) > 2) {
+          this.facing = dx > 0 ? 1 : -1;
+        }
+
+        const forwardDot = steerX * desX + steerY * desY;
+        const arcCompStep = step * Math.min(1.14, 1 / Math.max(0.84, forwardDot));
+        this.x = Math.max(18, Math.min(width - 18, this.x + steerX * arcCompStep));
+        this.y = Math.max(height * 0.41, Math.min(height * 0.90, this.y + steerY * arcCompStep));
+        return false;
+      }
+
       update(dt) {
-        if (this.state !== 'TALKING_ON_SIDE' || !this.isStandingAtTalkSpot) {
+        const isStationaryPose = (this.state === 'TALKING_ON_SIDE' && this.isStandingAtTalkSpot) ||
+          (this.state === 'SLEEPING' && this.isAtSleepSpot) ||
+          this.departureDelay > 0;
+        if (!isStationaryPose) {
           this.stepPhase += dt * 6;
+        }
+
+        if (this.sleepCooldown > 0 && this.state !== 'SLEEPING') {
+          this.sleepCooldown = Math.max(0, this.sleepCooldown - dt);
         }
 
         if (this.happyTimer > 0) {
@@ -8056,7 +8652,12 @@
         if (state.slushDebuffTimer > 0) speed *= 0.92;
         if (state.supernovaTimer > 0) speed *= 2.5;
 
-        if (this.isSliding) {
+        if (this.departureDelay > 0 && this.state === 'NAVIGATE_TO_HOLE') {
+          this.departureDelay = Math.max(0, this.departureDelay - dt);
+          return;
+        }
+
+        if (this.isSliding && this.state !== 'SLEEPING') {
           speed *= 1.8 * state.perkSlideSpeedMult * (1 + state.tech.smooth_ice * 0.3);
           this.slideEffectTimer += dt;
           if (this.slideEffectTimer > 0.08) {
@@ -8090,26 +8691,15 @@
           case 'NAVIGATE_TO_HOLE': {
             if (this.currentWaypointIdx < this.pathWaypoints.length) {
               const wp = this.pathWaypoints[this.currentWaypointIdx];
-              const dx = wp.x - this.x;
-              const dy = wp.y - this.y;
-              const dist = Math.hypot(dx, dy);
-              const step = speed * dt;
-
-              if (Math.abs(dx) > 2) {
-                this.facing = dx > 0 ? 1 : -1;
-              }
-
-              if (dist <= step || dist < 6) {
-                this.x = wp.x;
-                this.y = wp.y;
+              const isFinal = this.currentWaypointIdx === this.pathWaypoints.length - 1;
+              const arriveDist = isFinal ? 6 : 14;
+              if (this.stepToward(wp.x, wp.y, speed * dt, arriveDist, true)) {
                 this.currentWaypointIdx++;
-              } else {
-                this.x += (dx / dist) * step;
-                this.y += (dy / dist) * step;
               }
             } else {
               this.state = 'PREPARE_DIVE';
-              this.diveTimer = 0.5;
+              // Slight jitter around 0.50s mean keeps colony fishing cycles gently staggered
+              this.diveTimer = 0.38 + Math.random() * 0.24;
               this.isSliding = false;
             }
             break;
@@ -8118,22 +8708,8 @@
           case 'WAITING_NEARBY': {
             if (this.currentWaypointIdx < this.pathWaypoints.length) {
               const wp = this.pathWaypoints[this.currentWaypointIdx];
-              const dx = wp.x - this.x;
-              const dy = wp.y - this.y;
-              const dist = Math.hypot(dx, dy);
-              const step = speed * dt;
-
-              if (Math.abs(dx) > 2) {
-                this.facing = dx > 0 ? 1 : -1;
-              }
-
-              if (dist <= step || dist < 6) {
-                this.x = wp.x;
-                this.y = wp.y;
+              if (this.stepToward(wp.x, wp.y, speed * dt, 6, true)) {
                 this.currentWaypointIdx++;
-              } else {
-                this.x += (dx / dist) * step;
-                this.y += (dy / dist) * step;
               }
             } else {
               this.waitingTimer += dt;
@@ -8150,9 +8726,30 @@
                   }
 
                   const target = getSlotWorldPos(slotData.hole, slotData.slot);
-                  this.pathWaypoints = [{ x: target.x, y: target.y }];
+                  this.pathWaypoints = buildCurvedLaneWaypoints(this.x, this.y, target.x, target.y, this.laneShiftPx);
                   this.currentWaypointIdx = 0;
+                } else {
+                  this.tryStartIdleSleep(false);
                 }
+              }
+            }
+            break;
+          }
+
+          case 'SLEEPING': {
+            if (!this.isAtSleepSpot) {
+              if (this.stepToward(this.sleepSpotX, this.sleepSpotY, speed * 0.72 * dt, 5, true)) {
+                this.isAtSleepSpot = true;
+              }
+            } else {
+              this.sleepTimer -= dt;
+              this.zzzTimer -= dt;
+              if (this.zzzTimer <= 0) {
+                spawnSleepZzzParticle(this.x + this.facing * 5, this.y - 16, this.species.id);
+                this.zzzTimer = 1.25 + Math.random() * 1.15;
+              }
+              if (this.sleepTimer <= 0) {
+                this.wakeUpFromSleep(false);
               }
             }
             break;
@@ -8181,7 +8778,8 @@
               state.totalDives = (state.totalDives || 0) + 1;
 
               this.state = 'SURFACE_CATCH';
-              this.diveTimer = 0.6;
+              // Slight jitter around 0.60s mean preserves exact average trip timing while staggering waves
+              this.diveTimer = 0.48 + Math.random() * 0.24;
               sound.playSplash();
               if (this.claimedTarget) {
                 this.claimedTarget.hole.rippleTimer = 1.0;
@@ -8212,26 +8810,18 @@
           case 'NAVIGATE_TO_DEPOT': {
             if (this.currentWaypointIdx < this.pathWaypoints.length) {
               const wp = this.pathWaypoints[this.currentWaypointIdx];
-              const dx = wp.x - this.x;
-              const dy = wp.y - this.y;
-              const dist = Math.hypot(dx, dy);
-              const step = speed * dt;
-
-              if (Math.abs(dx) > 2) {
-                this.facing = dx > 0 ? 1 : -1;
-              }
-
-              if (dist <= step || dist < 8) {
-                this.x = wp.x;
-                this.y = wp.y;
+              const isFinal = this.currentWaypointIdx === this.pathWaypoints.length - 1;
+              const arriveDist = isFinal ? 8 : 14;
+              if (this.stepToward(wp.x, wp.y, speed * dt, arriveDist, true)) {
                 this.currentWaypointIdx++;
-              } else {
-                this.x += (dx / dist) * step;
-                this.y += (dy / dist) * step;
               }
             } else {
               const pData = state.penguins[this.species.id] || { count: 1 };
-              const activeSpeciesCount = Math.max(1, activePenguins.filter(p => p.speciesId === this.species.id).length);
+              // Exclude napping penguins from divisor so idle power naps never lower colony fish/min
+              const activeSpeciesCount = Math.max(
+                1,
+                activePenguins.filter(p => p.speciesId === this.species.id && p.state !== 'SLEEPING').length
+              );
               const colonyScale = Math.max(1, pData.count) / activeSpeciesCount;
               const globalMult = state.getGlobalOutputMultiplier(synergies);
               const rawBanked = this.carriedFish * globalMult * colonyScale;
@@ -8250,27 +8840,18 @@
               }
 
               this.carriedFish = 0;
-              this.initiatePathToFishingHole();
+              if (!this.tryStartIdleSleep(true)) {
+                this.initiatePathToFishingHole();
+              }
             }
             break;
           }
 
           case 'TALKING_ON_SIDE': {
-            const dx = this.talkSpotX - this.x;
-            const dy = this.talkSpotY - this.y;
-            const dist = Math.hypot(dx, dy);
-            const step = speed * dt;
-
-            if (dist > 6 && dist > step) {
+            const arrived = this.stepToward(this.talkSpotX, this.talkSpotY, speed * dt, 6, false);
+            if (!arrived) {
               this.isStandingAtTalkSpot = false;
-              if (Math.abs(dx) > 2) {
-                this.facing = dx > 0 ? 1 : -1;
-              }
-              this.x += (dx / dist) * step;
-              this.y += (dy / dist) * step;
             } else {
-              this.x = this.talkSpotX;
-              this.y = this.talkSpotY;
               this.isStandingAtTalkSpot = true;
               this.facing = this.talkSpotX < width * 0.5 ? 1 : -1;
             }
@@ -8303,7 +8884,9 @@
           return;
         }
 
-        const isSliding = this.isSliding && (this.state === 'NAVIGATE_TO_HOLE' || this.state === 'NAVIGATE_TO_DEPOT');
+        const isSleepingPose = this.state === 'SLEEPING' && this.isAtSleepSpot;
+        const isSliding = !isSleepingPose && this.isSliding && (this.state === 'NAVIGATE_TO_HOLE' || this.state === 'NAVIGATE_TO_DEPOT');
+        const pose = isSleepingPose ? 'sleep' : (isSliding ? 'slide' : 'waddle');
         let extraTilt = 0;
         let bounceY = 0;
         if (this.state === 'PREPARE_DIVE') {
@@ -8311,11 +8894,11 @@
         } else if (this.state === 'SURFACE_CATCH') {
           extraTilt = -0.18;
           bounceY = -Math.abs(Math.sin(this.diveTimer * Math.PI * 2)) * 5;
-        } else if (this.happyTimer > 0) {
+        } else if (this.happyTimer > 0 && !isSleepingPose) {
           bounceY = -Math.abs(Math.sin(this.happyTimer * Math.PI * 5)) * 4;
         }
 
-        const renderStepPhase = (this.state === 'TALKING_ON_SIDE' && this.isStandingAtTalkSpot) ? 0 : this.stepPhase;
+        const renderStepPhase = ((this.state === 'TALKING_ON_SIDE' && this.isStandingAtTalkSpot) || isSleepingPose || this.departureDelay > 0) ? 0 : this.stepPhase;
 
         // Soft ice reflection directly beneath penguin
         ctx.save();
@@ -8324,7 +8907,7 @@
         ctx.globalAlpha = 0.12;
         PenguinSpriteRenderer.draw(ctx, {
           speciesId: this.species.id,
-          pose: isSliding ? 'slide' : 'waddle',
+          pose,
           stepPhase: renderStepPhase,
           blink: this.isBlinking,
           happy: this.happyTimer > 0,
@@ -8342,7 +8925,7 @@
 
         PenguinSpriteRenderer.draw(ctx, {
           speciesId: this.species.id,
-          pose: isSliding ? 'slide' : 'waddle',
+          pose,
           stepPhase: renderStepPhase,
           blink: this.isBlinking,
           happy: this.happyTimer > 0,
@@ -8621,14 +9204,18 @@
     }
 
     function syncActivePenguins() {
-      // Strictly cap visible penguins to MAX_VISIBLE_PER_COLONY (6) per unlocked species
-      PENGUIN_SPECIES.forEach(sp => {
+      // Strictly cap visible penguins to MAX_VISIBLE_PER_COLONY (6) per unlocked species,
+      // with staggered fishing cycle phases per colony so colonies don't move in lockstep.
+      PENGUIN_SPECIES.forEach((sp, speciesIdx) => {
         const owned = (state.penguins[sp.id] && state.penguins[sp.id].count) ? state.penguins[sp.id].count : 0;
         const targetVisible = Math.min(MAX_VISIBLE_PER_COLONY, Math.max(0, owned));
         let speciesSprites = activePenguins.filter(p => p.speciesId === sp.id);
+        const colonyPhaseBase = speciesIdx / Math.max(1, PENGUIN_SPECIES.length);
 
         while (speciesSprites.length < targetVisible) {
-          const created = new ActivePenguin(sp.id);
+          const memberIdx = speciesSprites.length;
+          const staggeredPhase = (colonyPhaseBase + memberIdx * 0.145 + (Math.random() - 0.5) * 0.05 + 1) % 1;
+          const created = new ActivePenguin(sp.id, null, staggeredPhase);
           activePenguins.push(created);
           speciesSprites.push(created);
         }
@@ -8646,6 +9233,67 @@
       // Fallback safeguard: ensure at least 1 Adélie if colony is somehow completely empty
       if (activePenguins.length === 0) {
         activePenguins.push(new ActivePenguin('adelie'));
+      }
+    }
+
+    function resolvePenguinSpacing(dt) {
+      const count = activePenguins.length;
+      if (count < 2) return;
+      const minSpacing = 24;
+      const maxPushPerStep = Math.max(2, 95 * dt);
+      const minX = 18;
+      const maxX = Math.max(minX + 10, width - 18);
+      const minY = height * 0.41;
+      const maxY = Math.max(minY + 10, height * 0.90);
+
+      const isAnchored = (p) => (
+        p.state === 'PREPARE_DIVE' ||
+        p.state === 'SURFACE_CATCH' ||
+        p.state === 'TALKING_ON_SIDE' ||
+        (p.state === 'SLEEPING' && p.isAtSleepSpot) ||
+        p.departureDelay > 0
+      );
+
+      for (let i = 0; i < count; i++) {
+        const a = activePenguins[i];
+        if (a.state === 'FISHING' || a.state === 'TALKING_ON_SIDE') continue;
+        for (let j = i + 1; j < count; j++) {
+          const b = activePenguins[j];
+          if (b.state === 'FISHING' || b.state === 'TALKING_ON_SIDE') continue;
+
+          const aAnchored = isAnchored(a);
+          const bAnchored = isAnchored(b);
+          if (aAnchored && bAnchored) continue;
+
+          let dx = b.x - a.x;
+          let dy = b.y - a.y;
+          let dist = Math.hypot(dx, dy);
+          if (dist >= minSpacing) continue;
+
+          if (dist < 0.001) {
+            dx = (a.uid < b.uid ? 1 : -1);
+            dy = 0.25;
+            dist = Math.hypot(dx, dy);
+          }
+
+          const overlap = Math.min(minSpacing - dist, maxPushPerStep);
+          const nx = dx / dist;
+          const ny = dy / dist;
+
+          if (aAnchored) {
+            b.x = Math.max(minX, Math.min(maxX, b.x + nx * overlap));
+            b.y = Math.max(minY, Math.min(maxY, b.y + ny * overlap));
+          } else if (bAnchored) {
+            a.x = Math.max(minX, Math.min(maxX, a.x - nx * overlap));
+            a.y = Math.max(minY, Math.min(maxY, a.y - ny * overlap));
+          } else {
+            const half = overlap * 0.5;
+            a.x = Math.max(minX, Math.min(maxX, a.x - nx * half));
+            a.y = Math.max(minY, Math.min(maxY, a.y - ny * half));
+            b.x = Math.max(minX, Math.min(maxX, b.x + nx * half));
+            b.y = Math.max(minY, Math.min(maxY, b.y + ny * half));
+          }
+        }
       }
     }
 
@@ -8852,6 +9500,7 @@
       drawScene(ctx, dt);
 
       activePenguins.forEach(p => p.update(dt));
+      resolvePenguinSpacing(dt);
       tryTriggerColonySpeech(dt);
       activePenguins.sort((a, b) => a.y - b.y);
       activePenguins.forEach(p => p.draw(ctx));
@@ -9580,6 +10229,35 @@
           ctx.restore();
         }
       }
+
+      for (let i = sleepZzzParticles.length - 1; i >= 0; i--) {
+        const z = sleepZzzParticles[i];
+        z.age += dt;
+        if (z.age >= z.maxLife) {
+          sleepZzzParticles.splice(i, 1);
+          continue;
+        }
+        const progress = z.age / z.maxLife;
+        const alpha = progress < 0.2
+          ? (progress / 0.2) * 0.92
+          : (1 - ((progress - 0.2) / 0.8)) * 0.92;
+        const driftX = Math.sin(z.age * 3.1 + z.phase) * 5.5 + progress * 4.5;
+        const drawX = z.x + driftX;
+        const drawY = z.y + z.vy * z.age;
+        const fontSize = Math.round(z.baseSize + progress * 3.5);
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.font = `italic 800 ${fontSize}px "Segoe UI", system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.72)';
+        ctx.lineWidth = 2.4;
+        ctx.strokeText(z.text, drawX, drawY);
+        ctx.fillStyle = z.color;
+        ctx.fillText(z.text, drawX, drawY);
+        ctx.restore();
+      }
     }
 
     // --- USER INTERACTIONS & TAPPING ---
@@ -9625,6 +10303,10 @@
           dailyManager.track('penguin_taps', 1);
           sound.playChirp();
           sound.triggerHaptic('penguin_tap');
+          if (p.state === 'SLEEPING') {
+            p.wakeUpFromSleep(true);
+            addTapParticle(p.x, p.y - 22, '❗', '#fde047', 16);
+          }
           p.stepPhase += 3;
           p.happyTimer = 1.1;
           addTapParticle(p.x, p.y - 18, '♥', '#f43f5e', 22);

@@ -277,7 +277,7 @@
 
     <!-- Safe-Area Version Footer -->
     <footer class="splash-footer">
-      <span id="splash-version-label" class="splash-version-pill">v2.5.1</span>
+      <span id="splash-version-label" class="splash-version-pill">v2.6</span>
     </footer>
   </div>
 
@@ -312,9 +312,12 @@
     </div>
   </div>
 
+  <!-- Sky Mini-Event Combo & Starlight Frenzy Pill (only visible while combo/frenzy active) -->
+  <div id="sky-combo-pill" class="sky-combo-pill hidden" aria-live="polite"></div>
+
   <!-- Collapsible Bottom Drawer -->
   <div id="bottom-sheet" aria-label="Colony management menu">
-    <div id="sheet-drag-handle" class="sheet-drag-handle" role="button" tabindex="0" aria-expanded="true" aria-label="Drag up for full screen or down to close menu">
+    <div id="sheet-drag-handle" class="sheet-drag-handle" role="button" tabindex="0" aria-expanded="true" aria-label="Drag up to expand or down to close menu">
       <div class="sheet-handle-bar"></div>
     </div>
     <div class="sheet-header">
@@ -462,7 +465,7 @@
       </div>
       <div class="rebirth-confirm-summary">
         <div>
-          <strong style="color: #f8fafc;">Resets this run:</strong> Fish, colony penguins, Glacier Tech, Ice Castle upgrades &amp; palettes, extra fishing holes, and Common/Rare/Epic perks.
+          <strong style="color: #f8fafc;">Resets this run:</strong> Fish, colony penguins, Glacier Tech, Ice Castle upgrades &amp; palettes, extra fishing holes, Colony Wardrobe hats, and Common/Rare/Epic perks.
         </div>
         <div id="rebirth-confirm-preserved-note" class="rebirth-confirm-preserved-pill">
           🛡️ Legendary &amp; Mythic perks stay permanently active across every rebirth.
@@ -483,9 +486,15 @@
 
   <script src="./js/economy.js"></script>
   <script src="./js/daily-system.js"></script>
+  <script src="./js/wardrobe.js"></script>
+  <script src="./js/game-data.js"></script>
   <script src="./js/save-system.js"></script>
+  <script src="./js/sky-events.js"></script>
+  <script src="./js/daily-manager.js"></script>
   <script src="./js/sound-engine.js"></script>
   <script src="./js/castle-renderer.js"></script>
+  <script src="./js/penguin-sprites.js"></script>
+  <script src="./js/scene-renderer.js"></script>
   <script src="./js/parade-event.js"></script>
   <script src="./js/prestige-cutscene.js"></script>
   <script src="./js/launch-splash.js"></script>
@@ -495,8 +504,14 @@
        ========================================================================== */
     const CoreEconomy = (window.GlacialCore && window.GlacialCore.Economy) || null;
     const CoreDaily = (window.GlacialCore && window.GlacialCore.DailySystem) || null;
+    const CoreWardrobe = (window.GlacialCore && window.GlacialCore.Wardrobe) || null;
+    const CoreGameData = (window.GlacialCore && window.GlacialCore.GameData) || null;
     const CoreSave = (window.GlacialCore && window.GlacialCore.SaveSystem) || null;
+    const CoreSkyEvents = (window.GlacialCore && window.GlacialCore.SkyEvents) || null;
+    const CoreDailyManager = (window.GlacialCore && window.GlacialCore.DailyManager) || null;
     const CoreCastleRenderer = (window.GlacialCore && window.GlacialCore.CastleRenderer) || null;
+    const CorePenguinSprites = (window.GlacialCore && window.GlacialCore.PenguinSprites) || null;
+    const CoreSceneRenderer = (window.GlacialCore && window.GlacialCore.SceneRenderer) || null;
     const CoreParade = (window.GlacialCore && window.GlacialCore.ParadeEvent) || null;
     const prefersReducedMotion = () =>
       Boolean(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -505,302 +520,34 @@
     const sound = new SoundEngine();
     window.sound = sound;
 
-    // --- GAME DATA DEFINITIONS ---
-
-    const PENGUIN_SPECIES = [
-      {
-        id: 'adelie',
-        name: 'Adélie Scout',
-        avatar: '🐧',
-        accentColor: '#34d399',
-        desc: 'Lightweight & swift waddler',
-        baseCost: 15,
-        costMult: 1.15,
-        baseYield: 1,
-        baseSpeed: 1.6,
-        diveTime: 1.5,
-        color: '#1e293b'
-      },
-      {
-        id: 'gentoo',
-        name: 'Gentoo Skater',
-        avatar: '🛷',
-        accentColor: '#fb923c',
-        desc: 'Belly-slides across ice at high velocity',
-        baseCost: 100,
-        costMult: 1.16,
-        baseYield: 5,
-        baseSpeed: 2.5,
-        diveTime: 1.2,
-        color: '#ea580c'
-      },
-      {
-        id: 'chinstrap',
-        name: 'Chinstrap Diver',
-        avatar: '🤿',
-        accentColor: '#38bdf8',
-        desc: 'Deep marine specialist with large catch capacity',
-        baseCost: 800,
-        costMult: 1.17,
-        baseYield: 24,
-        baseSpeed: 1.8,
-        diveTime: 0.9,
-        color: '#0284c7'
-      },
-      {
-        id: 'emperor',
-        name: 'Emperor Monarch',
-        avatar: '👑',
-        accentColor: '#fbbf24',
-        desc: 'Regal majesty with aura speeding up nearby penguins',
-        baseCost: 5000,
-        costMult: 1.18,
-        baseYield: 120,
-        baseSpeed: 1.2,
-        diveTime: 1.8,
-        color: '#f59e0b'
-      },
-      {
-        id: 'cyber',
-        name: 'Cyber/Mecha Penguin',
-        avatar: '🤖',
-        accentColor: '#22d3ee',
-        desc: 'Equipped with rocket thrusters & sub-zero lasers',
-        baseCost: 35000,
-        costMult: 1.20,
-        baseYield: 650,
-        baseSpeed: 3.2,
-        diveTime: 0.6,
-        color: '#38bdf8'
-      }
-    ];
-
-    const PENGUIN_TRAITS = [
-      { id: 'optimistic', name: 'Optimistic', icon: '☀️', color: '#34d399', effectLabel: '+20% waddle speed', speedMult: 1.20, costMult: 1.0, yieldMult: 1.0, diveSpeedMult: 1.0 },
-      { id: 'lazy', name: 'Lazy', icon: '💤', color: '#94a3b8', effectLabel: '-20% speed, -15% cost', speedMult: 0.80, costMult: 0.85, yieldMult: 1.0, diveSpeedMult: 1.0 },
-      { id: 'greedy', name: 'Greedy', icon: '💰', color: '#fbbf24', effectLabel: '+20% catch, +10% cost', speedMult: 1.0, costMult: 1.10, yieldMult: 1.20, diveSpeedMult: 1.0 },
-      { id: 'energetic', name: 'Energetic', icon: '⚡', color: '#38bdf8', effectLabel: '+25% dive speed', speedMult: 1.05, costMult: 1.0, yieldMult: 1.0, diveSpeedMult: 1.25 },
-      { id: 'focused', name: 'Focused', icon: '🎯', color: '#c084fc', effectLabel: '+15% catch, -5% speed', speedMult: 0.95, costMult: 1.0, yieldMult: 1.15, diveSpeedMult: 1.0 },
-      { id: 'thrifty', name: 'Thrifty', icon: '🏷️', color: '#2dd4bf', effectLabel: '-10% recruit cost', speedMult: 1.0, costMult: 0.90, yieldMult: 1.0, diveSpeedMult: 1.0 }
-    ];
-
-    const WEATHER_CYCLE_SECONDS = 300; // 5 minutes per weather state
-    const COLONY_SPEECH_INTERVAL_SECONDS = 300; // 5 minutes per colony between speakers
-    const COLONY_SPEECH_INTERVAL_MS = COLONY_SPEECH_INTERVAL_SECONDS * 1000;
-    const WEATHER_TYPES = [
-      { id: 'clear', name: 'Clear', icon: '☀️', yieldMult: 1.0, snowFactor: 0.1, windFactor: 0.25, fogFactor: 0.0, badgeColor: '#38bdf8', desc: 'Crisp polar skies with clear visibility.' },
-      { id: 'light_snow', name: 'Light Snow', icon: '❄️', yieldMult: 1.0, snowFactor: 0.42, windFactor: 0.75, fogFactor: 0.08, badgeColor: '#93c5fd', desc: 'Gentle Antarctic snowfall drifting across the shelf.' },
-      { id: 'blizzard', name: 'Blizzard', icon: '🌨️', yieldMult: 1.20, snowFactor: 1.0, windFactor: 3.4, fogFactor: 1.0, badgeColor: '#c084fc', desc: 'Heavy whiteout storm decreases visibility, +20% Fish Yield!' }
-    ];
-
-    function getTraitDef(traitId) {
-      return PENGUIN_TRAITS.find(t => t.id === traitId) || PENGUIN_TRAITS[0];
-    }
-
-    function rollRandomTraitId() {
-      return PENGUIN_TRAITS[Math.floor(Math.random() * PENGUIN_TRAITS.length)].id;
-    }
-
-    // Verified true penguin facts spoken in-character by penguins
-    const PENGUIN_TRUE_FACTS = {
-      general: [
-        'True fact: Our black-and-white tuxedo pattern is called countershading — it camouflages us from predators above and below!',
-        'True fact: Penguins have a special supraorbital gland above our eyes that filters salt from seawater so we can drink it safely!',
-        'True fact: Unlike flying birds with hollow bones, penguins have dense, solid bones that help us dive deeper underwater!',
-        'True fact: We spread waterproofing oil from a preen gland near our tails across tightly packed feathers to stay warm!',
-        'True fact: Penguins do not have teeth — backward-facing spines on our tongues and throats help us grip slippery fish!',
-        'True fact: Penguins leap out of the water in arcs called porpoising to take quick breaths without slowing down!',
-        'True fact: Once a year, penguins replace every single feather at once during a dry-land phase called a catastrophic molt!',
-        'True fact: Penguins actually have knees! They stay tucked cleanly inside our warm, feathered lower bodies.'
-      ],
-      adelie: [
-        'Adélie fact: We gift smooth, round pebbles when building our nests — and sometimes sneak extra stones from neighbors!',
-        'Adélie fact: Named in 1840 after Adèle Dumont d’Urville, we are one of the true Antarctic mainland breeding penguins!',
-        'Adélie fact: Adélie colonies follow the edge of shifting sea ice for thousands of kilometers each winter to reach sunlight!'
-      ],
-      gentoo: [
-        'Gentoo fact: Gentoos are the fastest underwater swimming birds on Earth, clocking speeds up to 22 mph (36 km/h)!',
-        'Gentoo fact: You can always recognize a Gentoo by the bright white patch across the top of our head and orange-red bill!',
-        'Gentoo fact: When snow gets deep, Gentoos tuck our flippers and toboggan belly-first to glide smoothly over ice!'
-      ],
-      chinstrap: [
-        'Chinstrap fact: That crisp black band under my chin looks like a tiny helmet strap, giving Chinstraps our name!',
-        'Chinstrap fact: Chinstrap penguins take thousands of tiny 4-second microsleeps a day while guarding our nests!',
-        'Chinstrap fact: Chinstraps are bold divers that plunge up to 70 meters deep hunting Antarctic krill and fish!'
-      ],
-      emperor: [
-        'Emperor fact: Emperors are the tallest living penguin species, standing up to 4 feet (1.2 meters) tall!',
-        'Emperor fact: Emperor dads balance a single egg on our feet under a warm brood pouch all through Antarctic winter!',
-        'Emperor fact: Emperor penguins can dive deeper than any other bird — over 500 meters (1,800 ft) on one breath!',
-        'Emperor fact: Emperor colonies huddle together in rotating shifts to share body heat against -40°C polar blizzards!'
-      ],
-      cyber: [
-        'Penguin science fact: Penguin plumage packs over 100 interlocking feathers per square inch to lock out icy water!',
-        'Hydrodynamic fact: Penguins swim using rigid wings as underwater hydrofoils, practically flying beneath the waves!',
-        'Bio-thermal fact: Counter-current heat exchange keeps blood warm inside our legs while our feet stand on sub-zero ice!'
-      ]
-    };
-
-    // Myth-busted penguin misconceptions paired with why each myth is incorrect
-    const PENGUIN_MYTH_BUSTERS = {
-      general: [
-        'Myth: "Penguins only live in freezing Antarctica." Incorrect: While several species breed on Antarctic ice, most penguins live along temperate coasts—and Galápagos penguins live right on the equator!',
-        'Myth: "Penguins do not have knees." Incorrect: Penguins actually have complete leg bones including femurs and knees, tucked neatly inside their feathered lower bodies for warmth and streamlining!',
-        'Myth: "Polar bears hunt penguins in the wild." Incorrect: Wild polar bears live only in the Arctic North and penguins live in the Southern Hemisphere, so the two never cross paths in nature!',
-        'Myth: "All penguins build nests out of snow and ice." Incorrect: Most species dig soil burrows, nest in coastal grass, or stack pebbles—and Emperors incubate eggs directly on their warm feet!',
-        'Myth: "Penguins mate with the same partner forever." Incorrect: While many penguins reunite at familiar nest sites, high "divorce" rates happen whenever mates miss nesting timing or lose chicks.',
-        'Myth: "Penguins are clumsy and slow everywhere." Incorrect: Penguins toboggan faster across snow than humans walk, climb steep rocky slopes, and rocket up to 6 feet out of the ocean onto ice!',
-        'Myth: "Penguins stay warm solely from thick body fat." Incorrect: Interlocking, oil-proofed feathers trap a thermal air barrier that provides over 80% of our insulation—blubber alone is not enough!',
-        'Myth: "Penguin wings are useless little stubs." Incorrect: Our stiff, flattened wings are underwater hydrofoils engineered for "flying" through ocean currents at high speed!'
-      ],
-      adelie: [
-        'Myth: "Adélie penguins only eat fish." Incorrect: Tiny Antarctic krill actually make up the majority of an Adélie’s summer diet alongside small polar silverfish!'
-      ],
-      gentoo: [
-        'Myth: "Gentoos always toboggan everywhere on land." Incorrect: Gentoos mostly waddle upright to protect their webbed feet and only slide belly-first when fresh snow or slick downhill ice speeds travel!'
-      ],
-      chinstrap: [
-        'Myth: "A Chinstrap’s black band is just random belly speckles." Incorrect: It is a crisp, genetically distinct facial strap stretching ear-to-ear beneath the throat that identifies our species!'
-      ],
-      emperor: [
-        'Myth: "Boss Emperors hoard the warm huddle center all winter." Incorrect: Emperor colonies rotate constantly in slow, wave-like steps so every bird takes equal turns inside and on the windy edge!'
-      ],
-      cyber: [
-        'Myth: "Penguins die of thirst if they drink ocean water." Incorrect: Specialized supraorbital glands above our eyes filter excess salt straight out of seawater and flush brine droplets through our beaks!'
-      ]
-    };
-
-    // In-character sayings tailored to each penguin's assigned trait
-    const PENGUIN_TRAIT_SAYINGS = {
-      optimistic: [
-        'Nothing beats a fresh polar breeze — +20% waddle speed ahead!',
-        'Even a whiteout blizzard feels bright when you waddle with a smile!',
-        'Best glacier day ever! Who wants to race to the fishing hole?',
-        'The snow is sparkling and the fish are practically waving at us!'
-      ],
-      lazy: [
-        '*Yawn*... Can we please move the fishing hole closer to the igloo?',
-        'Why sprint across the glacier when an 80% chill waddle gets you there too?',
-        'Go on ahead... gliding slowly is my top energy-saving strategy.',
-        'Honestly, taking a little snooze on this sunbeam sounds wonderful.'
-      ],
-      greedy: [
-        'Dibs on the fattest silvery cod hiding under that ice hole!',
-        'Count every fin twice — my pouch hauls +20% more fish per dive!',
-        'More fish, shinier scales, taller stacks inside the igloo vault!',
-        'No sharing this bucket — wait, maybe one extra sardine under each flipper.'
-      ],
-      energetic: [
-        'SPLASH TIME! Watch me dive and surface +25% faster than the ripples!',
-        'Zero hesitation — turbo flippers locked and ready for another plunge!',
-        'Just finished 50 flipper-jacks! Let us hit the freezing water right now!',
-        'Can not stop, will not stop! Quickest dive turnaround on the ice shelf!'
-      ],
-      focused: [
-        'Locking eyes on a silver school darting right beneath the ice...',
-        'Steady stride, calm breath, +15% precision catch every single dive.',
-        'Tune out the freezing gusts — track the ripples and strike true.',
-        'Careful aim always brings back heavier baskets to the colony depot.'
-      ],
-      thrifty: [
-        'Smart recruiting saves 10% fish upfront for bigger glacier upgrades!',
-        'Budget tip from ice HQ: bundle up, waste zero krill, grow steady!',
-        'Scored a cozy bunk in the igloo at a crisp colony discount!',
-        'Every single fish saved today builds tomorrow’s frosted empire!'
-      ]
-    };
-
-    // Ordered newest-first; contains only the current update notice so launch alerts stay focused
-    const APP_FEATURE_RELEASES = [
-      {
-        id: '2026-11-update-v251',
-        version: '2.5.1',
-        title: "What's New in Update 2.5.1",
-        subtitle: 'Glacier tab restored, themed Glacial Rebirth confirmation modal, and clean Android Prestige visuals!',
-        features: [
-          {
-            icon: '🏰',
-            title: 'Glacier Tab Crash Fixed & Polished',
-            desc: 'Resolved the theme swatch lookup error that caused the Glacier tab to appear blank and added full diving-slot descriptions for all 6 fishing holes.'
-          },
-          {
-            icon: '💎',
-            title: 'Themed Glacial Rebirth Confirmation Modal',
-            desc: 'Replaced the native system alert prompt with a frosted-glass Glacial Rebirth dialog summarizing Frost Essence gains, resets, and preserved Legendary/Mythic perks.'
-          },
-          {
-            icon: '✨',
-            title: 'Artifact-Free Android Prestige Cutscene',
-            desc: 'Removed Android WebView GPU-glitching blur, drop-shadow, and clip-path filters in favor of crisp vector radial glows and smooth fade transitions across the full 10-second sequence.'
-          },
-          {
-            icon: '🎺',
-            title: 'Penguin Parades & Ice Castle Expansion',
-            desc: 'Includes all v2.5 highlights: 15-minute colony parades with 2× Fish Boost, 6-tier Ice Castle upgrades, and up to 6 carving fishing holes.'
-          }
-        ]
-      }
-    ];
-    const LATEST_FEATURE_RELEASE = APP_FEATURE_RELEASES[0];
-
-    // Update 1.8 Balance & Colony Constants (15% reduction from prior +5% / +15% rates)
-    const GLACIER_LEVEL_BONUS_RATE = 0.0425; // +4.25% per Glacier Level
-    const COLONY_SIZE_BONUS_RATE = 0.1275;   // +12.75% per Penguin Level (every 10 recruits)
-    const MAX_VISIBLE_PER_COLONY = 6;        // Max 6 visible sprites per unlocked species
-
-    const COLONY_SYNERGIES = [
-      {
-        id: 'syn_ice_scouts',
-        name: 'Ice Scout Pair',
-        icon: '🛷',
-        reqText: '10+ Adélie & 5+ Gentoo',
-        buffText: '+6% Walk & Slide Speed',
-        check: (s) => (s.penguins.adelie?.count || 0) >= 10 && (s.penguins.gentoo?.count || 0) >= 5,
-        apply: (agg) => { agg.walkSlideMult *= 1.06; }
-      },
-      {
-        id: 'syn_deep_crew',
-        name: 'Deep-Sea Crew',
-        icon: '🤿',
-        reqText: '10+ Gentoo & 5+ Chinstrap',
-        buffText: '+8% Dive Speed',
-        check: (s) => (s.penguins.gentoo?.count || 0) >= 10 && (s.penguins.chinstrap?.count || 0) >= 5,
-        apply: (agg) => { agg.diveSpeedMult *= 1.08; }
-      },
-      {
-        id: 'syn_royal_court',
-        name: 'Royal Court',
-        icon: '👑',
-        reqText: '10+ Chinstrap & 5+ Emperor',
-        buffText: '+10% Catch Yield',
-        check: (s) => (s.penguins.chinstrap?.count || 0) >= 10 && (s.penguins.emperor?.count || 0) >= 5,
-        apply: (agg) => { agg.catchYieldMult *= 1.10; }
-      },
-      {
-        id: 'syn_frost_singularity',
-        name: 'Frost Singularity',
-        icon: '🤖',
-        reqText: '5+ Emperor & 1+ Cyber',
-        buffText: '+12% All Fish Output',
-        check: (s) => (s.penguins.emperor?.count || 0) >= 5 && (s.penguins.cyber?.count || 0) >= 1,
-        apply: (agg) => { agg.allFishMult *= 1.12; }
-      }
-    ];
-
-    function formatPct(value) {
-      const rounded = Math.round((Number(value) || 0) * 100) / 100;
-      if (Math.abs(rounded - Math.round(rounded)) < 0.001) {
-        return String(Math.round(rounded));
-      }
-      return rounded.toFixed(2).replace(/0$/, '');
-    }
-
-    function formatWeatherCountdown(seconds) {
-      const clamped = Math.max(0, Math.ceil(Number(seconds) || 0));
-      const mins = Math.floor(clamped / 60);
-      const secs = clamped % 60;
-      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    }
+    // Static game data, catalogs, and formatting helpers loaded from ./js/game-data.js
+    const {
+      PENGUIN_SPECIES,
+      PENGUIN_TRAITS,
+      WEATHER_CYCLE_SECONDS,
+      COLONY_SPEECH_INTERVAL_SECONDS,
+      COLONY_SPEECH_INTERVAL_MS,
+      WEATHER_TYPES,
+      getTraitDef,
+      rollRandomTraitId,
+      PENGUIN_TRUE_FACTS,
+      PENGUIN_MYTH_BUSTERS,
+      PENGUIN_TRAIT_SAYINGS,
+      APP_FEATURE_RELEASES,
+      LATEST_FEATURE_RELEASE,
+      GLACIER_LEVEL_BONUS_RATE,
+      COLONY_SIZE_BONUS_RATE,
+      MAX_VISIBLE_PER_COLONY,
+      COLONY_SYNERGIES,
+      GLACIER_TECH,
+      AURORA_PERKS_POOL,
+      ACHIEVEMENTS_LIST,
+      GLACIAL_LORE_CHRONICLES,
+      formatPct,
+      formatWeatherCountdown,
+      formatPlaytime,
+      getColonyRank
+    } = CoreGameData;
 
     function formatHudFish(num) {
       if (CoreEconomy && typeof CoreEconomy.formatHudFish === 'function') {
@@ -826,856 +573,23 @@
       return getTraitDef(entries[0][0]);
     }
 
-    const GLACIER_TECH = [
-      {
-        id: 'thermal_parkas',
-        name: 'Thermal Insulation',
-        icon: '🧥',
-        desc: 'Colony waddles +15% faster per level',
-        baseCost: 50,
-        costMult: 1.35,
-        effect: 0.15
-      },
-      {
-        id: 'reinforced_line',
-        name: 'Reinforced Fishing Lines',
-        icon: '🎣',
-        desc: 'Catch capacity +25% per level',
-        baseCost: 200,
-        costMult: 1.4,
-        effect: 0.25
-      },
-      {
-        id: 'smooth_ice',
-        name: 'Smooth Ice Polishing',
-        icon: '⛸️',
-        desc: 'Slide velocity & frequency +30% per level',
-        baseCost: 1000,
-        costMult: 1.45,
-        effect: 0.30
-      },
-      {
-        id: 'bioluminescent_krill',
-        name: 'Bioluminescent Krill',
-        icon: '🦐',
-        desc: 'Tap clicks yield +50% extra fish per level',
-        baseCost: 5000,
-        costMult: 1.5,
-        effect: 0.50
-      },
-      {
-        id: 'cryo_storage',
-        name: 'Sub-Zero Cryo Storage',
-        icon: '❄️',
-        desc: 'Depot banking bonus +20% per level',
-        baseCost: 25000,
-        costMult: 1.6,
-        effect: 0.20
-      },
-      {
-        id: 'aurora_coils',
-        name: 'Aurora Resonance Coils',
-        icon: '🌌',
-        desc: 'Aurora Blessing events arrive 4s faster per level',
-        baseCost: 100000,
-        costMult: 1.7,
-        effect: 4
-      }
-    ];
+    // DailyObjectivesManager loaded from ./js/daily-manager.js
+    const DailyManagerClass = (CoreDailyManager && CoreDailyManager.DailyObjectivesManager) || DailyObjectivesManager;
+    const dailyManager = new DailyManagerClass({
+      getState: () => (typeof state !== 'undefined' ? state : null),
+      getSound: () => sound,
+      formatNumber: (n) => (typeof formatNumber === 'function' ? formatNumber(n) : String(n)),
+      showToast: (msg, icon, opts) => { if (typeof showToast === 'function') showToast(msg, icon, opts); },
+      openDailyTab: () => { if (typeof openDailyTabFromNotification === 'function') openDailyTabFromNotification(); },
+      updateSheetContent: () => { if (typeof updateSheetContent === 'function') updateSheetContent(); },
+      updateHUD: () => { if (typeof updateHUD === 'function') updateHUD(); }
+    });
 
-    // 28 UNIQUE AURORA BLESSING PERKS
-    const AURORA_PERKS_POOL = [
-      { id: 't_pebble', tier: 1, rarity: 'trivial', name: 'Chilly Pebble', icon: '🪨', desc: 'Tripped on a smooth arctic pebble. +1 Flat Fish immediately.', grant: (g) => { g.addFish(1); } },
-      { id: 't_slush', tier: 1, rarity: 'trivial', name: 'Slushy Feet (Debuff)', icon: '🧊', desc: 'Cold slush! -8% waddle speed for 20s, but grants +5 flat fish.', grant: (g) => { g.addFish(5); g.slushDebuffTimer = 20; } },
-      { id: 't_breeze', tier: 1, rarity: 'trivial', name: 'Breeze of Frost', icon: '💨', desc: 'A tiny polar gust blows by. +0.5% temporary slide speed.', grant: (g) => { g.tempSpeedBoost += 0.005; } },
-
-      { id: 'c_booties', tier: 2, rarity: 'common', name: 'Thermal Booties', icon: '🥾', desc: '+15% penguin waddle speed across all species permanently.', grant: () => {} },
-      { id: 'c_herring', tier: 2, rarity: 'common', name: 'Schooling Herring', icon: '🐟', desc: 'Dense fish school in the hole! +20% catch capacity permanently.', grant: () => {} },
-      { id: 'c_quickcatch', tier: 2, rarity: 'common', name: 'Quick Net Catch', icon: '⏱️', desc: 'Instantly gain 30 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(25, g.dps * 30)); } },
-      { id: 'c_flappers', tier: 2, rarity: 'common', name: 'Crisp Flappers', icon: '🪽', desc: '+35% manual screen and penguin tap/click fish yield.', grant: () => {} },
-      { id: 'c_sonar', tier: 2, rarity: 'common', name: 'Echo Ice Finder', icon: '📡', desc: '+12% catch yield and +10% dive speed permanently.', grant: () => {} },
-      { id: 'c_wax', tier: 2, rarity: 'common', name: 'Glacier Belly Wax', icon: '🧈', desc: '+25% belly-slide speed and +10% tap fish yield permanently.', grant: () => {} },
-      { id: 'c_krill_snack', tier: 2, rarity: 'common', name: 'Krill Ration Crate', icon: '🦐', desc: 'Instantly harvest 45 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(40, g.dps * 45)); } },
-
-      { id: 'r_sledding', tier: 3, rarity: 'rare', name: 'Glacial Sledding League', icon: '🛷', desc: 'Gentoo and sliding penguins gain +50% slide speed permanently.', grant: () => {} },
-      { id: 'r_trench', tier: 3, rarity: 'rare', name: 'Deep Trench Oxygen', icon: '🌊', desc: 'Diving cycle 25% faster and carries +40% dive capacity.', grant: () => {} },
-      { id: 'r_squid', tier: 3, rarity: 'rare', name: 'Abyssal Squid Haul', icon: '🦑', desc: 'Instantly harvest 100 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(90, g.dps * 100)); } },
-      { id: 'r_magnetic', tier: 3, rarity: 'rare', name: 'Aurora Magnetic Krill', icon: '🧲', desc: 'Rare Golden Fish spawns swim across the ice shelf twice as often for 120s.', grant: (g) => { g.goldenFishTimer = 120; } },
-      { id: 'r_cryo_net', tier: 3, rarity: 'rare', name: 'Cryo-Weave Trawler', icon: '🕸️', desc: '+30% catch capacity and +20% tap fish yield permanently.', grant: () => {} },
-      { id: 'r_storm_sail', tier: 3, rarity: 'rare', name: 'Gale-Force Flippers', icon: '⛵', desc: '+25% waddle speed and +30% belly-slide speed permanently.', grant: () => {} },
-      { id: 'r_polar_surge', tier: 3, rarity: 'rare', name: 'Polar Current Surge', icon: '🌀', desc: 'Double (2x) all fish yield for 60s and immediately gain 75s of fish!', grant: (g) => { g.polarSurgeTimer = 60; g.addFish(Math.max(70, g.dps * 75)); } },
-      { id: 'r_ember_lantern', tier: 3, rarity: 'rare', name: 'Thermal Igloo Lanterns', icon: '🏮', desc: '+20% dive speed and +25% catch capacity permanently.', grant: () => {} },
-
-      { id: 'l_frenzy', tier: 4, rarity: 'legendary', name: 'Blizzard Feeding Frenzy', icon: '🌨️', desc: 'Antarctic storm triples (3x) fish yield for 45s & grants +15% catch permanently!', grant: (g) => { g.frenzyTimer = 45; } },
-      { id: 'l_monarch', tier: 4, rarity: 'legendary', name: "Emperor's Royal Decree", icon: '👑', desc: 'Emperor Monarch aura +100%, and boosts all penguin speeds by +50% permanently.', grant: () => {} },
-      { id: 'l_mammoth', tier: 4, rarity: 'legendary', name: 'Mammoth Ice Cache', icon: '🦣', desc: 'Unearth frozen cache (+300s instant fish) & gain +20% catch yield permanently!', grant: (g) => { g.addFish(Math.max(250, g.dps * 300)); } },
-      { id: 'l_glacier_heart', tier: 4, rarity: 'legendary', name: 'Heart of the Glacier', icon: '💠', desc: 'Permanent +50% catch yield and +35% tap yield across all rebirths!', grant: () => {} },
-      { id: 'l_chrono_flipper', tier: 4, rarity: 'legendary', name: 'Chrono-Slide Mastery', icon: '⏳', desc: 'Permanent +40% waddle speed, +60% slide speed, and +30% dive speed!', grant: () => {} },
-      { id: 'l_golden_aurora', tier: 4, rarity: 'legendary', name: 'Golden Aurora Conduit', icon: '🌟', desc: 'Permanent +40% catch yield & activates 240s Golden Fish frequency boost!', grant: (g) => { g.goldenFishTimer = Math.max(g.goldenFishTimer || 0, 240); } },
-
-      { id: 'm_supernova', tier: 5, rarity: 'mythic', name: 'Cosmic Glacial Supernova', icon: '🌌', desc: '+35% catch & +30% speed forever, plus 60s of +4x yield & instant 600s fish!', grant: (g) => { g.addFish(Math.max(600, g.dps * 600)); g.supernovaTimer = 60; } },
-      { id: 'm_eternal_frost', tier: 5, rarity: 'mythic', name: "Eternal Sovereign's Mantle", icon: '🔱', desc: 'Mythic power retained forever: +100% catch yield, +50% speed, and +50% dive speed!', grant: () => {} },
-      { id: 'm_starlight_nexus', tier: 5, rarity: 'mythic', name: 'Starlight Tap Singularity', icon: '💫', desc: 'Mythic radiance retained forever: +150% tap yield, +60% slide speed & +450s fish!', grant: (g) => { g.addFish(Math.max(450, g.dps * 450)); } },
-      { id: 'm_glacial_ascension', tier: 5, rarity: 'mythic', name: 'Glacial Ascension Core', icon: '❄️', desc: 'Mythic core retained forever: +75% catch & tap yield, plus 45s 3x Frenzy!', grant: (g) => { g.frenzyTimer = Math.max(g.frenzyTimer || 0, 45); } }
-    ];
-
-    // =========================================================================
-    // DAILY OBJECTIVES MANAGER
-    // =========================================================================
-    class DailyObjectivesManager {
-      constructor() {
-        this.dateKey = this.getCycleDateKey();
-        this.streakCount = 0;
-        this.bestStreak = 0;
-        this.lastStreakDateKey = '';
-        this.permanentFishBonusPct = 0;
-        this.totalGoalsCompleted = 0;
-        this.dailyBonusCleared = 0;
-        this.bonusObjective = null;
-        this.objectives = this.getDefaultObjectives(this.dateKey);
-      }
-
-      // Daily reset occurs every day at 3:00 AM local time.
-      getCycleDateKey(nowMs = Date.now()) {
-        if (CoreDaily) return CoreDaily.getCycleDateKey(nowMs);
-        const shifted = new Date(nowMs - 3 * 3600 * 1000);
-        const y = shifted.getFullYear();
-        const m = String(shifted.getMonth() + 1).padStart(2, '0');
-        const d = String(shifted.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-      }
-
-      shiftCycleDateKey(dateKey, deltaDays = 0) {
-        if (CoreDaily) return CoreDaily.shiftCycleDateKey(dateKey, deltaDays);
-        const parts = String(dateKey || '').split('-').map(n => parseInt(n, 10));
-        if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) {
-          return '';
-        }
-        const dt = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + deltaDays));
-        const y = dt.getUTCFullYear();
-        const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
-        const d = String(dt.getUTCDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-      }
-
-      getPreviousCycleDateKey(dateKey = this.dateKey) {
-        return this.shiftCycleDateKey(dateKey, -1);
-      }
-
-      isConsecutiveCycleDay(prevKey, nextKey) {
-        if (CoreDaily) return CoreDaily.isConsecutiveCycleDay(prevKey, nextKey);
-        if (!prevKey || !nextKey) return false;
-        return this.shiftCycleDateKey(prevKey, 1) === nextKey;
-      }
-
-      syncStreakStatusForCycle(currentKey = this.dateKey) {
-        if (CoreDaily) {
-          const synced = CoreDaily.syncStreakForCycle(this, currentKey);
-          this.streakCount = synced.streakCount;
-          this.bestStreak = synced.bestStreak;
-          this.lastStreakDateKey = synced.lastStreakDateKey;
-          return;
-        }
-        if (
-          this.lastStreakDateKey &&
-          this.lastStreakDateKey !== currentKey &&
-          !this.isConsecutiveCycleDay(this.lastStreakDateKey, currentKey)
-        ) {
-          this.streakCount = 0;
-        }
-      }
-
-      getTimeUntilNextResetText(nowMs = Date.now()) {
-        const now = new Date(nowMs);
-        const nextReset = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 3, 0, 0, 0);
-        if (now.getTime() >= nextReset.getTime()) {
-          nextReset.setDate(nextReset.getDate() + 1);
-        }
-        const diffMs = Math.max(0, nextReset.getTime() - nowMs);
-        const hrs = Math.floor(diffMs / 3600000);
-        const mins = Math.floor((diffMs % 3600000) / 60000);
-        return `${hrs}h ${mins}m`;
-      }
-
-      hashDateKey(dateKey) {
-        let h = 2166136261 >>> 0;
-        const str = String(dateKey || 'default');
-        for (let i = 0; i < str.length; i++) {
-          h ^= str.charCodeAt(i);
-          h = Math.imul(h, 16777619);
-        }
-        return h >>> 0;
-      }
-
-      createSeededRng(seedNum) {
-        let s = (seedNum || 1) >>> 0;
-        return () => {
-          s = (Math.imul(1664525, s) + 1013904223) >>> 0;
-          return s / 4294967296;
-        };
-      }
-
-      getGoalScaleTier(completedCount = this.totalGoalsCompleted) {
-        const completed = Math.max(0, Number(completedCount) || 0);
-        return 1 + Math.floor(completed / 3);
-      }
-
-      getGoalScaleMultiplier(completedCount = this.totalGoalsCompleted) {
-        const completed = Math.max(0, Number(completedCount) || 0);
-        return 1 + completed * 0.15;
-      }
-
-      formatGoalCount(num) {
-        if (typeof formatNumber === 'function') {
-          return formatNumber(num);
-        }
-        return Number(num || 0).toLocaleString();
-      }
-
-      formatObjectiveDesc(type, target, fallback = '') {
-        const fmt = this.formatGoalCount(target);
-        switch (type) {
-          case 'slides':
-            return `Perform ${fmt} belly slide${target === 1 ? '' : 's'} across ice sheets`;
-          case 'collect_fish':
-            return `Collect ${fmt} fish from diving, hauls, or tapping`;
-          case 'taps':
-            return `Tap the ice shelf or cheer penguins ${fmt} time${target === 1 ? '' : 's'}`;
-          case 'penguin_taps':
-            return `Cheer directly on ${fmt} penguin${target === 1 ? '' : 's'} on the ice`;
-          case 'dives':
-            return `Complete ${fmt} dive${target === 1 ? '' : 's'} at fishing holes`;
-          case 'aurora':
-            return `Claim ${fmt} Aurora Blessing event${target === 1 ? '' : 's'}`;
-          case 'recruits':
-            return `Recruit ${fmt} new penguin${target === 1 ? '' : 's'} to the squad`;
-          case 'tech_upgrades':
-            return `Research ${fmt} Glacier Tech upgrade${target === 1 ? '' : 's'}`;
-          case 'blizzard_fish':
-            return `Gather ${fmt} fish during a Blizzard storm`;
-          default:
-            return fallback;
-        }
-      }
-
-      scaleObjectiveTemplate(template, completedCount = this.totalGoalsCompleted, options = {}) {
-        const completed = Math.max(0, Number(completedCount) || 0);
-        const tier = this.getGoalScaleTier(completed);
-
-        const fishTargetMult = 1 + completed * 0.25 + Math.pow(completed, 1.25) * 0.08;
-        const actionTargetMult = 1 + Math.min(4.0, completed * 0.12);
-        const rewardFishMult = 1 + completed * 0.30 + Math.pow(completed, 1.25) * 0.10;
-
-        let scaledTarget = template.target;
-        if (template.type === 'collect_fish' || template.type === 'blizzard_fish') {
-          const raw = template.target * fishTargetMult;
-          const step = raw >= 20000 ? 500 : (raw >= 5000 ? 100 : 50);
-          scaledTarget = Math.max(template.target, Math.round(raw / step) * step);
-        } else if (
-          template.type === 'taps' ||
-          template.type === 'penguin_taps' ||
-          template.type === 'dives' ||
-          template.type === 'slides'
-        ) {
-          scaledTarget = Math.max(template.target, Math.round(template.target * actionTargetMult));
-        } else if (template.type === 'recruits' || template.type === 'tech_upgrades') {
-          scaledTarget = Math.min(template.target + 8, template.target + Math.floor(completed / 4));
-        } else if (template.type === 'aurora') {
-          scaledTarget = Math.min(5, template.target + Math.floor(completed / 8));
-        }
-
-        let scaledRewardAmount = template.rewardAmount;
-        let rewardLabel = template.rewardLabel;
-        if (template.rewardType === 'fish') {
-          const rawReward = template.rewardAmount * rewardFishMult;
-          const rStep = rawReward >= 10000 ? 250 : (rawReward >= 2000 ? 50 : 25);
-          scaledRewardAmount = Math.max(template.rewardAmount, Math.round(rawReward / rStep) * rStep);
-          rewardLabel = `+${this.formatGoalCount(scaledRewardAmount)} 🐟 Fish`;
-        } else if (template.rewardType === 'shards') {
-          scaledRewardAmount = Math.min(5, template.rewardAmount + Math.floor(completed / 6));
-          rewardLabel = `+${scaledRewardAmount} 💎 Frost Essence`;
-        }
-
-        const desc = this.formatObjectiveDesc(template.type, scaledTarget, template.desc);
-
-        return {
-          ...template,
-          id: options.id || template.id,
-          title: options.title || template.title,
-          target: scaledTarget,
-          desc,
-          rewardAmount: scaledRewardAmount,
-          rewardLabel,
-          scaleTier: tier,
-          isBonus: Boolean(options.isBonus),
-          progress: 0,
-          claimed: false
-        };
-      }
-
-      getTemplateCategories() {
-        return [
-          [
-            { id: 'obj_slides_5', type: 'slides', title: 'Glacial Sledder', desc: 'Perform 5 belly slides across ice sheets', icon: '🛷', target: 5, rewardType: 'fish', rewardAmount: 300, rewardLabel: '+300 🐟 Fish' },
-            { id: 'obj_slides_14', type: 'slides', title: 'Belly-Slide Blitz', desc: 'Perform 14 belly slides across ice sheets', icon: '🛷', target: 14, rewardType: 'fish', rewardAmount: 850, rewardLabel: '+850 🐟 Fish' }
-          ],
-          [
-            { id: 'obj_fish_500', type: 'collect_fish', title: 'Tundra Catch', desc: 'Collect 500 fish from diving or tapping', icon: '🐟', target: 500, rewardType: 'fish', rewardAmount: 500, rewardLabel: '+500 🐟 Fish' },
-            { id: 'obj_fish_2500', type: 'collect_fish', title: 'Bountiful Ice Haul', desc: 'Collect 2,500 fish from diving or tapping', icon: '🐟', target: 2500, rewardType: 'fish', rewardAmount: 1800, rewardLabel: '+1.8K 🐟 Fish' },
-            { id: 'obj_fish_10k', type: 'collect_fish', title: 'Glacier Feast', desc: 'Collect 10,000 fish for the colony depot', icon: '🐠', target: 10000, rewardType: 'shards', rewardAmount: 1, rewardLabel: '+1 💎 Frost Essence' }
-          ],
-          [
-            { id: 'obj_taps_20', type: 'taps', title: 'Cheering Flipper', desc: 'Tap the screen or cheer penguins 20 times', icon: '👆', target: 20, rewardType: 'fish', rewardAmount: 350, rewardLabel: '+350 🐟 Fish' },
-            { id: 'obj_taps_50', type: 'taps', title: 'Rhythmic Chime', desc: 'Tap the ice shelf or penguins 50 times', icon: '👆', target: 50, rewardType: 'fish', rewardAmount: 900, rewardLabel: '+900 🐟 Fish' }
-          ],
-          [
-            { id: 'obj_ptap_8', type: 'penguin_taps', title: 'Penguin Whisperer', desc: 'Cheer directly on 8 penguins on the ice', icon: '🐧', target: 8, rewardType: 'fish', rewardAmount: 550, rewardLabel: '+550 🐟 Fish' },
-            { id: 'obj_ptap_18', type: 'penguin_taps', title: 'Morale Captain', desc: 'Cheer directly on 18 penguins on the ice', icon: '💖', target: 18, rewardType: 'fish', rewardAmount: 1200, rewardLabel: '+1.2K 🐟 Fish' }
-          ],
-          [
-            { id: 'obj_dives_8', type: 'dives', title: 'Ice Hole Diver', desc: 'Complete 8 dives at fishing holes', icon: '🤿', target: 8, rewardType: 'fish', rewardAmount: 600, rewardLabel: '+600 🐟 Fish' },
-            { id: 'obj_dives_22', type: 'dives', title: 'Abyssal Plunger', desc: 'Complete 22 dives at fishing holes', icon: '🤿', target: 22, rewardType: 'fish', rewardAmount: 1600, rewardLabel: '+1.6K 🐟 Fish' }
-          ],
-          [
-            { id: 'obj_aurora_1', type: 'aurora', title: 'Aurora Seeker', desc: 'Claim 1 Aurora Blessing event', icon: '✨', target: 1, rewardType: 'shards', rewardAmount: 1, rewardLabel: '+1 💎 Frost Essence' },
-            { id: 'obj_aurora_2', type: 'aurora', title: 'Cosmic Watcher', desc: 'Claim 2 Aurora Blessing events', icon: '🌌', target: 2, rewardType: 'shards', rewardAmount: 2, rewardLabel: '+2 💎 Frost Essence' }
-          ],
-          [
-            { id: 'obj_recruits_2', type: 'recruits', title: 'Colony Expansion', desc: 'Recruit 2 new penguins to the squad', icon: '🧭', target: 2, rewardType: 'fish', rewardAmount: 700, rewardLabel: '+700 🐟 Fish' },
-            { id: 'obj_recruits_5', type: 'recruits', title: 'Squad Marshal', desc: 'Recruit 5 new penguins to the squad', icon: '🏅', target: 5, rewardType: 'shards', rewardAmount: 1, rewardLabel: '+1 💎 Frost Essence' }
-          ],
-          [
-            { id: 'obj_tech_1', type: 'tech_upgrades', title: 'Polar Researcher', desc: 'Research 1 Glacier Tech upgrade', icon: '🔬', target: 1, rewardType: 'fish', rewardAmount: 750, rewardLabel: '+750 🐟 Fish' },
-            { id: 'obj_tech_3', type: 'tech_upgrades', title: 'Cryo Innovator', desc: 'Research 3 Glacier Tech upgrades', icon: '🔬', target: 3, rewardType: 'shards', rewardAmount: 1, rewardLabel: '+1 💎 Frost Essence' }
-          ],
-          [
-            { id: 'obj_blizzard_300', type: 'blizzard_fish', title: 'Storm Harvester', desc: 'Gather 300 fish during a Blizzard storm', icon: '🌨️', target: 300, rewardType: 'fish', rewardAmount: 950, rewardLabel: '+950 🐟 Fish' }
-          ]
-        ];
-      }
-
-      getDefaultObjectives(dateKey = this.dateKey, completedCount = this.totalGoalsCompleted) {
-        const templatesByCategory = this.getTemplateCategories();
-        const rng = this.createSeededRng(this.hashDateKey(dateKey));
-
-        // Pick one variant per category, then deterministically shuffle and select 5 distinct daily goals.
-        const candidates = templatesByCategory.map(variants => {
-          const picked = variants[Math.floor(rng() * variants.length)];
-          return this.scaleObjectiveTemplate(picked, completedCount);
-        });
-
-        for (let i = candidates.length - 1; i > 0; i--) {
-          const j = Math.floor(rng() * (i + 1));
-          const tmp = candidates[i];
-          candidates[i] = candidates[j];
-          candidates[j] = tmp;
-        }
-
-        const selected = candidates.slice(0, 5);
-        // Ensure at least one Frost Essence daily reward each cycle
-        if (!selected.some(o => o.rewardType === 'shards')) {
-          const shardFallback = candidates.find(o => o.rewardType === 'shards');
-          if (shardFallback) {
-            selected[selected.length - 1] = shardFallback;
-          }
-        }
-        return selected;
-      }
-
-      createScaledBonusObjective() {
-        const activeCategories = this.getTemplateCategories().filter(variants =>
-          ['slides', 'collect_fish', 'taps', 'penguin_taps', 'dives'].includes(variants[0].type)
-        );
-        const pool = activeCategories.flat();
-        const seed = this.hashDateKey(`${this.dateKey}_bonus_${this.dailyBonusCleared}_${this.totalGoalsCompleted}`);
-        const rng = this.createSeededRng(seed);
-        const picked = pool[Math.floor(rng() * pool.length)] || pool[0];
-        const bonusNum = (this.dailyBonusCleared || 0) + 1;
-        return this.scaleObjectiveTemplate(picked, this.totalGoalsCompleted, {
-          id: `bonus_${this.dateKey}_${bonusNum}_${this.totalGoalsCompleted}`,
-          title: `${picked.title} (Bonus #${bonusNum})`,
-          isBonus: true
-        });
-      }
-
-      ensureBonusObjectiveState() {
-        const allDailyClaimed = Array.isArray(this.objectives) && this.objectives.length > 0 && this.objectives.every(o => o.claimed);
-        if (allDailyClaimed && !this.bonusObjective) {
-          this.bonusObjective = this.createScaledBonusObjective();
-        }
-      }
-
-      checkDailyReset(nowMs = Date.now()) {
-        const currentKey = this.getCycleDateKey(nowMs);
-        this.syncStreakStatusForCycle(currentKey);
-        if (this.dateKey !== currentKey) {
-          this.dateKey = currentKey;
-          this.dailyBonusCleared = 0;
-          this.bonusObjective = null;
-          this.objectives = this.getDefaultObjectives(currentKey, this.totalGoalsCompleted);
-          if (typeof state !== 'undefined' && state && typeof state.save === 'function') {
-            state.save();
-            if (state.currentTab === 'daily' && typeof updateSheetContent === 'function') {
-              updateSheetContent();
-            }
-          }
-          if (typeof showToast === 'function') {
-            showToast('📅 Daily Goals refreshed for the new day!', '🎯', {
-              category: 'goal',
-              onClick: () => { if (typeof openDailyTabFromNotification === 'function') openDailyTabFromNotification(); },
-              durationMs: 4200
-            });
-          }
-          return true;
-        }
-        return false;
-      }
-
-      track(type, amount = 1) {
-        this.checkDailyReset();
-        let updated = false;
-        const targets = Array.isArray(this.objectives) ? [...this.objectives] : [];
-        if (this.bonusObjective && !this.bonusObjective.claimed) {
-          targets.push(this.bonusObjective);
-        }
-        targets.forEach(obj => {
-          if (obj.type === type && !obj.claimed) {
-            if (obj.progress < obj.target) {
-              obj.progress = Math.min(obj.target, obj.progress + amount);
-              updated = true;
-              if (obj.progress >= obj.target) {
-                if (typeof showToast === 'function') {
-                  showToast(`🎯 Objective Ready: "${obj.title}"!`, '🎁', {
-                    category: 'goal',
-                    onClick: () => { if (typeof openDailyTabFromNotification === 'function') openDailyTabFromNotification(); },
-                    durationMs: 4500
-                  });
-                }
-                if (typeof sound !== 'undefined' && sound.playChirp) sound.playChirp();
-              }
-            }
-          }
-        });
-        if (updated && typeof state !== 'undefined' && state && state.currentTab === 'daily' && typeof updateSheetContent === 'function') {
-          updateSheetContent();
-        }
-      }
-
-      claim(id, nowMs = Date.now(), silent = false) {
-        let obj = this.objectives.find(o => o.id === id);
-        if (!obj && this.bonusObjective && this.bonusObjective.id === id) {
-          obj = this.bonusObjective;
-        }
-        if (!obj || obj.claimed || obj.progress < obj.target) return false;
-
-        obj.claimed = true;
-        this.totalGoalsCompleted = (this.totalGoalsCompleted || 0) + 1;
-        if (!silent && typeof sound !== 'undefined' && sound.playLevelUp) sound.playLevelUp();
-
-        const cycleKey = this.dateKey || this.getCycleDateKey(nowMs);
-        this.syncStreakStatusForCycle(cycleKey);
-
-        let streakToast = '';
-        if (CoreDaily) {
-          const streakRes = CoreDaily.applyStreakForGoalClaim(this, cycleKey);
-          this.streakCount = streakRes.streakCount;
-          this.bestStreak = streakRes.bestStreak;
-          this.lastStreakDateKey = streakRes.lastStreakDateKey;
-          this.permanentFishBonusPct = streakRes.permanentFishBonusPct;
-          streakToast = streakRes.streakToast;
-        } else if (this.lastStreakDateKey !== cycleKey) {
-          const isConsecutive = this.isConsecutiveCycleDay(this.lastStreakDateKey, cycleKey);
-          if (isConsecutive) {
-            this.streakCount = (this.streakCount || 0) + 1;
-            const bonusGain = 2;
-            this.permanentFishBonusPct = (this.permanentFishBonusPct || 0) + bonusGain;
-            streakToast = `🔥 ${this.streakCount}-Day Streak! +${bonusGain}% Permanent Fish Bonus (+${this.permanentFishBonusPct}% total)!`;
-          } else {
-            this.streakCount = 1;
-            streakToast = '🔥 1-Day Streak started! Complete a goal tomorrow for +2% Permanent Fish!';
-          }
-          this.lastStreakDateKey = cycleKey;
-          if (this.streakCount > (this.bestStreak || 0)) {
-            this.bestStreak = this.streakCount;
-          }
-        }
-
-        if (obj.rewardType === 'fish') {
-          state.addFish(obj.rewardAmount);
-          if (!silent && typeof sound !== 'undefined' && sound.triggerHaptic) sound.triggerHaptic('collect');
-        } else if (obj.rewardType === 'shards') {
-          const safeShards = CoreEconomy ? CoreEconomy.sanitizeInteger(obj.rewardAmount, 1, 1, 100) : Math.max(1, Math.floor(obj.rewardAmount || 1));
-          state.prestigeShards += safeShards;
-          state.totalEssenceEarned = (state.totalEssenceEarned || 0) + safeShards;
-          if (!silent && typeof sound !== 'undefined' && sound.triggerHaptic) sound.triggerHaptic('collect');
-        }
-
-        if (obj.isBonus) {
-          this.dailyBonusCleared = (this.dailyBonusCleared || 0) + 1;
-          this.bonusObjective = this.createScaledBonusObjective();
-        } else {
-          this.ensureBonusObjectiveState();
-        }
-
-        if (!silent) {
-          if (typeof state !== 'undefined' && state) {
-            if (typeof state.calculateDPS === 'function') state.calculateDPS();
-            if (typeof state.save === 'function') state.save({ immediate: true });
-          }
-          if (typeof showToast === 'function') {
-            showToast(streakToast || `🎁 Claimed ${obj.rewardLabel}!`, '🎁', { category: 'goal' });
-          }
-          if (typeof updateSheetContent === 'function') updateSheetContent();
-          if (typeof updateHUD === 'function') updateHUD();
-        }
-        return { rewardType: obj.rewardType, rewardAmount: obj.rewardAmount, streakToast };
-      }
-
-      claimAllReady(nowMs = Date.now()) {
-        const readyIds = this.objectives
-          .filter(o => !o.claimed && o.progress >= o.target)
-          .map(o => o.id);
-        if (this.bonusObjective && !this.bonusObjective.claimed && this.bonusObjective.progress >= this.bonusObjective.target) {
-          readyIds.push(this.bonusObjective.id);
-        }
-        if (readyIds.length === 0) return 0;
-
-        let claimedCount = 0;
-        let totalFish = 0;
-        let totalShards = 0;
-        let streakMsg = '';
-
-        readyIds.forEach(id => {
-          const res = this.claim(id, nowMs, true);
-          if (res) {
-            claimedCount++;
-            if (res.rewardType === 'fish') totalFish += res.rewardAmount;
-            if (res.rewardType === 'shards') totalShards += res.rewardAmount;
-            if (res.streakToast) streakMsg = res.streakToast;
-          }
-        });
-
-        if (claimedCount > 0) {
-          if (typeof sound !== 'undefined') {
-            if (sound.playLevelUp) sound.playLevelUp();
-            if (sound.triggerHaptic) sound.triggerHaptic('collect');
-          }
-          if (typeof state !== 'undefined' && state) {
-            if (typeof state.calculateDPS === 'function') state.calculateDPS();
-            if (typeof state.save === 'function') state.save();
-          }
-          const parts = [];
-          if (totalFish > 0) parts.push(`+${formatNumber(totalFish)} 🐟`);
-          if (totalShards > 0) parts.push(`+${totalShards} 💎`);
-          const summary = `🎁 Claimed ${claimedCount} Goals (${parts.join(' & ')})!`;
-          if (typeof showToast === 'function') {
-            showToast(streakMsg ? `${summary} ${streakMsg}` : summary, '🎁', { category: 'goal', durationMs: 3800 });
-          }
-          if (typeof updateSheetContent === 'function') updateSheetContent();
-          if (typeof updateHUD === 'function') updateHUD();
-        }
-        return claimedCount;
-      }
-
-      getClaimableCount() {
-        let count = this.objectives.filter(o => !o.claimed && o.progress >= o.target).length;
-        if (this.bonusObjective && !this.bonusObjective.claimed && this.bonusObjective.progress >= this.bonusObjective.target) {
-          count += 1;
-        }
-        return count;
-      }
-    }
-
-    const dailyManager = new DailyObjectivesManager();
-
-    // Helper functions for Statistics
-    function formatPlaytime(ms) {
-      const totalSec = Math.max(0, Math.floor(ms / 1000));
-      const hours = Math.floor(totalSec / 3600);
-      const minutes = Math.floor((totalSec % 3600) / 60);
-      const seconds = totalSec % 60;
-      if (hours > 0) {
-        return `${hours}h ${minutes}m`;
-      }
-      return `${minutes}m ${seconds}s`;
-    }
-
-    function getColonyRank(lifetimeFish) {
-      if (lifetimeFish >= 1000000000) return '🌌 Cosmic Glacial Sovereign';
-      if (lifetimeFish >= 100000000) return '👑 Grand Emperor of Antarctica';
-      if (lifetimeFish >= 10000000) return '🔱 Sub-Zero Archon';
-      if (lifetimeFish >= 1000000) return '🏔️ Glacier Baron';
-      if (lifetimeFish >= 100000) return '🤿 Master Ice Fisher';
-      if (lifetimeFish >= 10000) return '🧊 Tundra Expeditionist';
-      if (lifetimeFish >= 1000) return '🐧 Colony Organizer';
-      return '❄️ Frosty Apprentice';
-    }
-
-    // =========================================================================
-    // ACHIEVEMENTS SYSTEM
-    // =========================================================================
-    const ACHIEVEMENTS_LIST = [
-      {
-        id: 'ach_first_tap',
-        title: 'Frosty Flapper',
-        icon: '👆',
-        desc: 'Tap the screen or a penguin to cheer your colony',
-        check: (s) => (s.totalManualClicks || 0) >= 1,
-        progress: (s) => ({ cur: Math.min(1, s.totalManualClicks || 0), max: 1 })
-      },
-      {
-        id: 'ach_colony_five',
-        title: 'Waddle Squad',
-        icon: '🐧',
-        desc: 'Recruit a colony of 5 or more penguins',
-        check: (s) => {
-          let c = 0; Object.keys(s.penguins).forEach(k => c += s.penguins[k].count);
-          return c >= 5;
-        },
-        progress: (s) => {
-          let c = 0; Object.keys(s.penguins).forEach(k => c += s.penguins[k].count);
-          return { cur: Math.min(5, c), max: 5 };
-        }
-      },
-      {
-        id: 'ach_colony_twenty',
-        title: 'Colony Empire',
-        icon: '🏛️',
-        desc: 'Grow your colony to 20 or more penguins',
-        check: (s) => {
-          let c = 0; Object.keys(s.penguins).forEach(k => c += s.penguins[k].count);
-          return c >= 20;
-        },
-        progress: (s) => {
-          let c = 0; Object.keys(s.penguins).forEach(k => c += s.penguins[k].count);
-          return { cur: Math.min(20, c), max: 20 };
-        }
-      },
-      {
-        id: 'ach_emperor',
-        title: 'Imperial Crown',
-        icon: '👑',
-        desc: 'Recruit an Emperor Monarch to inspire the ice shelf',
-        check: (s) => Boolean(s.penguins.emperor && s.penguins.emperor.count >= 1),
-        progress: (s) => ({ cur: (s.penguins.emperor && s.penguins.emperor.count >= 1) ? 1 : 0, max: 1 })
-      },
-      {
-        id: 'ach_cyber',
-        title: 'Cybernetic Polar Era',
-        icon: '🤖',
-        desc: 'Recruit a futuristic Cyber / Mecha Penguin',
-        check: (s) => Boolean(s.penguins.cyber && s.penguins.cyber.count >= 1),
-        progress: (s) => ({ cur: (s.penguins.cyber && s.penguins.cyber.count >= 1) ? 1 : 0, max: 1 })
-      },
-      {
-        id: 'ach_dives_25',
-        title: 'Deep Ice Trench',
-        icon: '🤿',
-        desc: 'Complete 25 successful fishing hole dives',
-        check: (s) => (s.totalDives || 0) >= 25,
-        progress: (s) => ({ cur: Math.min(25, s.totalDives || 0), max: 25 })
-      },
-      {
-        id: 'ach_slides_20',
-        title: 'Belly Sledding Ace',
-        icon: '🛷',
-        desc: 'Perform 20 swift belly slides across the snow',
-        check: (s) => (s.totalSlides || 0) >= 20,
-        progress: (s) => ({ cur: Math.min(20, s.totalSlides || 0), max: 20 })
-      },
-      {
-        id: 'ach_glacier_lvl5',
-        title: 'Glacial Outpost',
-        icon: '🧊',
-        desc: 'Expand the colony ice shelf to Level 5',
-        check: (s) => s.glacierLevel >= 5,
-        progress: (s) => ({ cur: Math.min(5, s.glacierLevel), max: 5 })
-      },
-      {
-        id: 'ach_glacier_lvl15',
-        title: 'Polar Stronghold',
-        icon: '🏔️',
-        desc: 'Expand the colony ice shelf to Level 15',
-        check: (s) => s.glacierLevel >= 15,
-        progress: (s) => ({ cur: Math.min(15, s.glacierLevel), max: 15 })
-      },
-      {
-        id: 'ach_fish_10k',
-        title: 'Bountiful Tundra',
-        icon: '🐟',
-        desc: 'Accumulate 10,000 Lifetime Fish',
-        check: (s) => (s.lifetimeFish || 0) >= 10000,
-        progress: (s) => ({ cur: Math.min(10000, Math.floor(s.lifetimeFish || 0)), max: 10000 })
-      },
-      {
-        id: 'ach_fish_1m',
-        title: 'Glacial Millionaire',
-        icon: '💰',
-        desc: 'Accumulate 1,000,000 Lifetime Fish',
-        check: (s) => (s.lifetimeFish || 0) >= 1000000,
-        progress: (s) => ({ cur: Math.min(1000000, Math.floor(s.lifetimeFish || 0)), max: 1000000 })
-      },
-      {
-        id: 'ach_tech_10',
-        title: 'Cryo Innovation',
-        icon: '🔬',
-        desc: 'Research 10 total Glacier Tech upgrades',
-        check: (s) => {
-          let lvl = 0; Object.keys(s.tech).forEach(k => lvl += s.tech[k]);
-          return lvl >= 10;
-        },
-        progress: (s) => {
-          let lvl = 0; Object.keys(s.tech).forEach(k => lvl += s.tech[k]);
-          return { cur: Math.min(10, lvl), max: 10 };
-        }
-      },
-      {
-        id: 'ach_aurora_3',
-        title: 'Celestial Attunement',
-        icon: '✨',
-        desc: 'Claim 3 Aurora Blessing perks from the polar sky',
-        check: (s) => (s.totalAuroraBlessingsClaimed || 0) >= 3,
-        progress: (s) => ({ cur: Math.min(3, s.totalAuroraBlessingsClaimed || 0), max: 3 })
-      },
-      {
-        id: 'ach_legendary_perk',
-        title: 'Crown of the Aurora',
-        icon: '🌟',
-        desc: 'Collect a Legendary Aurora Blessing perk',
-        check: (s) => Boolean(s.collectedPerks && s.collectedPerks.some(p => p.rarity === 'legendary')),
-        progress: (s) => ({ cur: (s.collectedPerks && s.collectedPerks.some(p => p.rarity === 'legendary')) ? 1 : 0, max: 1 })
-      },
-      {
-        id: 'ach_mythic_perk',
-        title: 'Mythic Astral Bond',
-        icon: '🌌',
-        desc: 'Collect a Mythic Aurora Blessing perk',
-        check: (s) => Boolean(s.collectedPerks && s.collectedPerks.some(p => p.rarity === 'mythic')),
-        progress: (s) => ({ cur: (s.collectedPerks && s.collectedPerks.some(p => p.rarity === 'mythic')) ? 1 : 0, max: 1 })
-      },
-      {
-        id: 'ach_prestige_first',
-        title: 'Celestial Rebirth',
-        icon: '💎',
-        desc: 'Perform Glacial Rebirth and collect Frost Essence',
-        check: (s) => (s.totalRebirths || 0) >= 1,
-        progress: (s) => ({ cur: Math.min(1, s.totalRebirths || 0), max: 1 })
-      },
-      {
-        id: 'ach_prestige_3',
-        title: 'Cycle of Frost',
-        icon: '❄️',
-        desc: 'Perform 3 Glacial Rebirths',
-        check: (s) => (s.totalRebirths || 0) >= 3,
-        progress: (s) => ({ cur: Math.min(3, s.totalRebirths || 0), max: 3 })
-      },
-      {
-        id: 'ach_prestige_5',
-        title: 'Eternal Penguin',
-        icon: '🌌',
-        desc: 'Perform 5 Glacial Rebirths',
-        check: (s) => (s.totalRebirths || 0) >= 5,
-        progress: (s) => ({ cur: Math.min(5, s.totalRebirths || 0), max: 5 })
-      },
-      {
-        id: 'ach_prestige_10',
-        title: 'Timeless Sovereign',
-        icon: '👑',
-        desc: 'Perform 10 Glacial Rebirths',
-        check: (s) => (s.totalRebirths || 0) >= 10,
-        progress: (s) => ({ cur: Math.min(10, s.totalRebirths || 0), max: 10 })
-      },
-      {
-        id: 'ach_essence_10',
-        title: 'Essence Collector',
-        icon: '🔮',
-        desc: 'Accumulate 10 or more cumulative Frost Essence',
-        check: (s) => Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0) >= 10,
-        progress: (s) => ({ cur: Math.min(10, Math.floor(Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0))), max: 10 })
-      },
-      {
-        id: 'ach_essence_50',
-        title: 'Astral Reactor',
-        icon: '🌠',
-        desc: 'Accumulate 50 or more cumulative Frost Essence',
-        check: (s) => Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0) >= 50,
-        progress: (s) => ({ cur: Math.min(50, Math.floor(Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0))), max: 50 })
-      },
-      {
-        id: 'ach_essence_250',
-        title: 'Celestial Singularity',
-        icon: '✨',
-        desc: 'Accumulate 250 or more cumulative Frost Essence',
-        check: (s) => Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0) >= 250,
-        progress: (s) => ({ cur: Math.min(250, Math.floor(Math.max(s.prestigeShards || 0, s.totalEssenceEarned || 0))), max: 250 })
-      }
-    ];
-
-    // =========================================================================
-    // GLACIAL LORE CHRONICLES
-    // =========================================================================
-    const GLACIAL_LORE_CHRONICLES = [
-      {
-        id: 'lore_prologue',
-        chapter: 'Prologue',
-        title: 'The Great Frostfall',
-        date: 'Day 1 of the Great Freeze',
-        icon: '📜',
-        reqText: 'Available from the start of your journey',
-        check: (s) => true,
-        text: 'When the Southern Skies ignited in eternal emerald luminescence, our forebears laid the foundational snow-bricks of the first Igloo Depot. The cold was biting, but the resolve of the colony was forged in adamant ice. Here on the floating shelves, we carve our destiny.'
-      },
-      {
-        id: 'lore_ch1',
-        chapter: 'Chapter I',
-        title: 'The Scouts of Adélie Bay',
-        date: 'Expedition Log 14',
-        icon: '🐧',
-        reqText: 'Collect 1,000 Lifetime Fish',
-        check: (s) => (s.lifetimeFish || 0) >= 1000,
-        text: 'With swift flippers carving trails through freezing seafoam, the brave Adélie Scouts ventured beyond the safety of the colony shore. They mapped the three abyssal ice holes whose currents pulse with shimmering Arctic Herring and silver cod.'
-      },
-      {
-        id: 'lore_ch2',
-        chapter: 'Chapter II',
-        title: 'The Blue Ice Racers',
-        date: 'Expedition Log 48',
-        icon: '🛷',
-        reqText: 'Collect 25,000 Lifetime Fish',
-        check: (s) => (s.lifetimeFish || 0) >= 25000,
-        text: 'The sleek Gentoo discoverers uncovered a sacred art: frictionless belly-sliding across the polished blue ice sheets. Gliding at breakneck velocity, they deliver fresh catches to the depot in record time, cheering through the sub-zero blizzards.'
-      },
-      {
-        id: 'lore_ch3',
-        chapter: 'Chapter III',
-        title: 'Depths of the Chinstrap Trench',
-        date: 'Expedition Log 112',
-        icon: '🤿',
-        reqText: 'Collect 500,000 Lifetime Fish',
-        check: (s) => (s.lifetimeFish || 0) >= 500000,
-        text: 'Plunging beneath the pressure of the abyssal thermoclines, the hardy Chinstrap Divers reached depths unseen by daylight. In the deep trenches, they unearthed bioluminescent krill blooms and primal ice relics humming with ancient energy.'
-      },
-      {
-        id: 'lore_ch4',
-        chapter: 'Chapter IV',
-        title: 'Crown of the Emperor',
-        date: 'Expedition Log 260',
-        icon: '👑',
-        reqText: 'Collect 10,000,000 Lifetime Fish',
-        check: (s) => (s.lifetimeFish || 0) >= 10000000,
-        text: 'Adorned in majestic golden plumage, the Emperor Monarch stepped onto the high glacier pinnacle. With a resonant, booming call that shook the snowdrifts, an aura of sovereign discipline swept through the ranks, supercharging the entire colony.'
-      },
-      {
-        id: 'lore_ch5',
-        chapter: 'Chapter V',
-        title: 'Cybernetic Polar Renaissance',
-        date: 'Chronicle of the Future',
-        icon: '🤖',
-        reqText: 'Perform 1 Glacial Rebirth',
-        check: (s) => (s.totalRebirths || 0) >= 1,
-        text: 'Fusing eternal frost essence with superconductive auroral photonics, the colony engineered the Cyber Mecha-Penguins. Equipped with cryo-thrusters and sub-atomic sonar visors, the empire now rules the glacial expanse for all eternity.'
-      }
-    ];
+    // Ultra-Prestige Wardrobe inline Tap-Again purchase guard
+    const wardrobePurchaseGuard = CoreWardrobe && CoreWardrobe.WardrobePurchaseGuard
+      ? new CoreWardrobe.WardrobePurchaseGuard(CoreWardrobe.CONFIRM_WINDOW_MS)
+      : null;
+    let wardrobeConfirmTimerId = null;
 
     function checkAchievements() {
       if (!state || !state.unlockedAchievements) return;
@@ -1730,11 +644,17 @@
           aurora_coils: 0
         };
 
-        // Purely cosmetic Igloo -> Ice Castle progression & purchasable Fishing Holes (both reset on Rebirth)
+        // Purely cosmetic Igloo -> Ice Castle progression, Fishing Holes & Frost Essence Colony Wardrobe (all reset on Rebirth)
         this.iglooTier = 0;
         this.iglooTheme = 'glacier';
         this.unlockedIglooThemes = ['glacier'];
         this.fishingHolesUnlocked = CoreEconomy ? CoreEconomy.MIN_FISHING_HOLES : 3;
+        this.unlockedHats = ['none'];
+        this.equippedHat = 'none';
+        this.speciesHats = CoreWardrobe
+          ? CoreWardrobe.createDefaultSpeciesHats()
+          : { adelie: 'none', gentoo: 'none', chinstrap: 'none', emperor: 'none', cyber: 'none' };
+        this.wardrobeScope = 'all';
 
         // Collected Aurora Blessing perks & achievements
         this.collectedPerks = [];
@@ -1753,6 +673,7 @@
         this.slushDebuffTimer = 0;
         this.goldenFishTimer = 0;
         this.paradeBoostTimer = 0;
+        this.starlightFrenzyTimer = 0;
 
         this.auroraEventInterval = 90;
         this.auroraEventTimer = 90;
@@ -1776,6 +697,9 @@
         this.totalManualClicks = 0;
         this.totalDives = 0;
         this.totalSlides = 0;
+        this.skyEventsCaught = 0;
+        this.bestSkyCombo = 0;
+        this.paradesWitnessed = 0;
         this.gameStartTime = Date.now();
         this.highestDPS = 0;
 
@@ -2052,8 +976,9 @@
         const supernova = this.supernovaTimer > 0 ? 4 : 1;
         const polarSurge = this.polarSurgeTimer > 0 ? 2 : 1;
         const paradeBoost = this.paradeBoostTimer > 0 ? (CoreParade ? CoreParade.PARADE_BOOST_MULTIPLIER : 2) : 1;
+        const starlightFrenzy = this.starlightFrenzyTimer > 0 ? (CoreSkyEvents ? CoreSkyEvents.STARLIGHT_FRENZY_MULTIPLIER : 2) : 1;
         const weatherMult = this.getWeatherYieldMultiplier();
-        const rawClick = base * krillBonus * prestige * levelBonus * streakBonus * synergies.allFishMult * frenzy * supernova * polarSurge * paradeBoost * weatherMult * this.clickMult;
+        const rawClick = base * krillBonus * prestige * levelBonus * streakBonus * synergies.allFishMult * frenzy * supernova * polarSurge * paradeBoost * starlightFrenzy * weatherMult * this.clickMult;
         if (CoreEconomy) {
           return Math.max(1, Math.floor(CoreEconomy.sanitizeFiniteNumber(rawClick, 1, 1, CoreEconomy.MAX_SAFE_RESOURCE)));
         }
@@ -2111,8 +1036,9 @@
         const supernova = this.supernovaTimer > 0 ? 4 : 1;
         const polarSurge = this.polarSurgeTimer > 0 ? 2 : 1;
         const paradeBoost = this.paradeBoostTimer > 0 ? (CoreParade ? CoreParade.PARADE_BOOST_MULTIPLIER : 2) : 1;
+        const starlightFrenzy = this.starlightFrenzyTimer > 0 ? (CoreSkyEvents ? CoreSkyEvents.STARLIGHT_FRENZY_MULTIPLIER : 2) : 1;
         const weatherMult = this.getWeatherYieldMultiplier();
-        return prestige * levelBonus * streakBonus * cryoBonus * frenzy * supernova * polarSurge * paradeBoost * weatherMult * syn.allFishMult;
+        return prestige * levelBonus * streakBonus * cryoBonus * frenzy * supernova * polarSurge * paradeBoost * starlightFrenzy * weatherMult * syn.allFishMult;
       }
 
       getSpeciesTripMetrics(speciesId, synergies = null) {
@@ -2327,10 +1253,77 @@
         return { ok: true, holeDef: nextHole };
       }
 
+      getSpeciesHat(speciesId) {
+        if (!this.speciesHats || typeof this.speciesHats !== 'object') {
+          return this.equippedHat || 'none';
+        }
+        const candidate = this.speciesHats[speciesId];
+        if (candidate && Array.isArray(this.unlockedHats) && this.unlockedHats.includes(candidate)) {
+          return candidate;
+        }
+        return 'none';
+      }
+
+      purchaseOrEquipHat(hatId, scope = this.wardrobeScope || 'all') {
+        const item = CoreWardrobe ? CoreWardrobe.getWardrobeItem(hatId) : null;
+        if (!item || item.id !== hatId) return { ok: false, reason: 'invalid' };
+        if (!Array.isArray(this.unlockedHats)) this.unlockedHats = ['none'];
+        if (!this.unlockedHats.includes('none')) this.unlockedHats.unshift('none');
+
+        const isUnlocked = this.unlockedHats.includes(hatId);
+        let purchased = false;
+
+        if (!isUnlocked) {
+          const cost = Math.max(0, Math.floor(Number(item.costEssence) || 0));
+          if ((this.prestigeShards || 0) < cost) {
+            return { ok: false, reason: 'insufficient_essence', cost };
+          }
+          this.prestigeShards -= cost;
+          this.unlockedHats.push(hatId);
+          purchased = true;
+        }
+
+        if (!this.speciesHats || typeof this.speciesHats !== 'object') {
+          this.speciesHats = CoreWardrobe
+            ? CoreWardrobe.createDefaultSpeciesHats()
+            : { adelie: 'none', gentoo: 'none', chinstrap: 'none', emperor: 'none', cyber: 'none' };
+        }
+
+        const speciesList = CoreWardrobe ? CoreWardrobe.SPECIES_IDS : ['adelie', 'gentoo', 'chinstrap', 'emperor', 'cyber'];
+        if (scope === 'all' || !speciesList.includes(scope)) {
+          this.equippedHat = hatId;
+          speciesList.forEach(spId => {
+            this.speciesHats[spId] = hatId;
+          });
+        } else {
+          this.speciesHats[scope] = hatId;
+          this.equippedHat = hatId;
+        }
+
+        if (typeof clearPenguinSpriteCache === 'function') {
+          clearPenguinSpriteCache();
+        }
+        if (purchased) {
+          sound.playLevelUp();
+          sound.triggerHaptic('celebrate');
+          showToast(`${item.icon} Unlocked & equipped ${item.name} (-${item.costEssence.toLocaleString()} 💎)!`, item.icon, { category: 'purchase', durationMs: 4200 });
+        } else {
+          sound.playChirp();
+          sound.triggerHaptic('penguin_tap');
+          const scopeLabel = scope === 'all'
+            ? 'whole colony'
+            : ((PENGUIN_SPECIES.find(s => s.id === scope) || {}).name || scope);
+          showToast(`${item.icon} Equipped ${item.name} on ${scopeLabel}!`, item.icon, { category: 'purchase', durationMs: 3000 });
+        }
+
+        this.save({ immediate: true });
+        return { ok: true, purchased, item, scope };
+      }
+
       buildSavePayload() {
         const now = Date.now();
         return {
-          saveVersion: CoreSave ? CoreSave.CURRENT_SAVE_VERSION : 3,
+          saveVersion: CoreSave ? CoreSave.CURRENT_SAVE_VERSION : 4,
           savedAt: now,
           fish: this.fish,
           lifetimeFish: this.lifetimeFish,
@@ -2342,6 +1335,9 @@
           iglooTheme: this.iglooTheme,
           unlockedIglooThemes: Array.isArray(this.unlockedIglooThemes) ? this.unlockedIglooThemes.slice() : ['glacier'],
           fishingHolesUnlocked: this.fishingHolesUnlocked,
+          unlockedHats: Array.isArray(this.unlockedHats) ? this.unlockedHats.slice() : ['none'],
+          equippedHat: this.equippedHat || 'none',
+          speciesHats: Object.assign({}, this.speciesHats || {}),
           penguins: this.penguins,
           tech: this.tech,
           collectedPerks: this.collectedPerks,
@@ -2377,6 +1373,9 @@
           totalManualClicks: this.totalManualClicks,
           totalDives: this.totalDives,
           totalSlides: this.totalSlides,
+          skyEventsCaught: this.skyEventsCaught || 0,
+          bestSkyCombo: this.bestSkyCombo || 0,
+          paradesWitnessed: this.paradesWitnessed || 0,
           gameStartTime: this.gameStartTime,
           highestDPS: this.highestDPS,
           weatherIndex: this.weatherIndex,
@@ -2545,6 +1544,19 @@
           if (typeof syncActiveFishingHoles === 'function') {
             syncActiveFishingHoles(this.fishingHolesUnlocked);
           }
+          const loadedWardrobe = CoreWardrobe
+            ? CoreWardrobe.sanitizeWardrobeState(data.unlockedHats, data.equippedHat, data.speciesHats)
+            : {
+                unlockedHats: ['none'],
+                equippedHat: 'none',
+                speciesHats: { adelie: 'none', gentoo: 'none', chinstrap: 'none', emperor: 'none', cyber: 'none' }
+              };
+          this.unlockedHats = loadedWardrobe.unlockedHats;
+          this.equippedHat = loadedWardrobe.equippedHat;
+          this.speciesHats = loadedWardrobe.speciesHats;
+          if (typeof clearPenguinSpriteCache === 'function') {
+            clearPenguinSpriteCache();
+          }
           this.penguins = Object.assign(this.penguins, data.penguins);
           this.ensurePenguinTraits();
           this.tech = Object.assign(this.tech, data.tech);
@@ -2602,6 +1614,9 @@
           this.totalManualClicks = data.totalManualClicks || 0;
           this.totalDives = data.totalDives || 0;
           this.totalSlides = data.totalSlides || 0;
+          this.skyEventsCaught = data.skyEventsCaught || 0;
+          this.bestSkyCombo = data.bestSkyCombo || 0;
+          this.paradesWitnessed = data.paradesWitnessed || 0;
           this.gameStartTime = data.gameStartTime || nowMs;
           this.highestDPS = data.highestDPS || 0;
 
@@ -2953,9 +1968,7 @@
         opacity: 0.25 + Math.random() * 0.65
       });
     }
-    let weatherSnowMix = 0.1;
-    let weatherWindMix = 0.25;
-    let weatherFogMix = 0.0;
+    const weatherMix = { snow: 0.1, wind: 0.25, fog: 0.0 };
 
     // Belly-Slide Ice Trails & Splash Ripple Buffers (Update 1.8)
     const slideTrails = [];
@@ -3027,1342 +2040,13 @@
 
     let penguinUniqueCounter = 0;
 
-    // =========================================================================
-    // HIGH-DETAIL PENGUIN SPRITE ENGINE (Canvas + Roster Portraits)
-    // =========================================================================
-    const PENGUIN_SPRITE_CACHE = {};
-
-    const PenguinSpriteRenderer = {
-      getSpeciesScale(speciesId) {
-        if (speciesId === 'emperor') return 1.32;
-        if (speciesId === 'cyber') return 1.18;
-        if (speciesId === 'chinstrap') return 1.14;
-        if (speciesId === 'gentoo') return 1.12;
-        return 1.06;
-      },
-
-      drawDetailedFish(ctx, x, y, angle = 0, scale = 1) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.scale(scale, scale);
-
-        const fishGrad = ctx.createLinearGradient(0, -4, 0, 4);
-        fishGrad.addColorStop(0, '#0284c7');
-        fishGrad.addColorStop(0.5, '#38bdf8');
-        fishGrad.addColorStop(1, '#e0f2fe');
-
-        // Tail fin
-        ctx.fillStyle = '#0ea5e9';
-        ctx.beginPath();
-        ctx.moveTo(-6, 0);
-        ctx.lineTo(-12, -4.5);
-        ctx.lineTo(-10, 0);
-        ctx.lineTo(-12, 4.5);
-        ctx.closePath();
-        ctx.fill();
-
-        // Dorsal fin
-        ctx.fillStyle = '#0369a1';
-        ctx.beginPath();
-        ctx.moveTo(-2, -3);
-        ctx.lineTo(1, -6);
-        ctx.lineTo(3, -2.5);
-        ctx.closePath();
-        ctx.fill();
-
-        // Fish body
-        ctx.fillStyle = fishGrad;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 7.5, 3.6, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(6, 24, 52, 0.55)';
-        ctx.lineWidth = 0.8;
-        ctx.stroke();
-
-        // Gill & Eye
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.arc(2.5, 0, 2.2, Math.PI * 0.65, Math.PI * 1.35);
-        ctx.stroke();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(4.8, -0.8, 1.1, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#0f172a';
-        ctx.beginPath();
-        ctx.arc(5.1, -0.8, 0.55, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-      },
-
-      drawEye(ctx, x, y, speciesId, blink, happy) {
-        if (speciesId === 'cyber') {
-          // Sleek holographic curved visor
-          ctx.save();
-          const visorGrad = ctx.createLinearGradient(x - 5, y - 3, x + 6, y + 3);
-          visorGrad.addColorStop(0, '#0284c7');
-          visorGrad.addColorStop(0.55, '#38bdf8');
-          visorGrad.addColorStop(1, '#e0f2fe');
-
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
-          ctx.beginPath();
-          ctx.roundRect(x - 5.2, y - 3.6, 11.4, 6.8, 3);
-          ctx.fill();
-
-          ctx.fillStyle = visorGrad;
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.roundRect(x - 4.4, y - 2.8, 10.2, 5.2, 2.5);
-          ctx.fill();
-          ctx.stroke();
-
-          // Glossy scan reflection
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-          ctx.beginPath();
-          ctx.roundRect(x - 2.6, y - 1.8, 5.4, 1.4, 0.7);
-          ctx.fill();
-
-          if (happy) {
-            ctx.fillStyle = '#fbbf24';
-            ctx.beginPath();
-            ctx.arc(x + 2.5, y - 0.1, 1.1, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          ctx.restore();
-          return;
-        }
-
-        ctx.save();
-        if (speciesId === 'adelie') {
-          // Signature crisp white Adélie eye ring
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(x, y, 3.6, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (speciesId === 'emperor') {
-          ctx.fillStyle = '#0f172a';
-          ctx.beginPath();
-          ctx.arc(x, y, 3.0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        if (happy) {
-          // Cheerful curved happy eye
-          ctx.strokeStyle = speciesId === 'chinstrap' ? '#0f172a' : '#ffffff';
-          ctx.lineWidth = 1.6;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.arc(x, y + 0.8, 2.2, Math.PI * 1.15, Math.PI * 1.85);
-          ctx.stroke();
-        } else if (blink) {
-          ctx.strokeStyle = speciesId === 'chinstrap' ? '#0f172a' : '#cbd5e1';
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.moveTo(x - 2.2, y);
-          ctx.lineTo(x + 2.2, y);
-          ctx.stroke();
-        } else {
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = '#090d16';
-          ctx.beginPath();
-          ctx.arc(x + 0.6, y, 1.55, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Glossy catchlights
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(x + 1.1, y - 0.65, 0.65, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(x - 0.1, y + 0.7, 0.35, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        if (speciesId === 'chinstrap') {
-          // Translucent turquoise diver goggles over eyes
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.32)';
-          ctx.strokeStyle = '#0369a1';
-          ctx.lineWidth = 1.15;
-          ctx.beginPath();
-          ctx.roundRect(x - 3.6, y - 3.1, 7.6, 6.0, 2.5);
-          ctx.fill();
-          ctx.stroke();
-
-          // Goggle strap
-          ctx.strokeStyle = '#075985';
-          ctx.lineWidth = 1.8;
-          ctx.beginPath();
-          ctx.moveTo(x - 3.6, y - 0.2);
-          ctx.lineTo(x - 10.5, y - 0.6);
-          ctx.stroke();
-
-          // Lens shine
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-          ctx.lineWidth = 0.9;
-          ctx.beginPath();
-          ctx.moveTo(x - 1.5, y - 1.9);
-          ctx.lineTo(x + 1.4, y - 1.9);
-          ctx.stroke();
-        }
-        ctx.restore();
-      },
-
-      drawBeak(ctx, x, y, speciesId, angle = 0) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-
-        let topColor = '#fbbf24';
-        let botColor = '#d97706';
-        if (speciesId === 'gentoo') {
-          topColor = '#fb923c';
-          botColor = '#dc2626';
-        } else if (speciesId === 'emperor') {
-          topColor = '#1e293b';
-          botColor = '#f43f5e';
-        } else if (speciesId === 'cyber') {
-          topColor = '#94a3b8';
-          botColor = '#475569';
-        } else if (speciesId === 'chinstrap') {
-          topColor = '#334155';
-          botColor = '#0f172a';
-        }
-
-        // Upper mandible
-        ctx.fillStyle = topColor;
-        ctx.beginPath();
-        ctx.moveTo(-1, -2.5);
-        ctx.quadraticCurveTo(5, -2.2, 8.2, -0.2);
-        ctx.lineTo(-1, 0.3);
-        ctx.closePath();
-        ctx.fill();
-
-        // Lower mandible
-        ctx.fillStyle = botColor;
-        ctx.beginPath();
-        ctx.moveTo(-1, 0.2);
-        ctx.lineTo(7.4, 0.1);
-        ctx.quadraticCurveTo(4.2, 2.3, -1, 2.1);
-        ctx.closePath();
-        ctx.fill();
-
-        // Crisp dark tip & highlight
-        ctx.strokeStyle = 'rgba(6, 17, 33, 0.6)';
-        ctx.lineWidth = 0.75;
-        ctx.beginPath();
-        ctx.moveTo(-1, -2.5);
-        ctx.quadraticCurveTo(5, -2.2, 8.2, -0.2);
-        ctx.quadraticCurveTo(4.5, 2.3, -1, 2.1);
-        ctx.stroke();
-
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.beginPath();
-        ctx.ellipse(2.2, -1.2, 2.2, 0.55, 0.15, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-      },
-
-      drawFootGear(ctx, x, y, speciesId, tilt = 0) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(tilt);
-
-        if (speciesId === 'cyber') {
-          // Articulated titanium mecha foot
-          ctx.fillStyle = '#475569';
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 0.9;
-          ctx.beginPath();
-          ctx.roundRect(-4.5, -2.2, 9.5, 4.4, 2);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(1.8, -1, 2.5, 1.8);
-          ctx.restore();
-          return;
-        }
-
-        if (speciesId === 'chinstrap') {
-          // Wide diving swim-fin
-          ctx.fillStyle = '#0284c7';
-          ctx.beginPath();
-          ctx.ellipse(-1.5, 0, 3.6, 2.3, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#facc15';
-          ctx.strokeStyle = '#854d0e';
-          ctx.lineWidth = 0.75;
-          ctx.beginPath();
-          ctx.moveTo(-1, -1.8);
-          ctx.lineTo(7.5, -3.0);
-          ctx.quadraticCurveTo(8.5, 0, 7.5, 3.0);
-          ctx.lineTo(-1, 1.8);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-          return;
-        }
-
-        // Webbed foot
-        const footGrad = ctx.createLinearGradient(0, -3, 0, 3);
-        footGrad.addColorStop(0, '#fb923c');
-        footGrad.addColorStop(1, '#c2410c');
-        ctx.fillStyle = footGrad;
-        ctx.strokeStyle = 'rgba(124, 45, 18, 0.7)';
-        ctx.lineWidth = 0.75;
-        ctx.beginPath();
-        ctx.ellipse(1, 0, 5.2, 2.6, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        if (speciesId === 'gentoo') {
-          // Gleaming steel ice-skate blade beneath boot!
-          ctx.strokeStyle = '#475569';
-          ctx.lineWidth = 1.1;
-          ctx.beginPath();
-          ctx.moveTo(-2, 2.2);
-          ctx.lineTo(-2, 4.3);
-          ctx.moveTo(3, 2.2);
-          ctx.lineTo(3, 4.3);
-          ctx.stroke();
-
-          ctx.strokeStyle = '#f8fafc';
-          ctx.lineWidth = 1.7;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(-4.8, 4.5);
-          ctx.lineTo(6.2, 4.5);
-          ctx.quadraticCurveTo(8.2, 4.3, 8.6, 2.7);
-          ctx.stroke();
-        }
-        ctx.restore();
-      },
-
-      drawBodyAndGearStanding(ctx, opts) {
-        const {
-          speciesId = 'adelie',
-          stepPhase = 0,
-          blink = false,
-          happy = false,
-          carryingFish = false,
-          time = 0,
-          isPortrait = false
-        } = opts;
-
-        const waddleAmp = isPortrait ? 0 : Math.sin(stepPhase) * 0.11;
-        const footSwing = isPortrait ? 0 : Math.sin(stepPhase) * 3.8;
-        const breathe = Math.sin(time * 3.2 + stepPhase * 0.3) * 0.45;
-        const flutter = Math.sin(time * 6.5 + stepPhase) * 2.2;
-
-        // Emperor Royal Aura on ground
-        if (speciesId === 'emperor' && !isPortrait) {
-          ctx.save();
-          const auraPulse = 0.85 + Math.sin(time * 3.5) * 0.15;
-          ctx.strokeStyle = `rgba(251, 191, 36, ${0.42 * auraPulse})`;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.ellipse(0, 14.5, 29 * auraPulse, 11 * auraPulse, 0, 0, Math.PI * 2);
-          ctx.stroke();
-
-          ctx.strokeStyle = `rgba(253, 230, 138, ${0.28 * auraPulse})`;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.ellipse(0, 14.5, 22 * auraPulse, 8 * auraPulse, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        // Cyber hover ring on ground
-        if (speciesId === 'cyber' && !isPortrait) {
-          ctx.save();
-          const pulse = 0.85 + Math.sin(time * 5) * 0.15;
-          ctx.strokeStyle = `rgba(56, 189, 248, ${0.45 * pulse})`;
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.ellipse(0, 14.5, 19 * pulse, 6.5 * pulse, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        ctx.save();
-        ctx.rotate(waddleAmp);
-
-        // Contact shadow (omitted in clean card portrait)
-        if (!isPortrait) {
-          ctx.fillStyle = 'rgba(6, 20, 44, 0.34)';
-          ctx.beginPath();
-          ctx.ellipse(0, 14.5, 13.5, 4.6, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Back gear layer
-        if (speciesId === 'emperor') {
-          // Royal velvet cape billowing behind
-          ctx.save();
-          const capeGrad = ctx.createLinearGradient(-15, -4, -18, 15);
-          capeGrad.addColorStop(0, '#9333ea');
-          capeGrad.addColorStop(1, '#581c87');
-          ctx.fillStyle = capeGrad;
-          ctx.strokeStyle = '#fbbf24';
-          ctx.lineWidth = 1.1;
-          ctx.beginPath();
-          ctx.moveTo(-4, -5);
-          ctx.quadraticCurveTo(-18 - flutter * 0.4, 3, -17 - flutter * 0.6, 14);
-          ctx.quadraticCurveTo(-8, 15, -3, 12);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-        } else if (speciesId === 'chinstrap') {
-          // Twin deep-dive silver & cyan scuba tank on back
-          ctx.save();
-          const tankGrad = ctx.createLinearGradient(-14, -7, -6, 9);
-          tankGrad.addColorStop(0, '#e2e8f0');
-          tankGrad.addColorStop(0.55, '#94a3b8');
-          tankGrad.addColorStop(1, '#475569');
-          ctx.fillStyle = tankGrad;
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.roundRect(-14.5, -5.5, 6.8, 13.5, 3.2);
-          ctx.fill();
-          ctx.stroke();
-          // Cyan tank band & brass valve
-          ctx.fillStyle = '#0ea5e9';
-          ctx.fillRect(-14.2, -1.5, 6.2, 2.8);
-          ctx.fillStyle = '#fbbf24';
-          ctx.fillRect(-12.2, -7.8, 2.4, 2.4);
-          // Regulator hose arching over shoulder
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 1.6;
-          ctx.beginPath();
-          ctx.moveTo(-11, -7.5);
-          ctx.quadraticCurveTo(-7, -11, -2, -7.5);
-          ctx.stroke();
-          ctx.restore();
-        } else if (speciesId === 'cyber') {
-          // Twin cryo-jetpack & plasma plume
-          ctx.save();
-          ctx.fillStyle = '#334155';
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.roundRect(-14.5, -5, 6.5, 11.5, 2.5);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(-13.2, -2, 3.8, 3);
-          const flameLen = isPortrait ? 5.5 : (6 + Math.sin(time * 28) * 2.5);
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.55)';
-          ctx.beginPath();
-          ctx.moveTo(-14, 6.5);
-          ctx.lineTo(-11.2, 6.5 + flameLen + 2);
-          ctx.lineTo(-8.5, 6.5);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = '#e0f2fe';
-          ctx.beginPath();
-          ctx.moveTo(-13, 6.5);
-          ctx.lineTo(-11.2, 6.5 + flameLen * 0.65);
-          ctx.lineTo(-9.5, 6.5);
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-        } else if (speciesId === 'adelie') {
-          // Scout pack & fluttering scout scarf tail
-          ctx.save();
-          ctx.fillStyle = '#0f766e';
-          ctx.beginPath();
-          ctx.moveTo(-5, -5.5);
-          ctx.quadraticCurveTo(-15, -4 - flutter * 0.45, -16.5, -0.5 - flutter * 0.6);
-          ctx.lineTo(-11, 2.5 - flutter * 0.3);
-          ctx.quadraticCurveTo(-7, -1, -4, -3);
-          ctx.closePath();
-          ctx.fill();
-          // Explorer roll pack
-          ctx.fillStyle = '#b45309';
-          ctx.strokeStyle = '#451a03';
-          ctx.lineWidth = 0.8;
-          ctx.beginPath();
-          ctx.roundRect(-13.2, -2, 5.2, 9.5, 2.2);
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-        } else if (speciesId === 'gentoo') {
-          // Fluttering winter racing scarf tail
-          ctx.save();
-          ctx.fillStyle = '#ea580c';
-          ctx.beginPath();
-          ctx.moveTo(-5, -5.5);
-          ctx.quadraticCurveTo(-16, -5 + flutter * 0.5, -18, -1.5 + flutter * 0.7);
-          ctx.lineTo(-12, 1.5 + flutter * 0.4);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(-15, -3 + flutter * 0.4, 3.2, 2.2);
-          ctx.restore();
-        }
-
-        // Far foot
-        this.drawFootGear(ctx, -4.5, 11.8 + footSwing * 0.45, speciesId, -0.06);
-        // Near foot
-        this.drawFootGear(ctx, 5.0, 12.2 - footSwing * 0.45, speciesId, 0.04);
-
-        // Tail tuft
-        ctx.fillStyle = speciesId === 'cyber' ? '#475569' : '#0b1528';
-        ctx.beginPath();
-        ctx.moveTo(-7, 7);
-        ctx.lineTo(-14.5, 10.5);
-        ctx.lineTo(-9, 12);
-        ctx.closePath();
-        ctx.fill();
-
-        // Far flipper (subtle)
-        ctx.save();
-        ctx.translate(6.5, -2.5);
-        ctx.rotate(isPortrait ? -0.15 : Math.sin(stepPhase) * 0.35);
-        ctx.fillStyle = speciesId === 'cyber' ? '#1e293b' : '#091120';
-        ctx.beginPath();
-        ctx.ellipse(2.5, 4.5, 2.6, 6.8, -0.3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
-        // Main Plumage Body (organic pear silhouette)
-        const bodyGrad = ctx.createLinearGradient(-11, -16, 11, 13);
-        if (speciesId === 'cyber') {
-          bodyGrad.addColorStop(0, '#64748b');
-          bodyGrad.addColorStop(0.55, '#334155');
-          bodyGrad.addColorStop(1, '#0f172a');
-        } else if (speciesId === 'emperor') {
-          bodyGrad.addColorStop(0, '#1e293b');
-          bodyGrad.addColorStop(0.55, '#0f172a');
-          bodyGrad.addColorStop(1, '#060c1a');
-        } else {
-          bodyGrad.addColorStop(0, '#1e293b');
-          bodyGrad.addColorStop(0.6, '#0f172a');
-          bodyGrad.addColorStop(1, '#050a14');
-        }
-
-        ctx.fillStyle = bodyGrad;
-        ctx.strokeStyle = 'rgba(2, 10, 24, 0.72)';
-        ctx.lineWidth = 1.1;
-        ctx.beginPath();
-        ctx.moveTo(0, -17.5 - breathe * 0.4);
-        ctx.bezierCurveTo(9.5, -17.5, 11.8, -8, 12.2, 1.5);
-        ctx.bezierCurveTo(12.6, 10.5, 6.8, 13.5, 0, 13.5);
-        ctx.bezierCurveTo(-8.2, 13.5, -12.6, 9.8, -12.2, 1.2);
-        ctx.bezierCurveTo(-11.8, -8, -9.2, -17.5, 0, -17.5 - breathe * 0.4);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // Subtle Aurora dorsal rim highlight
-        ctx.strokeStyle = speciesId === 'cyber' ? 'rgba(56, 189, 248, 0.55)' : 'rgba(125, 211, 252, 0.25)';
-        ctx.lineWidth = 1.1;
-        ctx.beginPath();
-        ctx.moveTo(-6.5, -13);
-        ctx.quadraticCurveTo(-11.2, -4, -10.5, 7);
-        ctx.stroke();
-
-        // Snowy White / Ivory / Armored Belly
-        if (speciesId === 'cyber') {
-          // Titanium chest armor plate + glowing cryo arc-reactor
-          const armorGrad = ctx.createLinearGradient(-3, -6, 10, 11);
-          armorGrad.addColorStop(0, '#cbd5e1');
-          armorGrad.addColorStop(0.6, '#94a3b8');
-          armorGrad.addColorStop(1, '#475569');
-          ctx.fillStyle = armorGrad;
-          ctx.beginPath();
-          ctx.ellipse(2.4, 3.2, 7.6, 9.4, 0.04, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = '#1e293b';
-          ctx.lineWidth = 0.85;
-          ctx.stroke();
-
-          // Chest armor seam line
-          ctx.strokeStyle = 'rgba(15, 23, 42, 0.45)';
-          ctx.beginPath();
-          ctx.moveTo(-3.5, 4);
-          ctx.lineTo(8.5, 4);
-          ctx.stroke();
-
-          // Glowing Cyan Arc Core
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.32)';
-          ctx.beginPath();
-          ctx.arc(3.5, 0.2, 4.4, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#38bdf8';
-          ctx.beginPath();
-          ctx.arc(3.5, 0.2, 2.7, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#e0f2fe';
-          ctx.beginPath();
-          ctx.arc(3.5, 0.2, 1.3, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          const bellyGrad = ctx.createRadialGradient(2.5, 0, 1, 2.2, 3, 12);
-          if (speciesId === 'emperor') {
-            bellyGrad.addColorStop(0, '#fffbeb');
-            bellyGrad.addColorStop(0.65, '#fef3c7');
-            bellyGrad.addColorStop(1, '#dbeafe');
-          } else {
-            bellyGrad.addColorStop(0, '#ffffff');
-            bellyGrad.addColorStop(0.7, '#f1f5f9');
-            bellyGrad.addColorStop(1, '#cbd5e1');
-          }
-          ctx.fillStyle = bellyGrad;
-          ctx.beginPath();
-          ctx.ellipse(2.3, 3.0, 7.6, 9.6, 0.05, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Species Head Markings & Neck Gear
-        if (speciesId === 'emperor') {
-          // Luminous golden-amber Emperor auricular neck patches
-          const auricGrad = ctx.createLinearGradient(0, -12, 6, -2);
-          auricGrad.addColorStop(0, '#f59e0b');
-          auricGrad.addColorStop(0.55, '#fbbf24');
-          auricGrad.addColorStop(1, '#fef08a');
-          ctx.fillStyle = auricGrad;
-          ctx.beginPath();
-          ctx.moveTo(0.5, -11.5);
-          ctx.bezierCurveTo(6.8, -11.5, 8.8, -7, 8.2, -3);
-          ctx.bezierCurveTo(5.8, -1.5, 1.2, -3.5, 0.5, -7.5);
-          ctx.closePath();
-          ctx.fill();
-
-          // Ornate Jeweled Gold Crown
-          ctx.save();
-          const crownGrad = ctx.createLinearGradient(-6, -24, 6, -15);
-          crownGrad.addColorStop(0, '#fde047');
-          crownGrad.addColorStop(0.55, '#f59e0b');
-          crownGrad.addColorStop(1, '#b45309');
-          ctx.fillStyle = crownGrad;
-          ctx.strokeStyle = '#78350f';
-          ctx.lineWidth = 0.85;
-          ctx.beginPath();
-          ctx.moveTo(-5.8, -15.5);
-          ctx.lineTo(-6.8, -22.2);
-          ctx.lineTo(-2.6, -18.8);
-          ctx.lineTo(0.2, -23.8);
-          ctx.lineTo(3.2, -18.8);
-          ctx.lineTo(7.0, -22.0);
-          ctx.lineTo(6.0, -15.5);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-
-          // Crown aurora gems
-          ctx.fillStyle = '#38bdf8';
-          ctx.beginPath();
-          ctx.arc(0.2, -18.2, 1.35, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#f43f5e';
-          ctx.beginPath();
-          ctx.arc(-4.2, -17.5, 0.95, 0, Math.PI * 2);
-          ctx.arc(4.5, -17.5, 0.95, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        } else if (speciesId === 'chinstrap') {
-          // White face cheeks/throat mask
-          ctx.fillStyle = '#f8fafc';
-          ctx.beginPath();
-          ctx.ellipse(3.6, -9.2, 6.2, 4.8, 0.1, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Signature jet-black chinstrap line curving ear-to-cheek-to-chin
-          ctx.strokeStyle = '#090d16';
-          ctx.lineWidth = 1.65;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(-1.2, -11.4);
-          ctx.quadraticCurveTo(2.4, -4.6, 8.2, -6.2);
-          ctx.stroke();
-        } else if (speciesId === 'gentoo') {
-          // Signature white Gentoo crown headband patch over head
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.ellipse(1.2, -13.2, 5.6, 2.3, -0.15, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Cozy racing winter scarf collar
-          ctx.fillStyle = '#ea580c';
-          ctx.beginPath();
-          ctx.roundRect(-7.5, -6.6, 15.8, 3.2, 1.6);
-          ctx.fill();
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(1.5, -6.4, 3.5, 2.8);
-        } else if (speciesId === 'adelie') {
-          // Crossbody leather scout satchel strap
-          ctx.strokeStyle = '#b45309';
-          ctx.lineWidth = 1.8;
-          ctx.beginPath();
-          ctx.moveTo(-6, -4.5);
-          ctx.lineTo(7, 6.5);
-          ctx.stroke();
-          ctx.fillStyle = '#fbbf24';
-          ctx.fillRect(0.2, 0.5, 2.2, 2.2);
-
-          // Explorer knotted scout neckerchief
-          ctx.fillStyle = '#0d9488';
-          ctx.beginPath();
-          ctx.roundRect(-7.2, -6.6, 15.2, 3.0, 1.5);
-          ctx.fill();
-
-          // Scout explorer cap with brim & star badge
-          ctx.save();
-          ctx.fillStyle = '#0f766e';
-          ctx.strokeStyle = '#042f2e';
-          ctx.lineWidth = 0.8;
-          ctx.beginPath();
-          ctx.arc(0, -14.8, 7.2, Math.PI, 0);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-          // Brim
-          ctx.fillStyle = '#d97706';
-          ctx.beginPath();
-          ctx.ellipse(3.5, -14.8, 8.5, 2.0, -0.06, 0, Math.PI * 2);
-          ctx.fill();
-          // Gold compass star pin
-          ctx.fillStyle = '#fde047';
-          ctx.beginPath();
-          ctx.arc(2.4, -17.5, 1.45, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        } else if (speciesId === 'cyber') {
-          // Cyber head beacon antenna
-          ctx.save();
-          ctx.strokeStyle = '#94a3b8';
-          ctx.lineWidth = 1.6;
-          ctx.beginPath();
-          ctx.moveTo(-1, -17.2);
-          ctx.lineTo(-2.5, -23.5);
-          ctx.stroke();
-          const beaconAlpha = 0.65 + Math.sin(time * 7) * 0.35;
-          ctx.fillStyle = `rgba(56, 189, 248, ${0.35 * beaconAlpha})`;
-          ctx.beginPath();
-          ctx.arc(-2.5, -24, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#38bdf8';
-          ctx.beginPath();
-          ctx.arc(-2.5, -24, 1.8, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
-
-        // Cheek blush (subtle warmth on cute biological species)
-        if (speciesId !== 'cyber') {
-          ctx.fillStyle = happy ? 'rgba(244, 63, 94, 0.42)' : 'rgba(251, 113, 133, 0.24)';
-          ctx.beginPath();
-          ctx.ellipse(2.0, -7.8, 2.1, 1.2, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Beak & Eye
-        this.drawBeak(ctx, 8.8, -9.2, speciesId, 0.04);
-        this.drawEye(ctx, 4.6, -10.8, speciesId, blink, happy);
-
-        // Carried Fish in Beak
-        if (carryingFish) {
-          this.drawDetailedFish(ctx, 18.5, -7.5, 0.18, 0.95);
-        }
-
-        // Near Flipper (animated swing)
-        const flipperSwing = isPortrait ? 0.12 : Math.sin(stepPhase) * 0.42;
-        ctx.save();
-        ctx.translate(-3.6, -2.5);
-        ctx.rotate(-flipperSwing);
-        if (speciesId === 'cyber') {
-          const wingGrad = ctx.createLinearGradient(-4, 0, 2, 12);
-          wingGrad.addColorStop(0, '#64748b');
-          wingGrad.addColorStop(1, '#1e293b');
-          ctx.fillStyle = wingGrad;
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 0.9;
-          ctx.beginPath();
-          ctx.ellipse(-1.2, 5.2, 3.1, 7.8, -0.22, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        } else {
-          const flipGrad = ctx.createLinearGradient(-3, 0, 2, 12);
-          flipGrad.addColorStop(0, '#1e293b');
-          flipGrad.addColorStop(1, '#050a14');
-          ctx.fillStyle = flipGrad;
-          ctx.strokeStyle = 'rgba(2, 10, 24, 0.65)';
-          ctx.lineWidth = 0.85;
-          ctx.beginPath();
-          ctx.ellipse(-1.2, 5.2, 3.2, 8.0, -0.24, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          // White trailing edge highlight on flipper
-          ctx.strokeStyle = 'rgba(226, 232, 240, 0.35)';
-          ctx.lineWidth = 0.7;
-          ctx.beginPath();
-          ctx.arc(-1.2, 5.2, 7.2, Math.PI * 0.7, Math.PI * 1.15);
-          ctx.stroke();
-        }
-        ctx.restore();
-
-        ctx.restore();
-      },
-
-      drawBodyAndGearSliding(ctx, opts) {
-        const {
-          speciesId = 'adelie',
-          stepPhase = 0,
-          blink = false,
-          happy = false,
-          carryingFish = false,
-          time = 0
-        } = opts;
-
-        const flutter = Math.sin(time * 9 + stepPhase) * 2.5;
-        const kick = Math.sin(stepPhase * 2) * 1.8;
-
-        if (speciesId === 'emperor') {
-          ctx.save();
-          const auraPulse = 0.85 + Math.sin(time * 3.5) * 0.15;
-          ctx.strokeStyle = `rgba(251, 191, 36, ${0.38 * auraPulse})`;
-          ctx.lineWidth = 1.8;
-          ctx.beginPath();
-          ctx.ellipse(0, 6, 32 * auraPulse, 11 * auraPulse, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        // Ice contact shadow
-        ctx.fillStyle = 'rgba(6, 20, 44, 0.32)';
-        ctx.beginPath();
-        ctx.ellipse(0, 7.5, 20, 5.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Gentoo ice-skate carving gleam on snow
-        if (speciesId === 'gentoo') {
-          ctx.strokeStyle = 'rgba(186, 230, 253, 0.7)';
-          ctx.lineWidth = 1.6;
-          ctx.beginPath();
-          ctx.moveTo(-26, 7);
-          ctx.lineTo(-10, 7);
-          ctx.stroke();
-        }
-
-        // Kicking Feet / Skates / Fins behind
-        this.drawFootGear(ctx, -16, 2.2 + kick * 0.6, speciesId, 0.35);
-
-        // Jetpack flame / Cape / Scarf streaming behind
-        if (speciesId === 'cyber') {
-          const flameLen = 11 + Math.sin(time * 30) * 4;
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.5)';
-          ctx.beginPath();
-          ctx.moveTo(-16, -2);
-          ctx.lineTo(-18 - flameLen - 4, 1);
-          ctx.lineTo(-16, 4.5);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = '#e0f2fe';
-          ctx.beginPath();
-          ctx.moveTo(-16, -0.5);
-          ctx.lineTo(-17 - flameLen * 0.65, 1.2);
-          ctx.lineTo(-16, 3);
-          ctx.closePath();
-          ctx.fill();
-        } else if (speciesId === 'emperor') {
-          ctx.fillStyle = '#7e22ce';
-          ctx.strokeStyle = '#fbbf24';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(4, -5);
-          ctx.quadraticCurveTo(-10, -8 - flutter * 0.5, -22, -2 - flutter * 0.7);
-          ctx.lineTo(-15, 2);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-        } else if (speciesId === 'adelie') {
-          ctx.fillStyle = '#0f766e';
-          ctx.beginPath();
-          ctx.moveTo(8, -5);
-          ctx.quadraticCurveTo(-2, -9 + flutter * 0.4, -12, -5 + flutter * 0.6);
-          ctx.lineTo(-6, -1.5);
-          ctx.closePath();
-          ctx.fill();
-        } else if (speciesId === 'gentoo') {
-          ctx.fillStyle = '#ea580c';
-          ctx.beginPath();
-          ctx.moveTo(8, -5);
-          ctx.quadraticCurveTo(-3, -8 + flutter * 0.5, -13, -4 + flutter * 0.7);
-          ctx.lineTo(-7, -1);
-          ctx.closePath();
-          ctx.fill();
-        }
-
-        // Sleek horizontal belly-sliding torso
-        const torsoGrad = ctx.createLinearGradient(0, -6, 0, 8);
-        if (speciesId === 'cyber') {
-          torsoGrad.addColorStop(0, '#64748b');
-          torsoGrad.addColorStop(1, '#1e293b');
-        } else {
-          torsoGrad.addColorStop(0, '#1e293b');
-          torsoGrad.addColorStop(1, '#091120');
-        }
-        ctx.fillStyle = torsoGrad;
-        ctx.strokeStyle = 'rgba(2, 10, 24, 0.7)';
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.ellipse(-1, 1.5, 16.5, 6.8, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        // White / Armored Belly underside
-        ctx.fillStyle = speciesId === 'cyber' ? '#94a3b8' : (speciesId === 'emperor' ? '#fef3c7' : '#ffffff');
-        ctx.beginPath();
-        ctx.ellipse(1, 5.2, 13, 3.2, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (speciesId === 'chinstrap') {
-          // Horizontal scuba tank strapped on top of back
-          ctx.fillStyle = '#cbd5e1';
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 0.9;
-          ctx.beginPath();
-          ctx.roundRect(-8, -8.5, 12.5, 5.2, 2.5);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = '#0ea5e9';
-          ctx.fillRect(-3, -8.3, 3, 4.8);
-        }
-
-        // Lifted Head
-        ctx.save();
-        ctx.translate(13.5, -3.5);
-
-        ctx.fillStyle = speciesId === 'cyber' ? '#475569' : '#0f172a';
-        ctx.strokeStyle = 'rgba(2, 10, 24, 0.7)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(0, 0, 6.8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        if (speciesId === 'emperor') {
-          ctx.fillStyle = '#fbbf24';
-          ctx.beginPath();
-          ctx.ellipse(2.2, 1.5, 3.2, 2.5, 0.2, 0, Math.PI * 2);
-          ctx.fill();
-          // Crown
-          ctx.fillStyle = '#f59e0b';
-          ctx.strokeStyle = '#78350f';
-          ctx.lineWidth = 0.7;
-          ctx.beginPath();
-          ctx.moveTo(-4, -5.8);
-          ctx.lineTo(-4.5, -11);
-          ctx.lineTo(-1.5, -8);
-          ctx.lineTo(0.2, -12);
-          ctx.lineTo(2, -8);
-          ctx.lineTo(4.6, -10.8);
-          ctx.lineTo(4, -5.8);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-        } else if (speciesId === 'chinstrap') {
-          ctx.fillStyle = '#f8fafc';
-          ctx.beginPath();
-          ctx.ellipse(2.2, 1.5, 4.2, 3.2, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = '#090d16';
-          ctx.lineWidth = 1.3;
-          ctx.beginPath();
-          ctx.moveTo(-1.5, -0.5);
-          ctx.quadraticCurveTo(1.2, 4.2, 5.2, 3.0);
-          ctx.stroke();
-        } else if (speciesId === 'gentoo') {
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.ellipse(0.5, -3.8, 4.0, 1.6, -0.15, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (speciesId === 'adelie') {
-          ctx.fillStyle = '#0f766e';
-          ctx.beginPath();
-          ctx.arc(0, -4.2, 5.4, Math.PI, 0);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = '#d97706';
-          ctx.beginPath();
-          ctx.ellipse(2.5, -4.2, 6.2, 1.4, 0, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (speciesId === 'cyber') {
-          ctx.strokeStyle = '#94a3b8';
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.moveTo(-1, -6.5);
-          ctx.lineTo(-2.5, -11.5);
-          ctx.stroke();
-          ctx.fillStyle = '#38bdf8';
-          ctx.beginPath();
-          ctx.arc(-2.5, -12, 1.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        this.drawBeak(ctx, 5.8, 0.2, speciesId, 0.06);
-        this.drawEye(ctx, 2.2, -1.6, speciesId, blink, happy);
-
-        if (carryingFish) {
-          this.drawDetailedFish(ctx, 13.5, 1.2, 0.1, 0.88);
-        }
-
-        ctx.restore();
-
-        // Swept back aerodynamic flipper
-        ctx.save();
-        ctx.translate(1.5, 1.8);
-        ctx.rotate(0.28 + Math.sin(stepPhase) * 0.12);
-        ctx.fillStyle = speciesId === 'cyber' ? '#38bdf8' : '#0f172a';
-        ctx.beginPath();
-        ctx.ellipse(-4.5, 0, 6.2, 2.2, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      },
-
-      drawBodyAndGearSleeping(ctx, opts) {
-        const {
-          speciesId = 'adelie',
-          stepPhase = 0,
-          time = 0
-        } = opts;
-
-        const breathe = Math.sin(time * 2.1 + stepPhase * 0.25) * 0.85;
-        const headBob = Math.sin(time * 2.1 + stepPhase * 0.25 - 0.5) * 0.55;
-
-        // Soft cozy snow contact shadow
-        ctx.fillStyle = 'rgba(6, 20, 44, 0.34)';
-        ctx.beginPath();
-        ctx.ellipse(0, 14.5, 16.5, 5.2, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Subtle resting Emperor / Cyber ground aura
-        if (speciesId === 'emperor') {
-          ctx.save();
-          const auraPulse = 0.75 + Math.sin(time * 2.0) * 0.12;
-          ctx.strokeStyle = `rgba(251, 191, 36, ${0.26 * auraPulse})`;
-          ctx.lineWidth = 1.6;
-          ctx.beginPath();
-          ctx.ellipse(0, 14.5, 24 * auraPulse, 8.5 * auraPulse, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        } else if (speciesId === 'cyber') {
-          ctx.save();
-          const pulse = 0.75 + Math.sin(time * 2.2) * 0.15;
-          ctx.strokeStyle = `rgba(56, 189, 248, ${0.28 * pulse})`;
-          ctx.lineWidth = 1.2;
-          ctx.beginPath();
-          ctx.ellipse(0, 14.5, 16 * pulse, 5.5 * pulse, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        // Back accessories (resting calmly)
-        if (speciesId === 'emperor') {
-          ctx.save();
-          ctx.fillStyle = '#7e22ce';
-          ctx.strokeStyle = '#fbbf24';
-          ctx.lineWidth = 1.0;
-          ctx.beginPath();
-          ctx.moveTo(-4, -3.5);
-          ctx.quadraticCurveTo(-15, 2, -16, 11);
-          ctx.quadraticCurveTo(-9, 13.5, -2, 10.5);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-        } else if (speciesId === 'chinstrap') {
-          ctx.save();
-          ctx.fillStyle = '#cbd5e1';
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 0.9;
-          ctx.beginPath();
-          ctx.roundRect(-14.2, -3.5, 6.4, 12.2, 3.0);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = '#0ea5e9';
-          ctx.fillRect(-13.9, 0.2, 5.8, 2.5);
-          ctx.restore();
-        } else if (speciesId === 'cyber') {
-          // Standby jetpack (flame off while sleeping)
-          ctx.save();
-          ctx.fillStyle = '#334155';
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 0.9;
-          ctx.beginPath();
-          ctx.roundRect(-14.0, -3.0, 6.0, 10.8, 2.4);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
-          ctx.fillRect(-12.8, -0.5, 3.6, 2.6);
-          ctx.restore();
-        }
-
-        // Tucked resting feet
-        this.drawFootGear(ctx, -4.0, 12.8, speciesId, -0.04);
-        this.drawFootGear(ctx, 4.6, 13.0, speciesId, 0.04);
-
-        // Tail tuft
-        ctx.fillStyle = speciesId === 'cyber' ? '#475569' : '#0b1528';
-        ctx.beginPath();
-        ctx.moveTo(-7, 8);
-        ctx.lineTo(-14.2, 11.2);
-        ctx.lineTo(-9, 12.6);
-        ctx.closePath();
-        ctx.fill();
-
-        // Cozy puffed/settled sleeping torso (slightly wider & lower)
-        ctx.save();
-        ctx.translate(0, 1.8);
-        const bodyGrad = ctx.createLinearGradient(-12, -12, 12, 13);
-        if (speciesId === 'cyber') {
-          bodyGrad.addColorStop(0, '#64748b');
-          bodyGrad.addColorStop(0.55, '#334155');
-          bodyGrad.addColorStop(1, '#0f172a');
-        } else {
-          bodyGrad.addColorStop(0, '#1e293b');
-          bodyGrad.addColorStop(0.6, '#0f172a');
-          bodyGrad.addColorStop(1, '#050a14');
-        }
-        ctx.fillStyle = bodyGrad;
-        ctx.strokeStyle = 'rgba(2, 10, 24, 0.72)';
-        ctx.lineWidth = 1.1;
-        ctx.beginPath();
-        ctx.ellipse(0, 1.5 - breathe * 0.25, 13.0 + breathe * 0.35, 11.8 + breathe * 0.25, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        // Cozy belly
-        if (speciesId === 'cyber') {
-          ctx.fillStyle = '#94a3b8';
-          ctx.beginPath();
-          ctx.ellipse(2.2, 3.2, 7.6, 8.2, 0.05, 0, Math.PI * 2);
-          ctx.fill();
-          // Soft dim standby arc core
-          const coreAlpha = 0.35 + (Math.sin(time * 2.1) + 1) * 0.22;
-          ctx.fillStyle = `rgba(56, 189, 248, ${coreAlpha.toFixed(3)})`;
-          ctx.beginPath();
-          ctx.arc(3.2, 1.5, 2.8, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          ctx.fillStyle = speciesId === 'emperor' ? '#fef3c7' : '#f8fafc';
-          ctx.beginPath();
-          ctx.ellipse(2.2, 3.0, 7.8, 8.4, 0.06, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Tucked Head Group — tilted snugly downward toward chest/flipper
-        ctx.save();
-        ctx.translate(1.8, -7.8 + headBob);
-        ctx.rotate(0.42);
-
-        // Rounded tucked head silhouette
-        ctx.fillStyle = speciesId === 'cyber' ? '#475569' : '#0f172a';
-        ctx.strokeStyle = 'rgba(2, 10, 24, 0.72)';
-        ctx.lineWidth = 1.0;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 8.4, 7.5, -0.08, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        // Species head details tilted cozily with tucked head
-        if (speciesId === 'emperor') {
-          ctx.fillStyle = '#fbbf24';
-          ctx.beginPath();
-          ctx.ellipse(2.2, 2.2, 3.5, 2.2, 0.25, 0, Math.PI * 2);
-          ctx.fill();
-          // Tilted mini crown
-          ctx.fillStyle = '#f59e0b';
-          ctx.strokeStyle = '#78350f';
-          ctx.lineWidth = 0.8;
-          ctx.beginPath();
-          ctx.moveTo(-4.8, -5.6);
-          ctx.lineTo(-5.5, -11.2);
-          ctx.lineTo(-1.8, -8.5);
-          ctx.lineTo(0.4, -12.4);
-          ctx.lineTo(2.8, -8.5);
-          ctx.lineTo(5.8, -11.0);
-          ctx.lineTo(5.0, -5.6);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-        } else if (speciesId === 'chinstrap') {
-          ctx.fillStyle = '#f8fafc';
-          ctx.beginPath();
-          ctx.ellipse(3.0, 1.0, 5.2, 3.8, 0.1, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = '#090d16';
-          ctx.lineWidth = 1.45;
-          ctx.beginPath();
-          ctx.moveTo(-1.0, -0.8);
-          ctx.quadraticCurveTo(2.2, 4.2, 7.0, 2.6);
-          ctx.stroke();
-        } else if (speciesId === 'gentoo') {
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.ellipse(0.8, -3.5, 4.8, 2.0, -0.15, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (speciesId === 'adelie') {
-          ctx.fillStyle = '#0f766e';
-          ctx.strokeStyle = '#042f2e';
-          ctx.lineWidth = 0.75;
-          ctx.beginPath();
-          ctx.arc(0, -4.6, 6.6, Math.PI, 0);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = '#d97706';
-          ctx.beginPath();
-          ctx.ellipse(3.2, -4.6, 7.6, 1.8, -0.05, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (speciesId === 'cyber') {
-          ctx.strokeStyle = '#94a3b8';
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.moveTo(-1, -7.2);
-          ctx.lineTo(-2.2, -12.5);
-          ctx.stroke();
-          const sleepLed = 0.25 + (Math.sin(time * 2.2) + 1) * 0.35;
-          ctx.fillStyle = `rgba(56, 189, 248, ${sleepLed.toFixed(3)})`;
-          ctx.beginPath();
-          ctx.arc(-2.2, -13.0, 2.0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Warm sleeping cheek blush
-        if (speciesId !== 'cyber') {
-          ctx.fillStyle = 'rgba(251, 113, 133, 0.30)';
-          ctx.beginPath();
-          ctx.ellipse(1.8, 1.8, 2.0, 1.15, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Tucked downward beak
-        this.drawBeak(ctx, 6.8, 1.4, speciesId, 0.34);
-
-        // Peaceful closed sleeping eye (downward curved arc)
-        if (speciesId === 'cyber') {
-          ctx.strokeStyle = 'rgba(125, 211, 252, 0.75)';
-          ctx.lineWidth = 1.6;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(1.6, -0.6);
-          ctx.lineTo(5.8, -0.2);
-          ctx.stroke();
-        } else {
-          ctx.strokeStyle = '#e2e8f0';
-          ctx.lineWidth = 1.45;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.arc(3.8, -1.0, 2.1, 0.15 * Math.PI, 0.85 * Math.PI);
-          ctx.stroke();
-        }
-
-        ctx.restore(); // end tucked head
-
-        // Cozy scarf collar for Gentoo / Adélie
-        if (speciesId === 'gentoo' || speciesId === 'adelie') {
-          ctx.fillStyle = speciesId === 'gentoo' ? '#ea580c' : '#0d9488';
-          ctx.beginPath();
-          ctx.roundRect(-7.2, -4.8, 15.0, 3.0, 1.5);
-          ctx.fill();
-        }
-
-        // Near flipper tucked snugly forward up over chest/chin like a blanket
-        ctx.save();
-        ctx.translate(-2.2, -1.2);
-        ctx.rotate(-0.62 + breathe * 0.04);
-        ctx.fillStyle = speciesId === 'cyber' ? '#334155' : '#0f172a';
-        ctx.strokeStyle = speciesId === 'cyber' ? '#38bdf8' : 'rgba(2, 10, 24, 0.65)';
-        ctx.lineWidth = 0.85;
-        ctx.beginPath();
-        ctx.ellipse(1.5, 4.2, 3.2, 7.6, -0.22, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-
-        ctx.restore(); // end torso translate
-      },
-
-      draw(ctx, opts = {}) {
-        const speciesId = opts.speciesId || 'adelie';
-        const pose = opts.pose || 'waddle';
-        const scale = (opts.scale || 1) * this.getSpeciesScale(speciesId);
-
-        ctx.save();
-        ctx.scale(scale, scale);
-
-        if (pose === 'slide') {
-          this.drawBodyAndGearSliding(ctx, opts);
-        } else if (pose === 'sleep') {
-          this.drawBodyAndGearSleeping(ctx, opts);
-        } else {
-          this.drawBodyAndGearStanding(ctx, { ...opts, isPortrait: pose === 'portrait' });
-        }
-
-        ctx.restore();
-      }
-    };
-
-    function getPenguinPortraitDataUrl(speciesId) {
-      if (PENGUIN_SPRITE_CACHE[speciesId]) {
-        return PENGUIN_SPRITE_CACHE[speciesId];
-      }
-      try {
-        const off = document.createElement('canvas');
-        off.width = 112;
-        off.height = 112;
-        const octx = off.getContext('2d');
-        if (!octx || typeof octx.createLinearGradient !== 'function') {
-          return '';
-        }
-        const sp = PENGUIN_SPECIES.find(s => s.id === speciesId);
-        const accent = sp ? sp.accentColor : '#38bdf8';
-
-        // Crisp subtle species aura halo in portrait background
-        if (typeof octx.createRadialGradient === 'function') {
-          const halo = octx.createRadialGradient(56, 62, 6, 56, 62, 48);
-          halo.addColorStop(0, accent + '55');
-          halo.addColorStop(1, 'rgba(6, 17, 33, 0)');
-          octx.fillStyle = halo;
-          octx.fillRect(0, 0, 112, 112);
-        }
-
-        octx.save();
-        octx.translate(54, 66);
-        const portraitScale = speciesId === 'emperor' ? 1.82 : 2.02;
-        PenguinSpriteRenderer.draw(octx, {
-          speciesId,
-          pose: 'portrait',
-          stepPhase: 0.4,
-          blink: false,
-          happy: false,
-          carryingFish: false,
-          time: 0.6,
-          scale: portraitScale
-        });
-        octx.restore();
-
-        const url = off.toDataURL('image/png');
-        PENGUIN_SPRITE_CACHE[speciesId] = url;
-        return url;
-      } catch (e) {
-        return '';
-      }
-    }
+    // High-detail penguin sprite engine & wardrobe overlay renderer loaded from ./js/penguin-sprites.js
+    const {
+      PENGUIN_SPRITE_CACHE,
+      PenguinSpriteRenderer,
+      getPenguinPortraitDataUrl,
+      clearPenguinSpriteCache
+    } = CorePenguinSprites;
 
     class ActivePenguin {
       constructor(speciesId, forcedTrait = null, initialCycleOffset = null) {
@@ -5033,6 +2717,8 @@
         const renderStepPhase = ((this.state === 'TALKING_ON_SIDE' && this.isStandingAtTalkSpot) || isSleepingPose || this.departureDelay > 0) ? 0 : this.stepPhase;
         const showHappy = isParading || this.happyTimer > 0;
 
+        const speciesHatId = typeof state.getSpeciesHat === 'function' ? state.getSpeciesHat(this.species.id) : 'none';
+
         // Soft ice reflection directly beneath penguin
         ctx.save();
         ctx.translate(this.x, this.y + 22);
@@ -5046,7 +2732,8 @@
           happy: showHappy,
           carryingFish: this.carriedFish > 0,
           time: animTime,
-          scale: 1
+          scale: 1,
+          hatId: speciesHatId
         });
         ctx.restore();
 
@@ -5064,7 +2751,8 @@
           happy: showHappy,
           carryingFish: this.carriedFish > 0,
           time: animTime,
-          scale: 1
+          scale: 1,
+          hatId: speciesHatId
         });
 
         // Festive miniature parade pennant carried by the Parade Leader
@@ -5468,9 +3156,39 @@
       }
     }
 
-    // --- 15-MINUTE PENGUIN PARADE CONTROLLER ---
+    // --- 15-MINUTE PENGUIN PARADE & SKY MINI-EVENT CONTROLLERS ---
     const paradeController = typeof ParadeController === 'function' ? new ParadeController() : null;
     window.paradeController = paradeController;
+    const skyEventController = CoreSkyEvents && CoreSkyEvents.SkyMiniEventController
+      ? new CoreSkyEvents.SkyMiniEventController()
+      : null;
+    window.skyEventController = skyEventController;
+
+    function updateSkyComboPill() {
+      const pillEl = document.getElementById('sky-combo-pill');
+      if (!pillEl) return;
+      if (!skyEventController) {
+        pillEl.classList.add('hidden');
+        return;
+      }
+      const snap = skyEventController.getHudSnapshot(state.starlightFrenzyTimer || 0);
+      if (!snap.visible) {
+        pillEl.classList.add('hidden');
+        pillEl.classList.remove('is-frenzy');
+        return;
+      }
+      pillEl.classList.remove('hidden');
+      if (snap.frenzyActive) {
+        pillEl.classList.add('is-frenzy');
+        const frenzySec = Math.ceil(snap.frenzyRemainingSec);
+        const comboPart = snap.comboCount > 0 ? ` • ${snap.comboCount}× Combo` : '';
+        pillEl.textContent = `🌟 Starlight Frenzy 2× (${frenzySec}s)${comboPart}`;
+      } else {
+        pillEl.classList.remove('is-frenzy');
+        const decaySec = Math.ceil(snap.comboTimer);
+        pillEl.textContent = `🌠 Sky Combo ${snap.comboCount}× (${decaySec}s)`;
+      }
+    }
 
     // --- MAIN GAME LOOP (60FPS requestAnimationFrame) ---
 
@@ -5503,7 +3221,7 @@
         return height - 24;
       }
       if (sheet.classList.contains('expanded')) {
-        return 0; // Full-screen expanded menu obscures the glacier
+        return 0; // 80% expanded menu covers the ice shelf (top 20% sky remains visible)
       }
       try {
         const rect = sheet.getBoundingClientRect();
@@ -5721,6 +3439,7 @@
         if (state.slushDebuffTimer > 0) state.slushDebuffTimer = Math.max(0, state.slushDebuffTimer - dt);
         if (state.goldenFishTimer > 0) state.goldenFishTimer = Math.max(0, state.goldenFishTimer - dt);
         if (state.paradeBoostTimer > 0) state.paradeBoostTimer = Math.max(0, state.paradeBoostTimer - dt);
+        if (state.starlightFrenzyTimer > 0) state.starlightFrenzyTimer = Math.max(0, state.starlightFrenzyTimer - dt);
 
         const isOfflineOrWhatsNewBlocking = (typeof isModalBlockingAurora === 'function') && isModalBlockingAurora();
         if (!state.isAuroraModalOpen && !state.isAuroraAlertActive && !isOfflineOrWhatsNewBlocking) {
@@ -5764,18 +3483,27 @@
 
         drawScene(ctx, dt);
 
+        const visibleBottomYNow = getVisibleGlacierBottomY();
+        const isSheetExpandedNow = typeof sheetSnapState !== 'undefined' && sheetSnapState === 'expanded';
+        const isSkyEventsBlocked = isOfflineOrWhatsNewBlocking ||
+          state.isAuroraModalOpen ||
+          state.isAuroraAlertActive ||
+          (typeof launchSplash !== 'undefined' && launchSplash && launchSplash.isActive) ||
+          (typeof document !== 'undefined' && document.hidden);
+
         if (paradeController) {
-          const paradeVisibleBottomY = getVisibleGlacierBottomY();
           paradeController.update(dt, {
             penguins: activePenguins,
             width,
             height,
-            visibleBottomY: paradeVisibleBottomY,
+            visibleBottomY: visibleBottomYNow,
             isPaused: typeof document !== 'undefined' && document.hidden,
-            isBlocked: isOfflineOrWhatsNewBlocking || state.isAuroraModalOpen || state.isAuroraAlertActive || paradeVisibleBottomY <= 0,
+            isBlocked: isOfflineOrWhatsNewBlocking || state.isAuroraModalOpen || state.isAuroraAlertActive || visibleBottomYNow <= 0,
             releaseSlot,
             onParadeStart: (info) => {
               state.paradeBoostTimer = Math.max(state.paradeBoostTimer || 0, info.boostDurationSec);
+              state.paradesWitnessed = (state.paradesWitnessed || 0) + 1;
+              state.save({ routine: true });
               sound.playParadeFanfare();
               sound.triggerHaptic('celebrate', 100);
               showToast(
@@ -5783,6 +3511,9 @@
                 '🎺',
                 { category: 'parade', variant: 'parade', durationMs: 6500 }
               );
+              if (state.currentTab === 'stats') {
+                updateSheetContent();
+              }
             },
             onParadeChime: (stepIdx) => {
               sound.playParadeChimeStep(stepIdx);
@@ -5806,6 +3537,16 @@
           });
         }
 
+        if (skyEventController) {
+          skyEventController.update(dt, {
+            width,
+            height,
+            sheetExpanded: isSheetExpandedNow,
+            visibleBottomY: visibleBottomYNow,
+            isBlocked: isSkyEventsBlocked
+          });
+        }
+
         activePenguins.forEach(p => p.update(dt));
         resolvePenguinSpacing(dt);
         tryTriggerColonySpeech(dt);
@@ -5813,10 +3554,14 @@
         activePenguins.forEach(p => p.draw(ctx));
 
         updateAndDrawGoldenFish(ctx, dt);
+        if (skyEventController) {
+          skyEventController.draw(ctx, { sheetExpanded: isSheetExpandedNow });
+        }
         drawBlizzardVisibilityOverlay(ctx, dt);
         activePenguins.forEach(p => p.drawSpeechBubble(ctx));
         updateParticles(ctx, dt);
         updateDisplayedFish(dt);
+        updateSkyComboPill();
         updateHUD();
       } catch (err) {
         console.warn('Frame loop recovery:', err);
@@ -5825,601 +3570,103 @@
       }
     }
 
-    const SKY_STARS = Array.from({ length: 58 }, (_, idx) => ({
-      xFrac: ((idx * 173 + 37) % 997) / 997,
-      yFrac: 0.02 + (((idx * 311 + 19) % 340) / 1000),
-      size: (idx % 4 === 0) ? 1.8 : (idx % 2 === 0 ? 1.25 : 0.9),
-      phase: idx * 0.9,
-      speed: 1.4 + (idx % 5) * 0.45
-    }));
-
-    const SKY_PALETTE_KEYFRAMES = [
-      // 0: Deep Polar Twilight
-      { top: [2, 8, 20], mid: [7, 25, 54], bot: [18, 56, 102], starAlpha: 0.92, auroraAlpha: 0.85 },
-      // 1: Starry Arctic Midnight
-      { top: [1, 5, 16], mid: [5, 16, 42], bot: [12, 34, 72], starAlpha: 1.0, auroraAlpha: 0.72 },
-      // 2: Vibrant Aurora Borealis Peak
-      { top: [4, 14, 30], mid: [10, 38, 66], bot: [20, 74, 104], starAlpha: 0.88, auroraAlpha: 1.25 },
-      // 3: Crisp Polar Dawn
-      { top: [14, 24, 52], mid: [34, 52, 92], bot: [72, 102, 146], starAlpha: 0.45, auroraAlpha: 0.52 }
-    ];
-
-    function lerpRgbStr(a, b, t) {
-      const r = Math.round(a[0] + (b[0] - a[0]) * t);
-      const g = Math.round(a[1] + (b[1] - a[1]) * t);
-      const bl = Math.round(a[2] + (b[2] - a[2]) * t);
-      return `rgb(${r}, ${g}, ${bl})`;
-    }
+    const SKY_STARS = CoreSceneRenderer ? CoreSceneRenderer.SKY_STARS : [];
+    const SKY_PALETTE_KEYFRAMES = CoreSceneRenderer ? CoreSceneRenderer.SKY_PALETTE_KEYFRAMES : [];
 
     function getCurrentSkyAtmosphere() {
-      const len = SKY_PALETTE_KEYFRAMES.length;
-      const safeElapsed = CoreEconomy && typeof CoreEconomy.positiveModulo === 'function'
-        ? CoreEconomy.positiveModulo(skyCycleElapsed, 360)
-        : (((Number.isFinite(skyCycleElapsed) ? skyCycleElapsed : 0) % 360) + 360) % 360;
-      const cyclePos = (safeElapsed / 360) * len;
-      const idx = CoreEconomy && typeof CoreEconomy.positiveModulo === 'function'
-        ? CoreEconomy.positiveModulo(Math.floor(cyclePos), len)
-        : ((Math.floor(cyclePos) % len) + len) % len;
-      const nextIdx = (idx + 1) % len;
-      const frac = Math.max(0, Math.min(1, cyclePos - Math.floor(cyclePos)));
-      const smooth = frac * frac * (3 - 2 * frac);
-      const a = SKY_PALETTE_KEYFRAMES[idx] || SKY_PALETTE_KEYFRAMES[0];
-      const b = SKY_PALETTE_KEYFRAMES[nextIdx] || SKY_PALETTE_KEYFRAMES[0];
-      return {
-        top: lerpRgbStr(a.top, b.top, smooth),
-        mid: lerpRgbStr(a.mid, b.mid, smooth),
-        bot: lerpRgbStr(a.bot, b.bot, smooth),
-        starAlpha: a.starAlpha + (b.starAlpha - a.starAlpha) * smooth,
-        auroraAlpha: a.auroraAlpha + (b.auroraAlpha - a.auroraAlpha) * smooth
-      };
-    }
-
-    function drawSlideTrailsAndRipples(ctx, dt) {
-      ctx.save();
-      for (let i = slideTrails.length - 1; i >= 0; i--) {
-        const seg = slideTrails[i];
-        seg.life -= dt;
-        if (seg.life <= 0) {
-          slideTrails.splice(i, 1);
-          continue;
-        }
-        const alpha = (seg.life / seg.maxLife) * 0.42;
-        ctx.fillStyle = seg.cyber
-          ? `rgba(125, 211, 252, ${alpha.toFixed(3)})`
-          : `rgba(240, 249, 255, ${alpha.toFixed(3)})`;
-        ctx.beginPath();
-        ctx.ellipse(seg.x, seg.y, seg.r * 1.45, seg.r * 0.55, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      for (let i = holeRipples.length - 1; i >= 0; i--) {
-        const rip = holeRipples[i];
-        rip.progress += dt * 1.35;
-        if (rip.progress >= 1) {
-          holeRipples.splice(i, 1);
-          continue;
-        }
-        const rx = rip.maxRx * rip.progress;
-        const ry = rip.maxRy * rip.progress;
-        ctx.globalAlpha = Math.max(0, 1 - rip.progress);
-        ctx.strokeStyle = rip.color;
-        ctx.lineWidth = 2.0 * (1 - rip.progress * 0.5);
-        ctx.beginPath();
-        ctx.ellipse(width * rip.xRatio, height * rip.yRatio + 1, rx, ry, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.restore();
+      return CoreSceneRenderer
+        ? CoreSceneRenderer.getCurrentSkyAtmosphere(skyCycleElapsed)
+        : { top: '#020814', mid: '#071936', bot: '#123866', starAlpha: 0.9, auroraAlpha: 0.85 };
     }
 
     function drawScene(ctx, dt) {
-      ctx.clearRect(0, 0, width, height);
-
-      const skyAtm = getCurrentSkyAtmosphere();
-      const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.56);
-      skyGradient.addColorStop(0, skyAtm.top);
-      skyGradient.addColorStop(0.5, skyAtm.mid);
-      skyGradient.addColorStop(1, skyAtm.bot);
-      ctx.fillStyle = skyGradient;
-      ctx.fillRect(0, 0, width, height * 0.6);
-
-      drawPolarStarsAndMoon(ctx, auroraWavePhase, skyAtm.starAlpha);
-      drawAuroraWaves(ctx, auroraWavePhase, skyAtm.auroraAlpha);
-      drawDistantMountains(ctx);
-
-      const iceGradient = ctx.createLinearGradient(0, height * 0.38, 0, height);
-      iceGradient.addColorStop(0, '#1e4878');
-      iceGradient.addColorStop(0.14, '#3671ab');
-      iceGradient.addColorStop(0.45, '#72addc');
-      iceGradient.addColorStop(0.8, '#9fd7f4');
-      iceGradient.addColorStop(1, '#c4ebfc');
-      ctx.fillStyle = iceGradient;
-      ctx.fillRect(0, height * 0.38, width, height * 0.62);
-
-      // Subtle auroral sheen reflected onto the mid-shelf ice
-      const sheenGrad = ctx.createRadialGradient(width * 0.5, height * 0.56, 15, width * 0.5, height * 0.58, width * 0.55);
-      sheenGrad.addColorStop(0, 'rgba(186, 230, 253, 0.24)');
-      sheenGrad.addColorStop(0.6, 'rgba(56, 189, 248, 0.08)');
-      sheenGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
-      ctx.fillStyle = sheenGrad;
-      ctx.fillRect(0, height * 0.38, width, height * 0.62);
-
-      drawIceDetails(ctx);
-
-      FISHING_HOLES.forEach(hole => {
-        hole.rippleTimer += dt * 1.5;
-        drawIceHole(ctx, hole);
+      if (!CoreSceneRenderer) return;
+      CoreSceneRenderer.drawScene(ctx, dt, {
+        width,
+        height,
+        skyCycleElapsed,
+        auroraWavePhase,
+        fishingHoles: FISHING_HOLES,
+        slideTrails,
+        holeRipples,
+        depot: DEPOT,
+        iglooTier: state ? state.iglooTier : 0,
+        iglooTheme: state ? state.iglooTheme : 'glacier',
+        targetWeather: state ? state.getCurrentWeather() : WEATHER_TYPES[0],
+        snowParticles,
+        maxSnow: MAX_SNOW,
+        weatherMix
       });
-
-      drawSlideTrailsAndRipples(ctx, dt);
-      drawIglooDepot(ctx);
-      drawSnow(ctx, dt);
     }
 
-    function drawPolarStarsAndMoon(ctx, phase, starOpacityScale = 1.0) {
-      ctx.save();
-      SKY_STARS.forEach(star => {
-        const twinkle = (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(phase * star.speed + star.phase))) * starOpacityScale;
-        ctx.fillStyle = `rgba(224, 242, 254, ${Math.min(1, twinkle).toFixed(3)})`;
-        ctx.beginPath();
-        ctx.arc(star.xFrac * width, star.yFrac * height, star.size, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // Soft glowing Polar Moon
-      const mx = width * 0.16;
-      const my = height * 0.13;
-      const moonHalo = ctx.createRadialGradient(mx, my, 8, mx, my, 46);
-      moonHalo.addColorStop(0, 'rgba(224, 242, 254, 0.35)');
-      moonHalo.addColorStop(0.45, 'rgba(125, 211, 252, 0.14)');
-      moonHalo.addColorStop(1, 'rgba(56, 189, 248, 0)');
-      ctx.fillStyle = moonHalo;
-      ctx.beginPath();
-      ctx.arc(mx, my, 46, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#f0f9ff';
-      ctx.beginPath();
-      ctx.arc(mx, my, 12, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = 'rgba(148, 163, 184, 0.25)';
-      ctx.beginPath();
-      ctx.arc(mx - 3, my - 2, 2.5, 0, Math.PI * 2);
-      ctx.arc(mx + 4, my + 3, 1.8, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    function drawAuroraWaves(ctx, phase, auroraOpacityScale = 1.0) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      ctx.globalAlpha = Math.max(0.35, Math.min(1.0, auroraOpacityScale));
-
-      const ribbons = [
-        { cTop: 'rgba(56, 189, 248, 0.04)', cBot: 'rgba(56, 189, 248, 0.30)', baseY: 0.14, offset: 0 },
-        { cTop: 'rgba(52, 211, 153, 0.05)', cBot: 'rgba(52, 211, 153, 0.34)', baseY: 0.18, offset: 1.7 },
-        { cTop: 'rgba(168, 85, 247, 0.04)', cBot: 'rgba(192, 132, 252, 0.25)', baseY: 0.11, offset: 3.1 }
-      ];
-
-      ribbons.forEach((rb, i) => {
-        const grad = ctx.createLinearGradient(0, 0, 0, height * (rb.baseY + 0.1));
-        grad.addColorStop(0, rb.cTop);
-        grad.addColorStop(1, rb.cBot);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(0, height * rb.baseY);
-
-        for (let x = 0; x <= width; x += 24) {
-          const y = height * rb.baseY +
-            Math.sin(x * 0.005 + phase + rb.offset) * 32 +
-            Math.cos(x * 0.013 - phase * 0.65 + i) * 18;
-          ctx.lineTo(x, y);
-        }
-
-        ctx.lineTo(width, 0);
-        ctx.lineTo(0, 0);
-        ctx.closePath();
-        ctx.fill();
-      });
-
-      // Vertical aurora curtain rays
-      for (let r = 0; r < 10; r++) {
-        const rx = width * (0.08 + r * 0.095) + Math.sin(phase * 0.7 + r) * 18;
-        const rayHeight = height * (0.16 + 0.05 * Math.sin(phase + r * 1.3));
-        const rayGrad = ctx.createLinearGradient(rx, height * 0.03, rx, rayHeight);
-        rayGrad.addColorStop(0, 'rgba(52, 211, 153, 0)');
-        rayGrad.addColorStop(0.6, 'rgba(52, 211, 153, 0.14)');
-        rayGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
-        ctx.fillStyle = rayGrad;
-        ctx.fillRect(rx - 8, height * 0.02, 16, rayHeight);
-      }
-
-      ctx.restore();
-    }
-
-    function drawDistantMountains(ctx) {
-      ctx.save();
-      const baseY = height * 0.415;
-
-      // Far misty range
-      ctx.fillStyle = '#0c2040';
-      ctx.beginPath();
-      ctx.moveTo(0, baseY);
-      const farPeaks = [
-        { x: 0.08, h: 0.31 },
-        { x: 0.25, h: 0.26 },
-        { x: 0.45, h: 0.30 },
-        { x: 0.68, h: 0.27 },
-        { x: 0.90, h: 0.31 }
-      ];
-      farPeaks.forEach(p => {
-        ctx.lineTo(width * (p.x - 0.12), baseY);
-        ctx.lineTo(width * p.x, height * p.h);
-        ctx.lineTo(width * (p.x + 0.12), baseY);
-      });
-      ctx.closePath();
-      ctx.fill();
-
-      // Foreground faceted glacial peaks with lit snow slopes & cool shadow faces
-      const peaks = [
-        { x: 0.14, w: 0.13, h: 0.30 },
-        { x: 0.36, w: 0.14, h: 0.255 },
-        { x: 0.60, w: 0.13, h: 0.315 },
-        { x: 0.84, w: 0.15, h: 0.27 }
-      ];
-
-      peaks.forEach(p => {
-        const px = width * p.x;
-        const py = height * p.h;
-        const leftX = width * (p.x - p.w);
-        const rightX = width * (p.x + p.w);
-
-        // Left lit slope
-        const litGrad = ctx.createLinearGradient(leftX, py, px, baseY);
-        litGrad.addColorStop(0, '#3b6ca1');
-        litGrad.addColorStop(1, '#183b66');
-        ctx.fillStyle = litGrad;
-        ctx.beginPath();
-        ctx.moveTo(leftX, baseY);
-        ctx.lineTo(px, py);
-        ctx.lineTo(px + width * 0.012, baseY);
-        ctx.closePath();
-        ctx.fill();
-
-        // Right shadowed slope
-        ctx.fillStyle = '#0e284b';
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(rightX, baseY);
-        ctx.lineTo(px - width * 0.005, baseY);
-        ctx.closePath();
-        ctx.fill();
-
-        // Crisp snowcap on summit
-        ctx.fillStyle = 'rgba(224, 242, 254, 0.55)';
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(px - width * p.w * 0.28, py + (baseY - py) * 0.28);
-        ctx.lineTo(px - width * p.w * 0.06, py + (baseY - py) * 0.22);
-        ctx.lineTo(px + width * p.w * 0.16, py + (baseY - py) * 0.26);
-        ctx.closePath();
-        ctx.fill();
-      });
-
-      // Soft horizon snowbank transition
-      const ridgeGrad = ctx.createLinearGradient(0, baseY - 10, 0, baseY + 14);
-      ridgeGrad.addColorStop(0, 'rgba(186, 230, 253, 0)');
-      ridgeGrad.addColorStop(0.55, 'rgba(186, 230, 253, 0.28)');
-      ridgeGrad.addColorStop(1, 'rgba(186, 230, 253, 0)');
-      ctx.fillStyle = ridgeGrad;
-      ctx.fillRect(0, baseY - 10, width, 24);
-      ctx.restore();
-    }
-
-    function drawIceDetails(ctx) {
-      ctx.save();
-
-      // Subtle snowdrifts across the ice shelf
-      ctx.fillStyle = 'rgba(240, 249, 255, 0.22)';
-      [
-        { x: 0.18, y: 0.49, rx: 64, ry: 12 },
-        { x: 0.80, y: 0.53, rx: 72, ry: 14 },
-        { x: 0.34, y: 0.88, rx: 90, ry: 15 },
-        { x: 0.72, y: 0.89, rx: 78, ry: 13 }
-      ].forEach(d => {
-        ctx.beginPath();
-        ctx.ellipse(width * d.x, height * d.y, d.rx, d.ry, 0, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // Crystalline ice fissures with bright highlight edges
-      const cracks = [
-        [
-          { x: 0.09, y: 0.56 },
-          { x: 0.25, y: 0.59 },
-          { x: 0.33, y: 0.55 }
-        ],
-        [
-          { x: 0.66, y: 0.61 },
-          { x: 0.79, y: 0.65 },
-          { x: 0.90, y: 0.60 }
-        ],
-        [
-          { x: 0.35, y: 0.77 },
-          { x: 0.42, y: 0.80 },
-          { x: 0.39, y: 0.84 }
-        ]
-      ];
-      cracks.forEach(pts => {
-        ctx.strokeStyle = 'rgba(14, 116, 144, 0.22)';
-        ctx.lineWidth = 2.4;
-        ctx.beginPath();
-        pts.forEach((p, idx) => idx === 0 ? ctx.moveTo(width * p.x, height * p.y + 1) : ctx.lineTo(width * p.x, height * p.y + 1));
-        ctx.stroke();
-
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        pts.forEach((p, idx) => idx === 0 ? ctx.moveTo(width * p.x, height * p.y) : ctx.lineTo(width * p.x, height * p.y));
-        ctx.stroke();
-      });
-
-      // Decorative faceted ice crystals along shelf edges
-      [
-        { x: 0.08, y: 0.47, s: 1.0 },
-        { x: 0.91, y: 0.49, s: 1.15 },
-        { x: 0.11, y: 0.84, s: 0.85 },
-        { x: 0.90, y: 0.83, s: 0.9 }
-      ].forEach(c => {
-        const cx = width * c.x;
-        const cy = height * c.y;
-        const s = c.s;
-        ctx.fillStyle = 'rgba(186, 230, 253, 0.55)';
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - 16 * s);
-        ctx.lineTo(cx + 8 * s, cy + 2 * s);
-        ctx.lineTo(cx, cy + 6 * s);
-        ctx.lineTo(cx - 8 * s, cy + 2 * s);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - 16 * s);
-        ctx.lineTo(cx, cy + 6 * s);
-        ctx.lineTo(cx - 8 * s, cy + 2 * s);
-        ctx.closePath();
-        ctx.fill();
-      });
-
-      ctx.restore();
-    }
-
-    function drawIceHole(ctx, hole) {
-      const cx = width * hole.xRatio;
-      const cy = height * hole.yRatio;
-
-      ctx.save();
-      // Frosted snow lip
-      ctx.fillStyle = 'rgba(240, 250, 255, 0.85)';
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 1, hole.radiusX + 5.5, hole.radiusY + 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Cut ice shelf inner bevel edge (shows shelf thickness)
-      ctx.fillStyle = '#7dd3fc';
-      ctx.beginPath();
-      ctx.ellipse(cx, cy - 0.5, hole.radiusX + 2, hole.radiusY + 1.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Deep arctic ocean water radial fill
-      const waterGrad = ctx.createRadialGradient(cx, cy + 2, 3, cx, cy, hole.radiusX);
-      waterGrad.addColorStop(0, '#021526');
-      waterGrad.addColorStop(0.65, '#073153');
-      waterGrad.addColorStop(1, '#0e5288');
-      ctx.fillStyle = waterGrad;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 1.5, hole.radiusX, hole.radiusY - 0.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Subtle swimming underwater fish shadow glimpsed inside hole
-      ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 1.5, hole.radiusX - 3, hole.radiusY - 2, 0, 0, Math.PI * 2);
-      ctx.clip();
-      const swimOffset = Math.sin(auroraWavePhase * 1.8 + hole.id * 2.1) * (hole.radiusX * 0.48);
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-      ctx.beginPath();
-      ctx.ellipse(cx + swimOffset, cy + 2, 6.5, 2.3, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // Expanding surface ripples
-      const ripple = (hole.rippleTimer % 2.0) / 2.0;
-      ctx.strokeStyle = `rgba(186, 230, 253, ${(0.72 * (1 - ripple)).toFixed(3)})`;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 1, hole.radiusX * ripple, hole.radiusY * ripple, 0, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.restore();
-    }
-
-    function drawIglooDepot(ctx) {
-      const cx = width * DEPOT.x;
-      const cy = height * DEPOT.y;
-      const r = DEPOT.radius;
-      if (CoreCastleRenderer && typeof CoreCastleRenderer.drawIglooCastle === 'function') {
-        CoreCastleRenderer.drawIglooCastle(ctx, {
-          cx,
-          cy,
-          r,
-          iglooTier: state ? state.iglooTier : 0,
-          iglooTheme: state ? state.iglooTheme : 'glacier',
-          phase: auroraWavePhase
-        });
-        return;
-      }
-      // Minimal fallback dome if castle-renderer.js failed to load
-      ctx.save();
-      ctx.fillStyle = '#d4ecfc';
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, Math.PI, 0, false);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
-
-    function drawSnow(ctx, dt) {
-      const targetWeather = state.getCurrentWeather();
-      const lerpRate = Math.min(1, dt * 1.4);
-      weatherSnowMix += (targetWeather.snowFactor - weatherSnowMix) * lerpRate;
-      weatherWindMix += (targetWeather.windFactor - weatherWindMix) * lerpRate;
-      weatherFogMix += (targetWeather.fogFactor - weatherFogMix) * lerpRate;
-
-      const activeCount = Math.max(8, Math.round(MAX_SNOW * weatherSnowMix));
-      const frameScale = dt * 60;
-
-      ctx.save();
-      for (let i = 0; i < activeCount; i++) {
-        const p = snowParticles[i];
-        const vy = p.speedY * (0.85 + weatherSnowMix * 1.4) * frameScale;
-        const vx = (p.speedX + weatherWindMix * 1.35) * frameScale;
-        p.y += vy;
-        p.x += vx;
-        if (p.y > height) {
-          p.y = -6;
-          p.x = Math.random() * width;
-        }
-        if (p.x < -10) p.x = width + 5;
-        if (p.x > width + 10) p.x = -5;
-
-        ctx.fillStyle = `rgba(240, 250, 255, ${Math.min(0.95, p.opacity * (0.7 + weatherSnowMix * 0.45))})`;
-        ctx.beginPath();
-        if (weatherFogMix > 0.35) {
-          ctx.ellipse(p.x, p.y, p.radius * (1 + weatherFogMix * 2.2), p.radius * 0.85, 0.22, 0, Math.PI * 2);
-        } else {
-          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        }
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    function drawBlizzardVisibilityOverlay(ctx, dt) {
-      if (weatherFogMix <= 0.02) return;
-
-      ctx.save();
-      // Overall frosty whiteout haze decreasing visibility across the canvas
-      const baseHazeAlpha = Math.min(0.46, weatherFogMix * 0.42);
-      ctx.fillStyle = `rgba(205, 228, 248, ${baseHazeAlpha})`;
-      ctx.fillRect(0, 0, width, height);
-
-      // Edge whiteout vignette reducing peripheral visibility in storms
-      const cx = width * 0.5;
-      const cy = height * 0.52;
-      const outerR = Math.max(width, height) * 0.72;
-      const fogGrad = ctx.createRadialGradient(cx, cy, outerR * 0.18, cx, cy, outerR);
-      fogGrad.addColorStop(0, `rgba(215, 236, 252, ${(0.08 * weatherFogMix).toFixed(3)})`);
-      fogGrad.addColorStop(0.6, `rgba(190, 222, 248, ${(0.28 * weatherFogMix).toFixed(3)})`);
-      fogGrad.addColorStop(1, `rgba(175, 212, 244, ${(0.52 * weatherFogMix).toFixed(3)})`);
-      ctx.fillStyle = fogGrad;
-      ctx.fillRect(0, 0, width, height);
-
-      // Drifting horizontal wind-gust fog bands during active blizzard
-      if (weatherFogMix > 0.25) {
-        const gustAlpha = Math.min(0.22, (weatherFogMix - 0.2) * 0.22);
-        ctx.fillStyle = `rgba(240, 248, 255, ${gustAlpha})`;
-        for (let i = 0; i < 4; i++) {
-          const bandY = ((height * (0.2 + i * 0.22)) + Math.sin(auroraWavePhase * 1.4 + i) * 28);
-          const driftX = ((auroraWavePhase * (90 + i * 25)) % (width + 240)) - 120;
-          ctx.beginPath();
-          ctx.ellipse(driftX, bandY, 150 + i * 20, 26 + i * 6, -0.05, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      ctx.restore();
+    function drawBlizzardVisibilityOverlay(ctx) {
+      if (!CoreSceneRenderer) return;
+      CoreSceneRenderer.drawBlizzardVisibilityOverlay(ctx, width, height, weatherMix.fog, auroraWavePhase);
     }
 
     function updateParticles(ctx, dt) {
-      for (let i = tapParticles.length - 1; i >= 0; i--) {
-        const p = tapParticles[i];
-        p.life -= dt * 1.4;
-        p.y += p.vy;
-        p.x += p.vx;
-
-        if (p.life <= 0) {
-          tapParticles.splice(i, 1);
-        } else {
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, p.life);
-          ctx.fillStyle = p.color;
-          ctx.font = `bold ${p.size}px var(--font-family)`;
-          ctx.textAlign = 'center';
-          ctx.fillText(p.text, p.x, p.y);
-          ctx.restore();
-        }
-      }
-
-      for (let i = fireworks.length - 1; i >= 0; i--) {
-        const fw = fireworks[i];
-        fw.life -= dt * 1.2;
-        fw.x += fw.vx;
-        fw.y += fw.vy;
-        fw.vy += dt * 3.5;
-
-        if (fw.life <= 0) {
-          fireworks.splice(i, 1);
-        } else {
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, fw.life);
-          ctx.fillStyle = fw.color;
-          ctx.beginPath();
-          ctx.arc(fw.x, fw.y, fw.size, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
-      }
-
-      for (let i = sleepZzzParticles.length - 1; i >= 0; i--) {
-        const z = sleepZzzParticles[i];
-        z.age += dt;
-        if (z.age >= z.maxLife) {
-          sleepZzzParticles.splice(i, 1);
-          continue;
-        }
-        const progress = z.age / z.maxLife;
-        const alpha = progress < 0.2
-          ? (progress / 0.2) * 0.92
-          : (1 - ((progress - 0.2) / 0.8)) * 0.92;
-        const driftX = Math.sin(z.age * 3.1 + z.phase) * 5.5 + progress * 4.5;
-        const drawX = z.x + driftX;
-        const drawY = z.y + z.vy * z.age;
-        const fontSize = Math.round(z.baseSize + progress * 3.5);
-
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-        ctx.font = `italic 800 ${fontSize}px "Segoe UI", system-ui, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.strokeStyle = 'rgba(15, 23, 42, 0.72)';
-        ctx.lineWidth = 2.4;
-        ctx.strokeText(z.text, drawX, drawY);
-        ctx.fillStyle = z.color;
-        ctx.fillText(z.text, drawX, drawY);
-        ctx.restore();
-      }
+      if (!CoreSceneRenderer) return;
+      CoreSceneRenderer.updateParticles(ctx, dt, { tapParticles, fireworks, sleepZzzParticles });
     }
 
     // --- USER INTERACTIONS & TAPPING ---
 
     function handleScreenTap(x, y) {
       sound.init();
-      dailyManager.track('taps', 1);
-      state.totalManualClicks = (state.totalManualClicks || 0) + 1;
+      const isExpandedNow = typeof sheetSnapState !== 'undefined' && sheetSnapState === 'expanded';
 
-      // Priority 1: Check Golden Fish School mini-event tap (generous 54px touch radius + single-catch guard)
+      // Priority 1: Sky & Ice Mini-Events (Shooting Star in top 20% sky, Krill Swarm on visible ice shelf)
+      if (skyEventController) {
+        state.calculateDPS();
+        const skyRes = skyEventController.tryCatch(x, y, {
+          dps: state.dps,
+          sheetExpanded: isExpandedNow
+        });
+        if (skyRes && skyRes.caught) {
+          dailyManager.track('taps', 1);
+          state.totalManualClicks = (state.totalManualClicks || 0) + 1;
+          state.skyEventsCaught = (state.skyEventsCaught || 0) + 1;
+          state.bestSkyCombo = Math.max(state.bestSkyCombo || 0, skyRes.comboCount || 1);
+          if (skyRes.frenzyTriggered && skyRes.frenzyDurationSec > 0) {
+            state.starlightFrenzyTimer = Math.max(state.starlightFrenzyTimer || 0, skyRes.frenzyDurationSec);
+          }
+          state.addFish(skyRes.rewardFish);
+          state.save({ immediate: true });
+          sound.playLevelUp();
+          sound.triggerHaptic(skyRes.frenzyTriggered ? 'celebrate' : 'collect');
+          const burstColors = skyRes.kind === 'krill_swarm'
+            ? ['#fb7185', '#fdba74', '#38bdf8']
+            : ['#fef08a', '#38bdf8', '#c084fc'];
+          for (let i = 0; i < 16; i++) {
+            const ang = (i / 16) * Math.PI * 2;
+            const spd = 2.0 + Math.random() * 4.0;
+            fireworks.push({
+              x: skyRes.x,
+              y: skyRes.y,
+              vx: Math.cos(ang) * spd,
+              vy: Math.sin(ang) * spd - 1.0,
+              color: burstColors[i % burstColors.length],
+              size: 2.4 + Math.random() * 2.2,
+              life: 0.88
+            });
+          }
+          const isStar = skyRes.kind === 'shooting_star';
+          const label = isStar ? '🌠 Shooting Star' : '🦐 Krill Swarm';
+          addTapParticle(skyRes.x, skyRes.y - 16, `${isStar ? '🌠' : '🦐'} +${formatNumber(skyRes.rewardFish)} 🐟 (${skyRes.comboCount}×)`, '#fef08a', 17);
+          const frenzyNote = skyRes.frenzyTriggered ? ' • 🌟 2× Starlight Frenzy (15s)!' : '';
+          showToast(`${label} Caught! +${formatNumber(skyRes.rewardFish)} 🐟 • ${skyRes.comboCount}× Combo${frenzyNote}`, isStar ? '🌠' : '🦐', { category: 'boost', durationMs: 3800 });
+          updateSkyComboPill();
+          if (state.currentTab === 'stats') {
+            updateSheetContent();
+          }
+          return;
+        }
+      }
+
+      // Priority 2: Check Golden Fish School mini-event tap (generous 54px touch radius + single-catch guard)
       if (goldenFishEvent && !goldenFishEvent.caught && Math.hypot(goldenFishEvent.x - x, goldenFishEvent.y - y) < 54) {
+        dailyManager.track('taps', 1);
+        state.totalManualClicks = (state.totalManualClicks || 0) + 1;
         const caughtEvent = goldenFishEvent;
         caughtEvent.caught = true;
         const gx = caughtEvent.x;
@@ -6450,6 +3697,17 @@
         showToast(`🐠 Golden Fish Caught! +${formatNumber(burstFish)} 🐟 (30s catch burst!)`, '✨', { category: 'boost', durationMs: 3600 });
         return;
       }
+
+      // Priority 3: When menu is expanded to 80%, tapping empty visible top-20% polar sky shrinks menu back to 52%
+      if (isExpandedNow) {
+        setBottomSheetState('default');
+        sound.playPlink();
+        sound.triggerHaptic('tap');
+        return;
+      }
+
+      dailyManager.track('taps', 1);
+      state.totalManualClicks = (state.totalManualClicks || 0) + 1;
 
       let tappedPenguin = false;
       for (let p of activePenguins) {
@@ -7304,12 +4562,23 @@
       };
       Object.keys(state.tech).forEach(k => state.tech[k] = 0);
 
-      // Reset Ice Castle architecture/palettes & Expansion Fishing Holes back to fresh glacier defaults
+      // Reset Ice Castle architecture/palettes, Expansion Fishing Holes & Colony Wardrobe back to fresh glacier defaults
       state.iglooTier = 0;
       state.iglooTheme = 'glacier';
       state.unlockedIglooThemes = ['glacier'];
       state.fishingHolesUnlocked = CoreEconomy ? CoreEconomy.MIN_FISHING_HOLES : 3;
       syncActiveFishingHoles(state.fishingHolesUnlocked);
+      state.unlockedHats = ['none'];
+      state.equippedHat = 'none';
+      state.speciesHats = CoreWardrobe
+        ? CoreWardrobe.createDefaultSpeciesHats()
+        : { adelie: 'none', gentoo: 'none', chinstrap: 'none', emperor: 'none', cyber: 'none' };
+      if (typeof clearPenguinSpriteCache === 'function') {
+        clearPenguinSpriteCache();
+      }
+      if (typeof wardrobePurchaseGuard !== 'undefined' && wardrobePurchaseGuard) {
+        wardrobePurchaseGuard.disarm();
+      }
 
       // PRESTIGE RULE: Reset all perks EXCEPT Legendary & Mythic perks!
       const prevPerksCount = (state.collectedPerks || []).length;
@@ -7327,9 +4596,16 @@
       state.slushDebuffTimer = 0;
       state.goldenFishTimer = 0;
       state.paradeBoostTimer = 0;
+      state.starlightFrenzyTimer = 0;
       state.tempSpeedBoost = 0;
       if (typeof paradeController !== 'undefined' && paradeController) {
         paradeController.cancelAndReset(activePenguins);
+      }
+      if (typeof skyEventController !== 'undefined' && skyEventController) {
+        skyEventController.resetTransient();
+      }
+      if (typeof updateSkyComboPill === 'function') {
+        updateSkyComboPill();
       }
 
       checkAchievements();
@@ -7698,7 +4974,7 @@
         if (pill) pill.classList.add('hidden');
         if (dragHandle) {
           dragHandle.setAttribute('aria-expanded', 'true');
-          dragHandle.setAttribute('aria-label', 'Drag up for full screen or down to close menu');
+          dragHandle.setAttribute('aria-label', 'Drag up to expand or down to close menu');
         }
       }
     }
@@ -7717,6 +4993,7 @@
             const logDot = document.getElementById('log-tab-dot');
             if (logDot) logDot.style.display = 'none';
           }
+          if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
           updateSheetContent();
         });
       });
@@ -7747,8 +5024,10 @@
           currentDy = 0;
           dragStartTime = performance.now();
           const vh = window.innerHeight || document.documentElement.clientHeight || 640;
-          startHeight = sheet.getBoundingClientRect ? sheet.getBoundingClientRect().height : (sheetSnapState === 'expanded' ? vh : vh * 0.52);
-          if (!(startHeight > 10)) startHeight = sheetSnapState === 'expanded' ? vh : vh * 0.52;
+          const maxExpandedH = Math.round(vh * 0.80);
+          startHeight = sheet.getBoundingClientRect ? sheet.getBoundingClientRect().height : (sheetSnapState === 'expanded' ? maxExpandedH : vh * 0.52);
+          if (!(startHeight > 10)) startHeight = sheetSnapState === 'expanded' ? maxExpandedH : vh * 0.52;
+          startHeight = Math.min(maxExpandedH, startHeight);
           sheet.style.transition = 'none';
           if (dragHandle.setPointerCapture) {
             try { dragHandle.setPointerCapture(e.pointerId); } catch (_) {}
@@ -7760,9 +5039,10 @@
           currentDy = e.clientY - startY;
           const vh = window.innerHeight || document.documentElement.clientHeight || 640;
           const defaultH = vh * 0.52;
+          const maxExpandedH = Math.round(vh * 0.80);
 
           if (sheetSnapState === 'expanded') {
-            const targetH = Math.max(defaultH * 0.45, Math.min(vh, startHeight - currentDy));
+            const targetH = Math.max(defaultH * 0.45, Math.min(maxExpandedH, startHeight - currentDy));
             if (currentDy > 0) {
               sheet.style.height = `${targetH}px`;
               sheet.style.maxHeight = `${targetH}px`;
@@ -7770,8 +5050,8 @@
             }
           } else {
             if (currentDy < 0) {
-              // Pulling UP -> stretch smoothly toward full screen
-              const targetH = Math.min(vh, startHeight - currentDy);
+              // Pulling UP -> stretch smoothly up to the 80% vertical menu cap
+              const targetH = Math.min(maxExpandedH, startHeight - currentDy);
               sheet.style.height = `${targetH}px`;
               sheet.style.maxHeight = `${targetH}px`;
               sheet.style.transform = '';
@@ -7795,7 +5075,7 @@
           }
 
           if (Math.abs(currentDy) < 8) {
-            // Crisp tap on drag handle toggles default <-> expanded
+            // Crisp tap on drag handle toggles default <-> expanded (80% cap)
             setBottomSheetState(sheetSnapState === 'expanded' ? 'default' : 'expanded');
             return;
           }
@@ -7860,7 +5140,7 @@
       }
 
       document.getElementById('info-btn').addEventListener('click', () => {
-        showToast('🐧 Tap penguins, ice & leaping Golden Fish! Drag menu up for full screen.', 'ℹ️', { category: 'system', durationMs: 3600 });
+        showToast('🐧 Tap penguins, Shooting Stars & Krill Swarms! Drag menu up to 80% or tap the sky to shrink.', 'ℹ️', { category: 'system', durationMs: 4000 });
       });
     }
 
@@ -7947,7 +5227,7 @@
 
           const levelYield = Math.round(sp.baseYield * (1 + (pData.level - 1) * COLONY_SIZE_BONUS_RATE) * 10) / 10;
 
-          const spriteUrl = getPenguinPortraitDataUrl(sp.id);
+          const spriteUrl = getPenguinPortraitDataUrl(sp.id, state.getSpeciesHat(sp.id));
           const avatarInnerHtml = spriteUrl
             ? `<img class="penguin-sprite-img" src="${spriteUrl}" alt="${sp.name}" />`
             : sp.avatar;
@@ -8265,6 +5545,178 @@
         }
         glacierWrap.appendChild(holesCard);
 
+        // --- CARD 3: COLONY WARDROBE (Ultra-Prestige Frost Essence Cosmetic Shop) ---
+        if (CoreWardrobe && Array.isArray(CoreWardrobe.WARDROBE_ITEMS)) {
+          const wardrobeCard = document.createElement('div');
+          wardrobeCard.id = 'colony-wardrobe-card';
+          wardrobeCard.className = 'glacier-feature-card wardrobe-card';
+
+          const scope = state.wardrobeScope || 'all';
+          const unlockedSet = new Set(Array.isArray(state.unlockedHats) ? state.unlockedHats : ['none']);
+          unlockedSet.add('none');
+          const armedInfo = wardrobePurchaseGuard ? wardrobePurchaseGuard.getArmed(Date.now()) : null;
+          const currentEssence = Math.max(0, Math.floor(Number(state.prestigeShards) || 0));
+
+          const scopeOptions = [
+            { id: 'all', label: '🐧 All Colony' },
+            { id: 'adelie', label: 'Adélie' },
+            { id: 'gentoo', label: 'Gentoo' },
+            { id: 'chinstrap', label: 'Chinstrap' },
+            { id: 'emperor', label: 'Emperor' },
+            { id: 'cyber', label: 'Cyber' }
+          ];
+
+          const isEquippedInScope = (hatId) => {
+            if (scope === 'all') {
+              return CoreWardrobe.SPECIES_IDS.every(spId => state.getSpeciesHat(spId) === hatId);
+            }
+            return state.getSpeciesHat(scope) === hatId;
+          };
+
+          const scopeHintText = scope === 'all'
+            ? 'Applying to Whole Colony — tap any unlocked accessory to dress every penguin together.'
+            : `Mixing hats for ${(PENGUIN_SPECIES.find(s => s.id === scope) || {}).name || scope} — customize each species independently.`;
+
+          wardrobeCard.innerHTML = `
+            <div class="glacier-card-header">
+              <div class="glacier-card-title-group">
+                <div class="glacier-card-title">🎩 Colony Wardrobe</div>
+                <div class="glacier-card-sub">Ultra-Prestige penguin hats &amp; accessories bought with Frost Essence</div>
+              </div>
+              <span class="glacier-tier-pill">${unlockedSet.size}/${CoreWardrobe.WARDROBE_ITEMS.length} Owned</span>
+            </div>
+
+            <div class="wardrobe-essence-bar">
+              <span class="wardrobe-essence-balance" id="wardrobe-essence-balance">💎 ${currentEssence.toLocaleString()} Frost Essence</span>
+              <span class="wardrobe-cosmetic-pill">Purely Visual • Resets on Rebirth</span>
+            </div>
+
+            <div class="wardrobe-scope-bar" role="group" aria-label="Wardrobe species scope">
+              ${scopeOptions.map(opt => `
+                <button type="button" class="wardrobe-scope-btn ${scope === opt.id ? 'is-active' : ''}" data-wardrobe-scope="${opt.id}" aria-pressed="${scope === opt.id ? 'true' : 'false'}">
+                  ${opt.label}
+                </button>
+              `).join('')}
+            </div>
+            <div class="wardrobe-scope-hint">${scopeHintText}</div>
+
+            <div class="wardrobe-grid">
+              ${CoreWardrobe.WARDROBE_ITEMS.map(item => {
+                const owned = unlockedSet.has(item.id);
+                const equipped = owned && isEquippedInScope(item.id);
+                const canAfford = !owned && currentEssence >= item.costEssence;
+                const isArmed = !owned && armedInfo && armedInfo.hatId === item.id && armedInfo.scope === scope;
+
+                let tileClass = 'wardrobe-tile';
+                let badgeHtml = '';
+                let actionText = '';
+
+                if (equipped) {
+                  tileClass += ' is-unlocked is-equipped';
+                  badgeHtml = '<span class="wardrobe-tile-badge equipped">Equipped ✓</span>';
+                  actionText = scope === 'all' ? 'Worn by all penguins' : 'Worn by this species';
+                } else if (owned) {
+                  tileClass += ' is-unlocked';
+                  badgeHtml = item.costEssence === 0
+                    ? '<span class="wardrobe-tile-badge owned">Free</span>'
+                    : '<span class="wardrobe-tile-badge owned">Owned</span>';
+                  actionText = scope === 'all' ? 'Tap to equip colony-wide' : 'Tap to equip on species';
+                } else if (isArmed) {
+                  tileClass += ' is-affordable is-armed';
+                  badgeHtml = '<span class="wardrobe-tile-badge armed">CONFIRM</span>';
+                  actionText = `Tap again: Spend ${item.costEssence.toLocaleString()} 💎?`;
+                } else if (canAfford) {
+                  tileClass += ' is-affordable';
+                  badgeHtml = `<span class="wardrobe-tile-badge price">${item.costEssence.toLocaleString()} 💎</span>`;
+                  actionText = `Tap to unlock (${item.costEssence.toLocaleString()} 💎)`;
+                } else {
+                  tileClass += ' is-locked';
+                  badgeHtml = `<span class="wardrobe-tile-badge price">${item.costEssence.toLocaleString()} 💎</span>`;
+                  actionText = `Need ${(item.costEssence - currentEssence).toLocaleString()} more 💎`;
+                }
+
+                return `
+                  <button type="button" class="${tileClass}" data-hat-id="${item.id}" aria-label="${item.name} — ${actionText}">
+                    <div class="wardrobe-tile-top">
+                      <span class="wardrobe-tile-icon" aria-hidden="true">${item.icon}</span>
+                      ${badgeHtml}
+                    </div>
+                    <div class="wardrobe-tile-name">${item.name}</div>
+                    <div class="wardrobe-tile-desc">${item.desc}</div>
+                    <div class="wardrobe-tile-action">${actionText}</div>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          `;
+
+          wardrobeCard.querySelectorAll('.wardrobe-scope-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const nextScope = btn.getAttribute('data-wardrobe-scope') || 'all';
+              state.wardrobeScope = nextScope;
+              if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
+              if (wardrobeConfirmTimerId) {
+                clearTimeout(wardrobeConfirmTimerId);
+                wardrobeConfirmTimerId = null;
+              }
+              sound.playPlink();
+              updateSheetContent();
+            });
+          });
+
+          wardrobeCard.querySelectorAll('.wardrobe-tile').forEach(btn => {
+            btn.addEventListener('click', () => {
+              sound.init();
+              const hatId = btn.getAttribute('data-hat-id');
+              const item = CoreWardrobe.getWardrobeItem(hatId);
+              if (!item || item.id !== hatId) return;
+              const isOwned = Array.isArray(state.unlockedHats) && state.unlockedHats.includes(hatId);
+
+              if (isOwned) {
+                if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
+                state.purchaseOrEquipHat(hatId, state.wardrobeScope || 'all');
+                updateSheetContent();
+                return;
+              }
+
+              if ((state.prestigeShards || 0) < item.costEssence) {
+                if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
+                showToast(`💎 Need ${item.costEssence.toLocaleString()} Frost Essence for ${item.name} (you have ${(state.prestigeShards || 0).toLocaleString()} 💎).`, '🔒', { category: 'system', durationMs: 3200 });
+                updateSheetContent();
+                return;
+              }
+
+              // Inline 4-second Tap-Again Safety Confirm before deducting Frost Essence
+              if (wardrobePurchaseGuard) {
+                const guardRes = wardrobePurchaseGuard.armOrConfirm(hatId, state.wardrobeScope || 'all', Date.now());
+                if (!guardRes.confirmed) {
+                  sound.playPlink();
+                  if (wardrobeConfirmTimerId) clearTimeout(wardrobeConfirmTimerId);
+                  wardrobeConfirmTimerId = setTimeout(() => {
+                    wardrobeConfirmTimerId = null;
+                    if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
+                    if (state.currentTab === 'glacier') updateSheetContent();
+                  }, wardrobePurchaseGuard.windowMs + 50);
+                  updateSheetContent();
+                  return;
+                }
+              }
+
+              if (wardrobeConfirmTimerId) {
+                clearTimeout(wardrobeConfirmTimerId);
+                wardrobeConfirmTimerId = null;
+              }
+              const res = state.purchaseOrEquipHat(hatId, state.wardrobeScope || 'all');
+              if (res.ok) {
+                updateSheetContent();
+                updateHUD();
+              }
+            });
+          });
+
+          glacierWrap.appendChild(wardrobeCard);
+        }
+
         container.appendChild(glacierWrap);
 
       } else if (state.currentTab === 'daily') {
@@ -8416,11 +5868,11 @@
           <div class="prestige-shard-icon">💎</div>
           <div class="prestige-title">Glacial Rebirth</div>
           <p style="font-size: 12px; color: #cbd5e1; line-height: 1.4;">
-            Shatter the current ice shelf into celestial Frost Essence (+1.25% permanent production each). Resets fish, colony recruits, research, Ice Castle upgrades, and expansion fishing holes.
+            Shatter the current ice shelf into celestial Frost Essence (+1.25% permanent production each). Resets fish, colony recruits, research, Ice Castle upgrades, expansion fishing holes, and Colony Wardrobe hats.
           </p>
           <div style="background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.35); border-radius: 12px; padding: 10px; text-align: left; font-size: 11px; line-height: 1.4; color: #fde68a;">
             🛡️ <strong>Perk Preservation Rule:</strong>
-            All perks, Ice Castle tiers/palettes, and extra fishing holes reset upon Rebirth <strong>except Legendary &amp; Mythic perks</strong>, which remain active across all prestige cycles.
+            All perks, Ice Castle tiers/palettes, extra fishing holes, and Colony Wardrobe hats reset upon Rebirth <strong>except Legendary &amp; Mythic perks</strong>, which remain active across all prestige cycles.
             <div style="margin-top: 4px; font-weight: 700; color: #ffffff;">
               Currently Preserved: ${preservedCount} Legendary/Mythic Perk${preservedCount === 1 ? '' : 's'}
             </div>
@@ -8630,6 +6082,18 @@
             <div class="stat-card">
               <div class="stat-card-header">🔬 Researched Tech</div>
               <div class="stat-card-val">${totalTechLevels}</div>
+            </div>
+            <div class="stat-card highlight">
+              <div class="stat-card-header">🌠 Sky Events Caught</div>
+              <div class="stat-card-val">${formatNumber(state.skyEventsCaught || 0)}</div>
+            </div>
+            <div class="stat-card gold-highlight">
+              <div class="stat-card-header">🔥 Best Sky Combo</div>
+              <div class="stat-card-val">${state.bestSkyCombo || 0}×</div>
+            </div>
+            <div class="stat-card purple-highlight">
+              <div class="stat-card-header">🎺 Parades Witnessed</div>
+              <div class="stat-card-val">${formatNumber(state.paradesWitnessed || 0)}</div>
             </div>
           </div>
 
@@ -8906,7 +6370,7 @@
           const entries = Array.isArray(state.speechLog && state.speechLog[sp.id]) ? state.speechLog[sp.id] : [];
           const isExpanded = Boolean(state.speechLogExpanded && state.speechLogExpanded[sp.id]);
           const ownedCount = (state.penguins[sp.id] && state.penguins[sp.id].count) ? state.penguins[sp.id].count : 0;
-          const spriteUrl = typeof getPenguinPortraitDataUrl === 'function' ? getPenguinPortraitDataUrl(sp.id) : null;
+          const spriteUrl = typeof getPenguinPortraitDataUrl === 'function' ? getPenguinPortraitDataUrl(sp.id, state.getSpeciesHat(sp.id)) : null;
           const avatarInner = spriteUrl
             ? `<img src="${spriteUrl}" alt="${sp.name}" />`
             : sp.avatar;

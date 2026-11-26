@@ -7,9 +7,15 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const Economy = require('../js/economy.js');
 const DailySystem = require('../js/daily-system.js');
+const Wardrobe = require('../js/wardrobe.js');
+const GameData = require('../js/game-data.js');
 const SaveSystem = require('../js/save-system.js');
+const SkyEvents = require('../js/sky-events.js');
+const DailyManager = require('../js/daily-manager.js');
 const { SoundEngine } = require('../js/sound-engine.js');
 const CastleRenderer = require('../js/castle-renderer.js');
+const PenguinSprites = require('../js/penguin-sprites.js');
+const SceneRenderer = require('../js/scene-renderer.js');
 const ParadeEvent = require('../js/parade-event.js');
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -383,7 +389,7 @@ test('SaveSystem: migrates legacy v0 saves, sanitizes corrupt values/NaN/prototy
   assert.equal(futureSave.data.iglooTheme, 'royal_amethyst');
   assert.equal(futureSave.data.fishingHolesUnlocked, 5);
 
-  // v2 -> v3 migration defaults & sanitization of invalid castle/fishing-hole values
+  // v2 -> v4 migration defaults & sanitization of invalid castle/fishing-hole/wardrobe values
   const migratedV2 = SaveSystem.sanitizeSaveData({
     saveVersion: 2,
     fish: 900,
@@ -394,12 +400,19 @@ test('SaveSystem: migrates legacy v0 saves, sanitizes corrupt values/NaN/prototy
   }, {}, now);
   assert.equal(migratedV2.migrated, true);
   assert.equal(migratedV2.migratedFrom, 2);
-  assert.equal(migratedV2.data.saveVersion, 3);
+  assert.equal(migratedV2.data.saveVersion, 4);
   assert.equal(migratedV2.data.iglooTier, 0);
   assert.equal(migratedV2.data.iglooTheme, 'glacier');
   assert.deepEqual(migratedV2.data.unlockedIglooThemes, ['glacier']);
   assert.equal(migratedV2.data.fishingHolesUnlocked, 3);
+  assert.deepEqual(migratedV2.data.unlockedHats, ['none']);
+  assert.equal(migratedV2.data.equippedHat, 'none');
+  assert.equal(migratedV2.data.speciesHats.adelie, 'none');
+  assert.equal(migratedV2.data.skyEventsCaught, 0);
+  assert.equal(migratedV2.data.bestSkyCombo, 0);
+  assert.equal(migratedV2.data.paradesWitnessed, 0);
 
+  // v3 -> v4 migration preserves v3 castle/holes and initializes wardrobe + sky/parade stats cleanly
   const clampedV3 = SaveSystem.sanitizeSaveData({
     saveVersion: 3,
     fish: 900,
@@ -409,10 +422,158 @@ test('SaveSystem: migrates legacy v0 saves, sanitizes corrupt values/NaN/prototy
     fishingHolesUnlocked: 12,
     penguins: { adelie: { count: 2, level: 1, nextTrait: 'optimistic', traitCounts: { optimistic: 2 } } }
   }, {}, now);
+  assert.equal(clampedV3.migrated, true);
+  assert.equal(clampedV3.migratedFrom, 3);
+  assert.equal(clampedV3.data.saveVersion, 4);
   assert.equal(clampedV3.data.iglooTier, 5);
   assert.equal(clampedV3.data.iglooTheme, 'glacier'); // midnight_obsidian not unlocked
   assert.deepEqual(clampedV3.data.unlockedIglooThemes, ['glacier']);
   assert.equal(clampedV3.data.fishingHolesUnlocked, 6);
+
+  // v4 wardrobe & sky/parade stats sanitization strips locked/invalid hats and preserves valid per-species mix
+  const sanitizedV4 = SaveSystem.sanitizeSaveData({
+    saveVersion: 4,
+    fish: 1500,
+    unlockedHats: ['none', 'scarf', 'star_crown', 'bogus_hat'],
+    equippedHat: 'aurora_halo', // locked -> falls back to 'none'
+    speciesHats: { adelie: 'scarf', emperor: 'star_crown', cyber: 'aurora_halo' },
+    skyEventsCaught: 19,
+    bestSkyCombo: 99, // clamped to 5
+    paradesWitnessed: 4,
+    penguins: { adelie: { count: 3, level: 1, nextTrait: 'optimistic', traitCounts: { optimistic: 3 } } }
+  }, {}, now);
+  assert.equal(sanitizedV4.migrated, false);
+  assert.deepEqual(sanitizedV4.data.unlockedHats, ['none', 'scarf', 'star_crown']);
+  assert.equal(sanitizedV4.data.equippedHat, 'none');
+  assert.equal(sanitizedV4.data.speciesHats.adelie, 'scarf');
+  assert.equal(sanitizedV4.data.speciesHats.emperor, 'star_crown');
+  assert.equal(sanitizedV4.data.speciesHats.cyber, 'none');
+  assert.equal(sanitizedV4.data.skyEventsCaught, 19);
+  assert.equal(sanitizedV4.data.bestSkyCombo, 5);
+  assert.equal(sanitizedV4.data.paradesWitnessed, 4);
+});
+
+test('Wardrobe: Ultra-Prestige Frost Essence catalog, 4s tap-again safety guard, per-species sanitization, and vector drawing', () => {
+  assert.equal(Wardrobe.WARDROBE_ITEMS.length, 6);
+  assert.deepEqual(
+    Wardrobe.WARDROBE_ITEMS.map(item => item.costEssence),
+    [0, 100, 350, 1000, 3000, 10000]
+  );
+  // Purely Frost Essence shop — never tied to achievement unlocks
+  assert.equal(Wardrobe.WARDROBE_ITEMS.every(item => !('achievementId' in item)), true);
+
+  // 4-second tap-again confirmation guard
+  const guard = Wardrobe.createPurchaseGuard(4000);
+  const firstTap = guard.armOrConfirm('scarf', 'all', 1000);
+  assert.equal(firstTap.armed, true);
+  assert.equal(firstTap.confirmed, false);
+  assert.equal(guard.getArmed(2000).hatId, 'scarf');
+
+  // Tapping same hat + same scope within 4s confirms purchase
+  const secondTap = guard.armOrConfirm('scarf', 'all', 3500);
+  assert.equal(secondTap.confirmed, true);
+  assert.equal(secondTap.armed, false);
+  assert.equal(guard.getArmed(3600), null);
+
+  // Changing scope or waiting past 4s re-arms instead of confirming
+  guard.armOrConfirm('goggles', 'adelie', 5000);
+  const scopeChanged = guard.armOrConfirm('goggles', 'gentoo', 5500);
+  assert.equal(scopeChanged.armed, true);
+  assert.equal(scopeChanged.confirmed, false);
+  const expired = guard.armOrConfirm('goggles', 'gentoo', 10000);
+  assert.equal(expired.armed, true);
+  assert.equal(expired.confirmed, false);
+
+  // Vector rendering across standing, sliding, sleeping poses executes cleanly on a mock canvas context
+  const noop = () => {};
+  const mockCtx = {
+    save: noop, restore: noop, translate: noop, rotate: noop, scale: noop,
+    beginPath: noop, closePath: noop, moveTo: noop, lineTo: noop,
+    quadraticCurveTo: noop, bezierCurveTo: noop, arc: noop, ellipse: noop,
+    rect: noop, fillRect: noop, strokeRect: noop, roundRect: noop,
+    fill: noop, stroke: noop,
+    createLinearGradient: () => ({ addColorStop: noop }),
+    createRadialGradient: () => ({ addColorStop: noop })
+  };
+  for (const item of Wardrobe.WARDROBE_ITEMS) {
+    for (const pose of ['standing', 'sliding', 'sleeping']) {
+      Wardrobe.drawPenguinAccessory(mockCtx, item.id, 'adelie', pose, 1.2);
+    }
+  }
+  for (const pose of ['waddle', 'slide', 'sleep', 'portrait']) {
+    PenguinSprites.PenguinSpriteRenderer.draw(mockCtx, {
+      speciesId: 'emperor',
+      pose,
+      hatId: 'aurora_halo',
+      stepPhase: 0.5,
+      time: 1.0
+    });
+  }
+});
+
+test('SkyEvents: Shooting Stars stay in top 20% sky, Krill Swarm respects expanded sheet, Sky Combo builds to 5x & triggers 2x Starlight Frenzy', () => {
+  assert.equal(SkyEvents.STARLIGHT_FRENZY_MULTIPLIER, 2);
+  assert.equal(SkyEvents.STARLIGHT_FRENZY_DURATION_SEC, 15);
+  assert.equal(SkyEvents.SKY_COMBO_MAX, 5);
+  assert.equal(SkyEvents.SKY_COMBO_DECAY_SEC, 20);
+
+  const ctrl = new SkyEvents.SkyMiniEventController({
+    initialStarCooldownSec: 0.2,
+    initialKrillCooldownSec: 0.2,
+    rng: () => 0.5
+  });
+
+  // With expanded sheet, Shooting Star spawns in top 8.5%-17.5% sky while Krill Swarm stays paused
+  ctrl.update(0.25, { width: 390, height: 800, sheetExpanded: true, isBlocked: false });
+  assert.ok(ctrl.activeStar, 'Expected Shooting Star to spawn even when menu is expanded to 80%');
+  assert.equal(ctrl.activeKrill, null, 'Expected Krill Swarm to pause when menu is expanded');
+  assert.ok(ctrl.activeStar.y >= 800 * 0.08 && ctrl.activeStar.y <= 800 * 0.18, 'Shooting Star must stay within top 20% sky band');
+
+  // Catching 3 events builds Sky Combo 1 -> 2 -> 3 and triggers 15s 2x Starlight Frenzy
+  const catch1 = ctrl.tryCatch(ctrl.activeStar.x, ctrl.activeStar.y, { dps: 100, sheetExpanded: true });
+  assert.equal(catch1.caught, true);
+  assert.equal(catch1.kind, 'shooting_star');
+  assert.equal(catch1.comboCount, 1);
+  assert.equal(catch1.frenzyTriggered, false);
+
+  // Un-expand sheet -> Krill Swarm can spawn on visible ice shelf
+  ctrl.update(0.25, { width: 390, height: 800, sheetExpanded: false, visibleBottomY: 620, isBlocked: false });
+  assert.ok(ctrl.activeKrill, 'Expected Krill Swarm to spawn when shelf is visible');
+  const catch2 = ctrl.tryCatch(ctrl.activeKrill.x, ctrl.activeKrill.y, { dps: 100, sheetExpanded: false });
+  assert.equal(catch2.caught, true);
+  assert.equal(catch2.kind, 'krill_swarm');
+  assert.equal(catch2.comboCount, 2);
+  assert.equal(catch2.frenzyTriggered, false);
+
+  // 3rd catch triggers Starlight Frenzy
+  ctrl.spawnShootingStar(390, 800);
+  const catch3 = ctrl.tryCatch(ctrl.activeStar.x, ctrl.activeStar.y, { dps: 100, sheetExpanded: true });
+  assert.equal(catch3.caught, true);
+  assert.equal(catch3.comboCount, 3);
+  assert.equal(catch3.frenzyTriggered, true);
+  assert.equal(catch3.frenzyDurationSec, 15);
+
+  // Combo decay pauses while blocked by modals/cutscenes, then decays to 0 after 20s unblocked
+  ctrl.update(0.25, { width: 390, height: 800, sheetExpanded: true, isBlocked: true });
+  assert.equal(ctrl.comboCount, 3);
+  for (let i = 0; i < 84; i++) {
+    ctrl.update(0.25, { width: 390, height: 800, sheetExpanded: true, isBlocked: false });
+  }
+  assert.equal(ctrl.comboCount, 0);
+  ctrl.resetTransient();
+  assert.equal(ctrl.activeStar, null);
+  assert.equal(ctrl.activeKrill, null);
+});
+
+test('GameData & SceneRenderer & DailyManager: extracted modules expose complete data and safe rendering', () => {
+  assert.equal(GameData.PENGUIN_SPECIES.length, 5);
+  assert.equal(GameData.GLACIER_TECH.length, 6);
+  assert.equal(GameData.AURORA_PERKS_POOL.length, 28);
+  assert.equal(GameData.ACHIEVEMENTS_LIST.length, 22);
+  assert.equal(GameData.LATEST_FEATURE_RELEASE.version, '2.6');
+  assert.equal(typeof DailyManager.DailyObjectivesManager, 'function');
+  const sky = SceneRenderer.getCurrentSkyAtmosphere(-15);
+  assert.match(sky.top, /^rgb\(/);
 });
 
 test('SoundEngine: cutscene mode silences penguin SFX & gameplay haptics while allowing climax celebration haptic & winter score', () => {
@@ -718,25 +879,48 @@ test('Integration invariants: viewport zoom policy, modular CSS, offline PWA cac
   // Explicit exclusion: keep user-scalable=no intact
   assert.match(html, /<meta\s+name="viewport"[^>]*user-scalable=no/i);
 
-  // Modular stylesheets & scripts linked and precached by offline service worker
+  // Modular stylesheets & 14 scripts linked and precached by offline service worker
   assert.match(html, /<link\s+rel="stylesheet"\s+href="\.\/styles\/core\.css"/);
   assert.match(html, /<link\s+rel="stylesheet"\s+href="\.\/styles\/splash-cutscene\.css"/);
   assert.match(html, /<link\s+rel="stylesheet"\s+href="\.\/styles\/game\.css"/);
-  assert.match(html, /<script\s+src="\.\/js\/sound-engine\.js"/);
-  assert.match(html, /<script\s+src="\.\/js\/castle-renderer\.js"/);
-  assert.match(html, /<script\s+src="\.\/js\/parade-event\.js"/);
-  assert.match(html, /<script\s+src="\.\/js\/prestige-cutscene\.js"/);
-  assert.match(html, /<script\s+src="\.\/js\/launch-splash\.js"/);
+  const requiredScripts = [
+    'economy.js',
+    'daily-system.js',
+    'wardrobe.js',
+    'game-data.js',
+    'save-system.js',
+    'sky-events.js',
+    'daily-manager.js',
+    'sound-engine.js',
+    'castle-renderer.js',
+    'penguin-sprites.js',
+    'scene-renderer.js',
+    'parade-event.js',
+    'prestige-cutscene.js',
+    'launch-splash.js'
+  ];
+  for (const scriptName of requiredScripts) {
+    assert.match(html, new RegExp(`<script\\s+src="\\.\\/js\\/${scriptName.replace('.', '\\.')}"`), `Missing script tag: ${scriptName}`);
+    assert.match(sw, new RegExp(`'\\.\\/js\\/${scriptName.replace('.', '\\.')}'`), `Missing SW precache entry: ${scriptName}`);
+  }
   assert.doesNotMatch(html, /<style>/i, 'Inline <style> block should be fully extracted into styles/*.css');
+  assert.ok(html.split('\n').length < 7500, 'index.html should remain compact after modular JS extraction');
 
-  // Version 2.5.1 consistency across HTML, Android Gradle, and README
+  // 80% vertical menu cap & top-HUD interactivity CSS invariants
+  const coreCss = fs.readFileSync(path.join(ROOT, 'styles/core.css'), 'utf8');
+  assert.match(coreCss, /#top-bar\s*\{[\s\S]*?z-index:\s*48;/);
+  assert.match(coreCss, /#bottom-sheet\.expanded\s*\{[\s\S]*?height:\s*80dvh;[\s\S]*?max-height:\s*80dvh;[\s\S]*?z-index:\s*35;/);
+  assert.match(html, /id="sky-combo-pill"/);
+
+  // Version 2.6 consistency across HTML, GameData, Service Worker, Android Gradle, and README
   const gradleKts = fs.readFileSync(path.join(ROOT, 'app/build.gradle.kts'), 'utf8');
   const readmeMd = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
-  assert.match(html, /id="splash-version-label"[^>]*>v2\.5\.1</);
-  assert.match(html, /version:\s*'2\.5\.1'/);
-  assert.match(gradleKts, /versionName\s*=\s*"2\.5\.1"/);
-  assert.match(gradleKts, /versionCode\s*=\s*15/);
-  assert.match(readmeMd, /Penguin Glacial Empire \(v2\.5\.1\)/);
+  assert.match(html, /id="splash-version-label"[^>]*>v2\.6</);
+  assert.equal(GameData.LATEST_FEATURE_RELEASE.version, '2.6');
+  assert.match(sw, /penguin-glacial-empire-v26/);
+  assert.match(gradleKts, /versionName\s*=\s*"2\.6"/);
+  assert.match(gradleKts, /versionCode\s*=\s*16/);
+  assert.match(readmeMd, /Penguin Glacial Empire \(v2\.6\)/);
 
   // Themed Glacial Rebirth modal replaces native browser confirm()
   assert.match(html, /id="rebirth-confirm-modal"/);
@@ -759,28 +943,21 @@ test('Integration invariants: viewport zoom policy, modular CSS, offline PWA cac
   // Non-blocking Google Fonts to prevent launch blank screen on slow/offline networks
   assert.match(html, /fonts\.googleapis\.com[^>]*media="print"/);
 
-  // Rebirth pause gate & castle/hole/parade reset invariants
+  // Rebirth pause gate & castle/hole/wardrobe/parade reset invariants
   assert.match(html, /prestigeCutscene\.isActive/);
   assert.match(html, /state\.iglooTier\s*=\s*0/);
   assert.match(html, /state\.iglooTheme\s*=\s*'glacier'/);
   assert.match(html, /state\.fishingHolesUnlocked\s*=\s*CoreEconomy/);
+  assert.match(html, /state\.unlockedHats\s*=\s*\['none'\]/);
   assert.match(html, /paradeController\.cancelAndReset/);
   assert.match(html, /computeSafeFrameDeltaSec/);
   assert.match(html, /finally\s*\{\s*requestAnimationFrame\(gameLoop\)/);
   assert.match(html, /window\.notifyAndroidSurfaceReady/);
 
-  // Service worker precaches all modular CSS & JS files
+  // Service worker precaches all modular CSS & manifest
   assert.match(sw, /'\.\/styles\/core\.css'/);
   assert.match(sw, /'\.\/styles\/splash-cutscene\.css'/);
   assert.match(sw, /'\.\/styles\/game\.css'/);
-  assert.match(sw, /'\.\/js\/economy\.js'/);
-  assert.match(sw, /'\.\/js\/daily-system\.js'/);
-  assert.match(sw, /'\.\/js\/save-system\.js'/);
-  assert.match(sw, /'\.\/js\/sound-engine\.js'/);
-  assert.match(sw, /'\.\/js\/castle-renderer\.js'/);
-  assert.match(sw, /'\.\/js\/parade-event\.js'/);
-  assert.match(sw, /'\.\/js\/prestige-cutscene\.js'/);
-  assert.match(sw, /'\.\/js\/launch-splash\.js'/);
   assert.match(sw, /'\.\/manifest\.webmanifest'/);
 
   // Splash-to-idle-fish flash fix: pre-mounts modal before splash fade-out
@@ -815,9 +992,15 @@ test('Integration invariants: viewport zoom policy, modular CSS, offline PWA cac
     'styles/game.css',
     'js/economy.js',
     'js/daily-system.js',
+    'js/wardrobe.js',
+    'js/game-data.js',
     'js/save-system.js',
+    'js/sky-events.js',
+    'js/daily-manager.js',
     'js/sound-engine.js',
     'js/castle-renderer.js',
+    'js/penguin-sprites.js',
+    'js/scene-renderer.js',
     'js/parade-event.js',
     'js/prestige-cutscene.js',
     'js/launch-splash.js',
@@ -947,9 +1130,15 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   const scripts = [
     'js/economy.js',
     'js/daily-system.js',
+    'js/wardrobe.js',
+    'js/game-data.js',
     'js/save-system.js',
+    'js/sky-events.js',
+    'js/daily-manager.js',
     'js/sound-engine.js',
     'js/castle-renderer.js',
+    'js/penguin-sprites.js',
+    'js/scene-renderer.js',
     'js/parade-event.js',
     'js/prestige-cutscene.js',
     'js/launch-splash.js'
@@ -961,9 +1150,9 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   const inlineScript = html.match(/<script>([\s\S]*?)<\/script>/)[1];
   vm.runInContext(inlineScript, ctx, { filename: 'index.html' });
 
-  // Splash started and updates version to v2.5.1
+  // Splash started and updates version to v2.6
   assert.equal(rafs.length >= 2, true, 'Expected splash and gameLoop rAF callbacks');
-  assert.equal(getEl('splash-version-label').textContent, 'v2.5.1');
+  assert.equal(getEl('splash-version-label').textContent, 'v2.6');
 
   // Complete splash screen
   const splashRaf = rafs[0];
@@ -975,13 +1164,14 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   }
   assert.equal(getEl('launch-splash-screen').classList.contains('splash-hidden'), true);
 
-  // Close What's New modal so glacier is unblocked, then verify Parade triggers smoothly
+  // Close What's New modal so glacier is unblocked, then verify Parade triggers smoothly & increments paradesWitnessed
   getEl('whats-new-modal').style.display = 'none';
   sandbox.paradeController.countdownSec = 0.01;
   gameRaf(1040);
   assert.equal(sandbox.paradeController.isActive(), true);
+  assert.equal(vm.runInContext('state.paradesWitnessed', ctx), 1);
 
-  // Verify Glacier tab renders cleanly with all 6 themes & 6 fishing holes (zero crash, zero 'undefined')
+  // Verify Glacier tab renders cleanly with 3 cards: Ice Castle, Fishing Holes, and Colony Wardrobe
   const sheetContent = getEl('sheet-content-container');
   sheetContent.children = [];
   vm.runInContext(`
@@ -990,9 +1180,10 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   `, ctx);
   assert.equal(sheetContent.children.length, 1, 'Expected glacier-tab-container appended to sheet-content-container');
   const glacierWrap = sheetContent.children[0];
-  assert.equal(glacierWrap.children.length, 2, 'Expected Ice Castle card and Fishing Holes card');
+  assert.equal(glacierWrap.children.length, 3, 'Expected Ice Castle, Fishing Holes, and Colony Wardrobe cards');
   const castleHtml = glacierWrap.children[0].innerHTML;
   const holesHtml = glacierWrap.children[1].innerHTML;
+  const wardrobeHtml = glacierWrap.children[2].innerHTML;
   assert.match(castleHtml, /Igloo to Ice Castle/);
   assert.match(castleHtml, /Obsidian Frost/);
   assert.doesNotMatch(castleHtml, /undefined/);
@@ -1000,6 +1191,80 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   assert.match(holesHtml, /Deep Abyssal Rift/);
   assert.match(holesHtml, /\+10 diving slots/);
   assert.doesNotMatch(holesHtml, /undefined/);
+  assert.match(wardrobeHtml, /Colony Wardrobe/);
+  assert.match(wardrobeHtml, /Purely Visual/);
+  assert.match(wardrobeHtml, /Resets on Rebirth/);
+  assert.match(wardrobeHtml, /100/);
+  assert.match(wardrobeHtml, /10,000/);
+  assert.match(wardrobeHtml, /All Colony/);
+  assert.doesNotMatch(wardrobeHtml, /undefined/);
+
+  // Verify Wardrobe Frost Essence purchase + per-species hat mixing + Rebirth reset
+  const wardrobeRes = vm.runInContext(`
+    state.prestigeShards = 500;
+    const buyScarf = state.purchaseOrEquipHat('scarf', 'adelie');
+    const buyGoggles = state.purchaseOrEquipHat('goggles', 'emperor');
+    ({
+      buyScarf,
+      buyGoggles,
+      shardsLeft: state.prestigeShards,
+      adelieHat: state.getSpeciesHat('adelie'),
+      emperorHat: state.getSpeciesHat('emperor'),
+      gentooHat: state.getSpeciesHat('gentoo')
+    });
+  `, ctx);
+  assert.equal(wardrobeRes.buyScarf.ok, true);
+  assert.equal(wardrobeRes.buyScarf.purchased, true);
+  assert.equal(wardrobeRes.buyGoggles.ok, true);
+  assert.equal(wardrobeRes.buyGoggles.purchased, true);
+  assert.equal(wardrobeRes.shardsLeft, 50); // 500 - 100 - 350
+  assert.equal(wardrobeRes.adelieHat, 'scarf');
+  assert.equal(wardrobeRes.emperorHat, 'goggles');
+  assert.equal(wardrobeRes.gentooHat, 'none');
+
+  // Verify tapping empty top 20% sky while bottom sheet is expanded shrinks menu back to default (52%)
+  const shrinkRes = vm.runInContext(`
+    setBottomSheetState('expanded');
+    const before = sheetSnapState;
+    handleScreenTap(200, 95);
+    ({ before, after: sheetSnapState });
+  `, ctx);
+  assert.equal(shrinkRes.before, 'expanded');
+  assert.equal(shrinkRes.after, 'default');
+
+  // Verify Stats tab displays Sky Events Caught, Best Sky Combo, and Parades Witnessed
+  sheetContent.children = [];
+  vm.runInContext(`
+    state.skyEventsCaught = 7;
+    state.bestSkyCombo = 4;
+    state.currentTab = 'stats';
+    updateSheetContent();
+  `, ctx);
+  const statsHtml = sheetContent.children.map(c => c.innerHTML).join('\n');
+  assert.match(statsHtml, /Sky Events Caught/);
+  assert.match(statsHtml, /Best Sky Combo/);
+  assert.match(statsHtml, /Parades Witnessed/);
+  assert.match(statsHtml, /4×/);
+
+  // Verify Rebirth reset clears Wardrobe hats while keeping lifetime Sky/Parade stats
+  const postRebirth = vm.runInContext(`
+    state.runFish = 1_500_000;
+    executeGlacialRebirthReset(state.getPendingPrestigeShards());
+    ({
+      unlockedHats: state.unlockedHats,
+      equippedHat: state.equippedHat,
+      adelieHat: state.getSpeciesHat('adelie'),
+      skyEventsCaught: state.skyEventsCaught,
+      bestSkyCombo: state.bestSkyCombo,
+      paradesWitnessed: state.paradesWitnessed
+    });
+  `, ctx);
+  assert.deepEqual(Array.from(postRebirth.unlockedHats), ['none']);
+  assert.equal(postRebirth.equippedHat, 'none');
+  assert.equal(postRebirth.adelieHat, 'none');
+  assert.equal(postRebirth.skyEventsCaught, 7);
+  assert.equal(postRebirth.bestSkyCombo, 4);
+  assert.equal(postRebirth.paradesWitnessed, 1);
 
   // Verify themed Glacial Rebirth modal opens cleanly and dismisses via Android Back button
   vm.runInContext(`

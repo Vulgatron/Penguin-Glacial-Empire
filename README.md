@@ -1,4 +1,4 @@
-# Penguin Glacial Empire (v2.5.1)
+# Penguin Glacial Empire (v2.6)
 
 An incremental/idle penguin colony game built with HTML5 Canvas, CSS, modular JavaScript, Progressive Web App (PWA) offline support, and a hardened Android WebView wrapper in Kotlin.
 
@@ -8,15 +8,21 @@ An incremental/idle penguin colony game built with HTML5 Canvas, CSS, modular Ja
 .
 ├── index.html                  # Single canonical web game entrypoint (auto-synced to Android assets)
 ├── styles/
-│   ├── core.css                # Core game layout, HUD, bottom sheet, modals & theme styling
+│   ├── core.css                # Core game layout, HUD, 80%-capped bottom sheet, modals & theme styling
 │   ├── splash-cutscene.css     # Animated launch splash screen & Glacial Rebirth cutscene styles
-│   └── game.css                # Glacier tab (Ice Castle & Fishing Holes), responsive polish & accessibility
+│   └── game.css                # Glacier tab (Ice Castle, Fishing Holes & Colony Wardrobe), responsive polish
 ├── js/
 │   ├── economy.js              # Overflow/NaN-safe economy, +1.25%/shard prestige, castle & fishing hole defs, safe frame timing
+│   ├── game-data.js            # Species, traits, weather, colony speech, tech, Aurora perks, achievements & lore catalogs
+│   ├── wardrobe.js             # Ultra-Prestige Frost Essence Colony Wardrobe, per-species mixing, tap-again confirm & hat vectors
+│   ├── sky-events.js           # Top-20% Shooting Stars, Ice Krill Swarms, 1×–5× Sky Combo & 2× Starlight Frenzy
 │   ├── daily-system.js         # 3:00 AM daily cycle keys, streak tracking, idempotent claims & sanitization
-│   ├── save-system.js          # Schema v3 migrations, validation, multi-slot recovery & throttled persistence
+│   ├── daily-manager.js        # Daily Objectives manager, modal rendering, badge & celebration banners
+│   ├── save-system.js          # Schema v4 migrations, validation, multi-slot recovery & throttled persistence
 │   ├── sound-engine.js         # Procedural Web Audio synthesizer, cutscene silence gate & winter Rebirth score
 │   ├── castle-renderer.js      # Procedural Canvas & SVG renderer for the 6-tier Igloo-to-Ice-Castle + 6 palettes
+│   ├── penguin-sprites.js      # Procedural penguin Canvas renderer with Wardrobe hat rendering & cached portraits
+│   ├── scene-renderer.js       # Dynamic polar sky, aurora waves, glacier shelves, snow/blizzard & particle renderer
 │   ├── parade-event.js         # 15-minute all-colony Penguin Parade choreography & 60s 2× boost scheduler
 │   ├── prestige-cutscene.js    # 10-second SVG Glacial Rebirth cutscene controller
 │   └── launch-splash.js        # Launch splash screen controller with wall-clock completion guard
@@ -47,7 +53,7 @@ All web code is authored in the **single canonical source** at the repository ro
 
 - `index.html`
 - `styles/core.css`, `styles/splash-cutscene.css`, `styles/game.css`
-- `js/economy.js`, `js/daily-system.js`, `js/save-system.js`, `js/sound-engine.js`, `js/castle-renderer.js`, `js/parade-event.js`, `js/prestige-cutscene.js`, `js/launch-splash.js`
+- `js/economy.js`, `js/game-data.js`, `js/wardrobe.js`, `js/sky-events.js`, `js/daily-system.js`, `js/daily-manager.js`, `js/save-system.js`, `js/sound-engine.js`, `js/castle-renderer.js`, `js/penguin-sprites.js`, `js/scene-renderer.js`, `js/parade-event.js`, `js/prestige-cutscene.js`, `js/launch-splash.js`
 - `manifest.webmanifest`
 - `icons/`
 
@@ -66,7 +72,7 @@ gradle :app:syncWebAssets -PforceSyncWebAssets=true
 ### 1. JavaScript Syntax & Unit Tests (Node.js 20+)
 
 ```bash
-node --check js/economy.js js/daily-system.js js/save-system.js js/sound-engine.js js/castle-renderer.js js/parade-event.js js/prestige-cutscene.js js/launch-splash.js sw.js
+node --check js/*.js sw.js
 node --test tests/game-core.test.mjs
 ```
 
@@ -98,7 +104,7 @@ To build a release bundle or APK, use your configured Android signing environmen
 
 ## Save Reliability, Versioning & Offline Cap
 
-- Saves are schema-versioned (`saveVersion: 3`) with automatic migration from legacy v0/v1/v2 saves (preserving Ice Castle & Fishing Hole defaults) and forward-version safety for newer schemas.
+- Saves are schema-versioned (`saveVersion: 4`) with automatic migration from legacy v0/v1/v2/v3 saves (preserving Ice Castle, Fishing Holes, Colony Wardrobe & Sky/Parade defaults) and forward-version safety for newer schemas.
 - Every field is sanitized on load (protecting against `NaN`, `Infinity`, negative balances, prototype pollution keys, 0-penguin deadlocks, and future-tampered device clocks).
 - Routine autosaves run on a throttled 15-second cadence and skip disk I/O when colony state is unchanged; critical milestones (purchases, rebirths, offline catch claims, daily claims, factory reset, and lifecycle pauses) flush immediately.
 - Multi-slot recovery walks native storage, web primary storage, and validated web backup storage before flagging unrecoverable corruption, quarantining damaged payloads without silently wiping progress.

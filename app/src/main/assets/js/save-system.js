@@ -5,16 +5,19 @@
   const daily = (typeof module === 'object' && module.exports)
     ? require('./daily-system.js')
     : (root.GlacialCore && root.GlacialCore.DailySystem);
-  const api = factory(economy, daily);
+  const wardrobe = (typeof module === 'object' && module.exports)
+    ? require('./wardrobe.js')
+    : (root.GlacialCore && root.GlacialCore.Wardrobe);
+  const api = factory(economy, daily, wardrobe);
   if (typeof module === 'object' && module.exports) {
     module.exports = api;
   }
   root.GlacialCore = root.GlacialCore || {};
   root.GlacialCore.SaveSystem = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (Economy, DailySystem) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Economy, DailySystem, Wardrobe) {
   'use strict';
 
-  const CURRENT_SAVE_VERSION = 3;
+  const CURRENT_SAVE_VERSION = 4;
   const STORAGE_KEY = 'PENGUIN_GLACIAL_SAVE';
   const BACKUP_STORAGE_KEY = 'PENGUIN_GLACIAL_SAVE_BACKUP';
   const QUARANTINE_STORAGE_KEY = 'PENGUIN_GLACIAL_SAVE_CORRUPT';
@@ -113,6 +116,31 @@
         copy.fishingHolesUnlocked = Economy ? Economy.MIN_FISHING_HOLES : 3;
       }
       version = 3;
+    }
+
+    // v3 -> v4: add Frost Essence Colony Wardrobe (unlockedHats, equippedHat, speciesHats) & Sky/Parade stats
+    if (version < 4) {
+      if (!Array.isArray(copy.unlockedHats)) {
+        copy.unlockedHats = ['none'];
+      }
+      if (typeof copy.equippedHat !== 'string' || !copy.equippedHat) {
+        copy.equippedHat = 'none';
+      }
+      if (!isPlainObject(copy.speciesHats)) {
+        copy.speciesHats = Wardrobe && Wardrobe.createDefaultSpeciesHats
+          ? Wardrobe.createDefaultSpeciesHats()
+          : { adelie: 'none', gentoo: 'none', chinstrap: 'none', emperor: 'none', cyber: 'none' };
+      }
+      if (typeof copy.skyEventsCaught !== 'number' || !Number.isFinite(copy.skyEventsCaught)) {
+        copy.skyEventsCaught = 0;
+      }
+      if (typeof copy.bestSkyCombo !== 'number' || !Number.isFinite(copy.bestSkyCombo)) {
+        copy.bestSkyCombo = 0;
+      }
+      if (typeof copy.paradesWitnessed !== 'number' || !Number.isFinite(copy.paradesWitnessed)) {
+        copy.paradesWitnessed = 0;
+      }
+      version = 4;
     }
 
     const futureVersionDetected = originalVersion > CURRENT_SAVE_VERSION;
@@ -329,6 +357,14 @@
     const unlockedIglooThemes = Array.from(unlockedThemeSet);
     const fishingHolesUnlocked = safeInt(src.fishingHolesUnlocked, minHoles, minHoles, maxHoles);
 
+    const wardrobeClean = (Wardrobe && Wardrobe.sanitizeWardrobeState)
+      ? Wardrobe.sanitizeWardrobeState(src.unlockedHats, src.equippedHat, src.speciesHats)
+      : {
+          unlockedHats: ['none'],
+          equippedHat: 'none',
+          speciesHats: { adelie: 'none', gentoo: 'none', chinstrap: 'none', emperor: 'none', cyber: 'none' }
+        };
+
     return {
       data: {
         saveVersion: CURRENT_SAVE_VERSION,
@@ -343,6 +379,9 @@
         iglooTheme,
         unlockedIglooThemes,
         fishingHolesUnlocked,
+        unlockedHats: wardrobeClean.unlockedHats,
+        equippedHat: wardrobeClean.equippedHat,
+        speciesHats: wardrobeClean.speciesHats,
         penguins,
         tech,
         collectedPerks,
@@ -368,6 +407,9 @@
         totalManualClicks: safeInt(src.totalManualClicks, 0, 0, 1e12),
         totalDives: safeInt(src.totalDives, 0, 0, 1e12),
         totalSlides: safeInt(src.totalSlides, 0, 0, 1e12),
+        skyEventsCaught: safeInt(src.skyEventsCaught, 0, 0, 1e9),
+        bestSkyCombo: safeInt(src.bestSkyCombo, 0, 0, 5),
+        paradesWitnessed: safeInt(src.paradesWitnessed, 0, 0, 1e9),
         gameStartTime,
         highestDPS: safeNum(src.highestDPS, 0, 0, maxSafe),
         weatherIndex: safeInt(src.weatherIndex, 0, 0, weatherCount - 1),

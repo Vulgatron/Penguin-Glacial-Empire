@@ -8,16 +8,19 @@
   const wardrobe = (typeof module === 'object' && module.exports)
     ? require('./wardrobe.js')
     : (root.GlacialCore && root.GlacialCore.Wardrobe);
-  const api = factory(economy, daily, wardrobe);
+  const milestoneEngine = (typeof module === 'object' && module.exports)
+    ? require('./milestone-engine.js')
+    : (root.GlacialCore && root.GlacialCore.MilestoneEngine);
+  const api = factory(economy, daily, wardrobe, milestoneEngine);
   if (typeof module === 'object' && module.exports) {
     module.exports = api;
   }
   root.GlacialCore = root.GlacialCore || {};
   root.GlacialCore.SaveSystem = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (Economy, DailySystem, Wardrobe) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Economy, DailySystem, Wardrobe, MilestoneEngine) {
   'use strict';
 
-  const CURRENT_SAVE_VERSION = 4;
+  const CURRENT_SAVE_VERSION = 5;
   const STORAGE_KEY = 'PENGUIN_GLACIAL_SAVE';
   const BACKUP_STORAGE_KEY = 'PENGUIN_GLACIAL_SAVE_BACKUP';
   const QUARANTINE_STORAGE_KEY = 'PENGUIN_GLACIAL_SAVE_CORRUPT';
@@ -141,6 +144,31 @@
         copy.paradesWitnessed = 0;
       }
       version = 4;
+    }
+
+    // v4 -> v5: add Guided Milestones (permanent vs run-scoped), Skipped list, Progressive Tab Reveal & Bar Pref
+    if (version < 5) {
+      if (!Array.isArray(copy.completedPermanentMilestones)) {
+        copy.completedPermanentMilestones = [];
+      }
+      if (!Array.isArray(copy.completedRunMilestones)) {
+        copy.completedRunMilestones = [];
+      }
+      if (!Array.isArray(copy.skippedMilestones)) {
+        copy.skippedMilestones = [];
+      }
+      if (!Array.isArray(copy.unlockedTabs)) {
+        copy.unlockedTabs = MilestoneEngine && typeof MilestoneEngine.evaluateUnlockedTabs === 'function'
+          ? MilestoneEngine.evaluateUnlockedTabs(copy)
+          : ['penguins', 'stats', 'settings'];
+      }
+      if (typeof copy.showAllTabs !== 'boolean') {
+        copy.showAllTabs = false;
+      }
+      if (typeof copy.milestoneBarExpanded !== 'boolean') {
+        copy.milestoneBarExpanded = false;
+      }
+      version = 5;
     }
 
     const futureVersionDetected = originalVersion > CURRENT_SAVE_VERSION;
@@ -365,6 +393,39 @@
           speciesHats: { adelie: 'none', gentoo: 'none', chinstrap: 'none', emperor: 'none', cyber: 'none' }
         };
 
+    const skyEventsCaught = safeInt(src.skyEventsCaught, 0, 0, 1e9);
+    const bestSkyCombo = safeInt(src.bestSkyCombo, 0, 0, 5);
+    const paradesWitnessed = safeInt(src.paradesWitnessed, 0, 0, 1e9);
+    const totalRebirths = safeInt(src.totalRebirths, 0, 0, 1e6);
+
+    const milestoneDerivedState = {
+      fish,
+      runFish,
+      lifetimeFish,
+      glacierLevel,
+      iglooTier,
+      fishingHolesUnlocked,
+      totalRebirths,
+      prestigeShards,
+      skyEventsCaught,
+      paradesWitnessed,
+      unlockedHats: wardrobeClean.unlockedHats,
+      penguins,
+      tech,
+      dailyObjectives,
+      speechLog
+    };
+    const milestoneClean = (MilestoneEngine && typeof MilestoneEngine.sanitizeMilestoneSaveFields === 'function')
+      ? MilestoneEngine.sanitizeMilestoneSaveFields(src, milestoneDerivedState)
+      : {
+          completedPermanentMilestones: [],
+          completedRunMilestones: [],
+          skippedMilestones: [],
+          unlockedTabs: ['penguins', 'stats', 'settings'],
+          showAllTabs: false,
+          milestoneBarExpanded: false
+        };
+
     return {
       data: {
         saveVersion: CURRENT_SAVE_VERSION,
@@ -382,6 +443,12 @@
         unlockedHats: wardrobeClean.unlockedHats,
         equippedHat: wardrobeClean.equippedHat,
         speciesHats: wardrobeClean.speciesHats,
+        completedPermanentMilestones: milestoneClean.completedPermanentMilestones,
+        completedRunMilestones: milestoneClean.completedRunMilestones,
+        skippedMilestones: milestoneClean.skippedMilestones,
+        unlockedTabs: milestoneClean.unlockedTabs,
+        showAllTabs: milestoneClean.showAllTabs,
+        milestoneBarExpanded: milestoneClean.milestoneBarExpanded,
         penguins,
         tech,
         collectedPerks,
@@ -400,16 +467,16 @@
         hapticsEnabled: typeof src.hapticsEnabled === 'boolean' ? src.hapticsEnabled : true,
         lastSaveTime,
         dailyObjectives,
-        totalRebirths: safeInt(src.totalRebirths, 0, 0, 1e6),
+        totalRebirths,
         totalEssenceEarned,
         rebirthHistory,
         totalAuroraBlessingsClaimed: safeInt(src.totalAuroraBlessingsClaimed, 0, 0, 1e9),
         totalManualClicks: safeInt(src.totalManualClicks, 0, 0, 1e12),
         totalDives: safeInt(src.totalDives, 0, 0, 1e12),
         totalSlides: safeInt(src.totalSlides, 0, 0, 1e12),
-        skyEventsCaught: safeInt(src.skyEventsCaught, 0, 0, 1e9),
-        bestSkyCombo: safeInt(src.bestSkyCombo, 0, 0, 5),
-        paradesWitnessed: safeInt(src.paradesWitnessed, 0, 0, 1e9),
+        skyEventsCaught,
+        bestSkyCombo,
+        paradesWitnessed,
         gameStartTime,
         highestDPS: safeNum(src.highestDPS, 0, 0, maxSafe),
         weatherIndex: safeInt(src.weatherIndex, 0, 0, weatherCount - 1),

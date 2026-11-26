@@ -277,7 +277,7 @@
 
     <!-- Safe-Area Version Footer -->
     <footer class="splash-footer">
-      <span id="splash-version-label" class="splash-version-pill">v2.6</span>
+      <span id="splash-version-label" class="splash-version-pill">v2.7</span>
     </footer>
   </div>
 
@@ -319,6 +319,35 @@
   <div id="bottom-sheet" aria-label="Colony management menu">
     <div id="sheet-drag-handle" class="sheet-drag-handle" role="button" tabindex="0" aria-expanded="true" aria-label="Drag up to expand or down to close menu">
       <div class="sheet-handle-bar"></div>
+    </div>
+    <!-- Collapsible Next Milestone Compass (38px compact bar; viewport-clamped expanded card) -->
+    <div id="milestone-bar" class="milestone-bar" aria-label="Next colony milestone guidance">
+      <button id="milestone-compact-btn" type="button" class="milestone-compact-row" aria-expanded="false" aria-controls="milestone-expanded-body">
+        <span id="milestone-compact-icon" class="milestone-compact-icon" aria-hidden="true">🧭</span>
+        <div class="milestone-compact-main">
+          <span id="milestone-compact-title" class="milestone-compact-title">Recruit 5 Adélie Scouts</span>
+          <div class="milestone-inline-progress" aria-hidden="true">
+            <div id="milestone-inline-fill" class="milestone-inline-fill"></div>
+          </div>
+          <span id="milestone-compact-pct" class="milestone-compact-pct">0%</span>
+        </div>
+        <span class="milestone-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div id="milestone-expanded-body" class="milestone-expanded-body">
+        <div class="milestone-expanded-grid">
+          <div class="milestone-copy-col">
+            <div id="milestone-why" class="milestone-why">Builds steady early fish flow and unlocks the Tech Lab.</div>
+            <div class="milestone-meta-row">
+              <span id="milestone-unlock-pill" class="milestone-unlock-pill">Next: 🔬 Tech Lab</span>
+              <span id="milestone-progress-text" class="milestone-progress-text">1/5</span>
+            </div>
+          </div>
+          <div class="milestone-action-col">
+            <button id="milestone-skip-btn" type="button" class="milestone-skip-btn" title="Skip this milestone suggestion">Skip</button>
+            <button id="milestone-go-btn" type="button" class="milestone-go-btn">Go →</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="sheet-header">
       <div class="sheet-tabs" role="tablist" aria-label="Colony menu sections">
@@ -488,6 +517,8 @@
   <script src="./js/daily-system.js"></script>
   <script src="./js/wardrobe.js"></script>
   <script src="./js/game-data.js"></script>
+  <script src="./js/milestone-engine.js"></script>
+  <script src="./js/polar-synergy.js"></script>
   <script src="./js/save-system.js"></script>
   <script src="./js/sky-events.js"></script>
   <script src="./js/daily-manager.js"></script>
@@ -506,6 +537,8 @@
     const CoreDaily = (window.GlacialCore && window.GlacialCore.DailySystem) || null;
     const CoreWardrobe = (window.GlacialCore && window.GlacialCore.Wardrobe) || null;
     const CoreGameData = (window.GlacialCore && window.GlacialCore.GameData) || null;
+    const CoreMilestoneEngine = (window.GlacialCore && window.GlacialCore.MilestoneEngine) || null;
+    const CorePolarSynergy = (window.GlacialCore && window.GlacialCore.PolarSynergy) || null;
     const CoreSave = (window.GlacialCore && window.GlacialCore.SaveSystem) || null;
     const CoreSkyEvents = (window.GlacialCore && window.GlacialCore.SkyEvents) || null;
     const CoreDailyManager = (window.GlacialCore && window.GlacialCore.DailyManager) || null;
@@ -703,9 +736,23 @@
         this.gameStartTime = Date.now();
         this.highestDPS = 0;
 
-        // 5-Minute Cycling Weather System
+        // 5-Minute Cycling Weather System + Hotspot Fishing Hole Synergy
         this.weatherIndex = 0;
         this.weatherTimer = WEATHER_CYCLE_SECONDS;
+        this.weatherRotationEpoch = 0;
+        this.hotspotHoleId = 1;
+        this.hotspotSurgeTimer = 0;
+
+        // Guided Milestone Compass & Progressive Tab Reveal (Schema v5)
+        this.completedPermanentMilestones = [];
+        this.completedRunMilestones = [];
+        this.skippedMilestones = [];
+        this.unlockedTabs = CoreMilestoneEngine
+          ? CoreMilestoneEngine.STARTER_TAB_IDS.slice()
+          : ['penguins', 'stats', 'settings'];
+        this.showAllTabs = false;
+        this.milestoneBarExpanded = false;
+        this.currentShownMilestoneId = null;
 
         // Penguin Speech Log (categorized by species) & Feature Announcement Tracking
         this.speechLog = {};
@@ -945,24 +992,59 @@
       }
 
       getWeatherYieldMultiplier() {
-        return this.getCurrentWeather().yieldMult || 1.0;
+        const w = this.getCurrentWeather();
+        if (CorePolarSynergy) {
+          return CorePolarSynergy.getWeatherSynergyProfile(w.id).globalWeatherMult;
+        }
+        return w.yieldMult || 1.0;
+      }
+
+      syncHotspotHole(incrementEpoch = false) {
+        if (incrementEpoch) {
+          this.weatherRotationEpoch = (this.weatherRotationEpoch || 0) + 1;
+        }
+        const unlockedCount = Math.max(3, Math.min(6, Math.floor(Number(this.fishingHolesUnlocked) || 3)));
+        const unlockedIds = [];
+        for (let i = 1; i <= unlockedCount; i++) unlockedIds.push(i);
+        const weatherId = this.getCurrentWeather().id;
+        this.hotspotHoleId = CorePolarSynergy
+          ? CorePolarSynergy.selectHotspotHoleId(weatherId, unlockedIds, this.weatherRotationEpoch || 0)
+          : unlockedIds[0];
+        return this.hotspotHoleId;
+      }
+
+      decayTransientTimers(elapsedSec) {
+        const sec = Math.max(0, Number(elapsedSec) || 0);
+        if (sec <= 0) return;
+        this.frenzyTimer = Math.max(0, (this.frenzyTimer || 0) - sec);
+        this.supernovaTimer = Math.max(0, (this.supernovaTimer || 0) - sec);
+        this.polarSurgeTimer = Math.max(0, (this.polarSurgeTimer || 0) - sec);
+        this.slushDebuffTimer = Math.max(0, (this.slushDebuffTimer || 0) - sec);
+        this.goldenFishTimer = Math.max(0, (this.goldenFishTimer || 0) - sec);
+        this.paradeBoostTimer = Math.max(0, (this.paradeBoostTimer || 0) - sec);
+        this.starlightFrenzyTimer = Math.max(0, (this.starlightFrenzyTimer || 0) - sec);
+        // Hotspot Event Surge is strictly transient and expires/resets across offline/reload gaps
+        this.hotspotSurgeTimer = 0;
       }
 
       advanceWeather(seconds) {
         if (!(seconds > 0)) return false;
         const prevIndex = this.weatherIndex;
         let rem = this.weatherTimer - seconds;
+        let steps = 0;
         if (rem <= 0) {
-          const steps = Math.floor((-rem) / WEATHER_CYCLE_SECONDS) + 1;
+          steps = Math.floor((-rem) / WEATHER_CYCLE_SECONDS) + 1;
           this.weatherIndex = (this.weatherIndex + steps) % WEATHER_TYPES.length;
           this.weatherTimer = WEATHER_CYCLE_SECONDS - ((-rem) % WEATHER_CYCLE_SECONDS);
           if (this.weatherTimer <= 0 || this.weatherTimer > WEATHER_CYCLE_SECONDS) {
             this.weatherTimer = WEATHER_CYCLE_SECONDS;
           }
+          this.weatherRotationEpoch = (this.weatherRotationEpoch || 0) + steps;
+          this.syncHotspotHole(false);
         } else {
           this.weatherTimer = rem;
         }
-        return this.weatherIndex !== prevIndex;
+        return this.weatherIndex !== prevIndex || steps > 0;
       }
 
       getFishPerClick() {
@@ -1026,22 +1108,25 @@
         return Math.max(40, (distSum / holes.length) * 1.00);
       }
 
-      getGlobalOutputMultiplier(synergies = null) {
+      getGlobalOutputMultiplier(synergies = null, options = {}) {
+        const includeWeather = options && typeof options.includeWeather === 'boolean' ? options.includeWeather : true;
+        const includeTransient = options && typeof options.includeTransient === 'boolean' ? options.includeTransient : true;
         const syn = synergies || this.getColonySynergies();
         const prestige = this.getPrestigeMultiplier();
         const levelBonus = this.getGlacierLevelMultiplier();
         const streakBonus = this.getDailyStreakFishMultiplier();
         const cryoBonus = 1 + (this.tech.cryo_storage * 0.2);
-        const frenzy = this.frenzyTimer > 0 ? 3 : 1;
-        const supernova = this.supernovaTimer > 0 ? 4 : 1;
-        const polarSurge = this.polarSurgeTimer > 0 ? 2 : 1;
-        const paradeBoost = this.paradeBoostTimer > 0 ? (CoreParade ? CoreParade.PARADE_BOOST_MULTIPLIER : 2) : 1;
-        const starlightFrenzy = this.starlightFrenzyTimer > 0 ? (CoreSkyEvents ? CoreSkyEvents.STARLIGHT_FRENZY_MULTIPLIER : 2) : 1;
-        const weatherMult = this.getWeatherYieldMultiplier();
+        const frenzy = (includeTransient && this.frenzyTimer > 0) ? 3 : 1;
+        const supernova = (includeTransient && this.supernovaTimer > 0) ? 4 : 1;
+        const polarSurge = (includeTransient && this.polarSurgeTimer > 0) ? 2 : 1;
+        const paradeBoost = (includeTransient && this.paradeBoostTimer > 0) ? (CoreParade ? CoreParade.PARADE_BOOST_MULTIPLIER : 2) : 1;
+        const starlightFrenzy = (includeTransient && this.starlightFrenzyTimer > 0) ? (CoreSkyEvents ? CoreSkyEvents.STARLIGHT_FRENZY_MULTIPLIER : 2) : 1;
+        const weatherMult = includeWeather ? this.getWeatherYieldMultiplier() : 1.0;
         return prestige * levelBonus * streakBonus * cryoBonus * frenzy * supernova * polarSurge * paradeBoost * starlightFrenzy * weatherMult * syn.allFishMult;
       }
 
-      getSpeciesTripMetrics(speciesId, synergies = null) {
+      getSpeciesTripMetrics(speciesId, synergies = null, options = {}) {
+        const persistentOnly = Boolean(options && options.persistentOnly);
         const sp = PENGUIN_SPECIES.find(s => s.id === speciesId);
         const pData = this.penguins[speciesId];
         if (!sp || !pData || pData.count <= 0) {
@@ -1051,14 +1136,56 @@
         const traitAvg = this.getSpeciesTraitAverages(sp.id);
         const lineBonus = 1 + (this.tech.reinforced_line * 0.25);
         const emperorMult = (sp.id === 'emperor' && this.emperorBoost > 0) ? (1 + this.emperorBoost) : 1;
-        const globalMult = this.getGlobalOutputMultiplier(syn);
-
         const baseCatch = sp.baseYield * (1 + (pData.level - 1) * COLONY_SIZE_BONUS_RATE) * traitAvg.yieldMult * this.perkCatchMult * lineBonus * emperorMult * syn.catchYieldMult;
-        const perPenguinTripYield = baseCatch * globalMult;
 
-        let walkSpeed = sp.baseSpeed * 40 * traitAvg.speedMult * this.perkWalkSpeedMult * syn.walkSlideMult * (1 + this.tech.thermal_parkas * 0.15);
-        if (this.slushDebuffTimer > 0) walkSpeed *= 0.92;
-        if (this.supernovaTimer > 0) walkSpeed *= 2.5;
+        let perPenguinTripYield = 0;
+        let weatherSpeedMult = 1.0;
+        let weatherDiveMult = 1.0;
+
+        if (persistentOnly) {
+          // Offline baseline strictly excludes transient timers, active weather spikes, and hotspot surges
+          const persistentGlobalMult = this.getGlobalOutputMultiplier(syn, { includeWeather: false, includeTransient: false });
+          perPenguinTripYield = baseCatch * persistentGlobalMult;
+        } else {
+          const weatherId = this.getCurrentWeather().id;
+          const paradeActive = this.paradeBoostTimer > 0;
+          const spSyn = CorePolarSynergy
+            ? CorePolarSynergy.getSpeciesSynergy(sp.id, weatherId, paradeActive)
+            : { speedMult: 1.0, diveSpeedMult: 1.0, catchMult: 1.0 };
+          weatherSpeedMult = spSyn.speedMult;
+          weatherDiveMult = spSyn.diveSpeedMult;
+
+          // Single-source PolarSynergy yield math (globalWeatherMult applied ONCE, never double-counted)
+          const nonWeatherGlobalMult = this.getGlobalOutputMultiplier(syn, { includeWeather: false, includeTransient: true });
+          if (CorePolarSynergy) {
+            const normalYield = CorePolarSynergy.calculateEffectiveYield({
+              baseCatch,
+              weatherId,
+              speciesId: sp.id,
+              paradeActive,
+              isAtHotspot: false,
+              hotspotSurgeTimer: 0
+            }).effectiveCatch;
+            const hotspotYield = CorePolarSynergy.calculateEffectiveYield({
+              baseCatch,
+              weatherId,
+              speciesId: sp.id,
+              paradeActive,
+              isAtHotspot: true,
+              hotspotSurgeTimer: this.hotspotSurgeTimer || 0
+            }).effectiveCatch;
+            const unlockedHoles = Math.max(1, this.fishingHolesUnlocked || 3);
+            const hotspotShare = Math.min(1, 1 / unlockedHoles);
+            const expectedEffectiveCatch = normalYield * (1 - hotspotShare) + hotspotYield * hotspotShare;
+            perPenguinTripYield = expectedEffectiveCatch * nonWeatherGlobalMult;
+          } else {
+            perPenguinTripYield = baseCatch * this.getGlobalOutputMultiplier(syn, { includeWeather: true, includeTransient: true });
+          }
+        }
+
+        let walkSpeed = sp.baseSpeed * 40 * traitAvg.speedMult * this.perkWalkSpeedMult * syn.walkSlideMult * weatherSpeedMult * (1 + this.tech.thermal_parkas * 0.15);
+        if (!persistentOnly && this.slushDebuffTimer > 0) walkSpeed *= 0.92;
+        if (!persistentOnly && this.supernovaTimer > 0) walkSpeed *= 2.5;
         walkSpeed = Math.max(12, walkSpeed);
 
         const slideChance = sp.id === 'gentoo' ? 1.0 : 0.35;
@@ -1066,7 +1193,7 @@
         const avgLegDist = this.getAverageDepotToHoleDistance();
         const expectedLegSec = (1 - slideChance) * (avgLegDist / walkSpeed) + slideChance * (avgLegDist / (walkSpeed * slideFactor));
 
-        const diveRate = this.diveSpeedMult * traitAvg.diveSpeedMult * syn.diveSpeedMult * (1 + (sp.diveTime > 1 ? 0.2 : 0));
+        const diveRate = this.diveSpeedMult * traitAvg.diveSpeedMult * syn.diveSpeedMult * weatherDiveMult * (1 + (sp.diveTime > 1 ? 0.2 : 0));
         const diveSec = Math.max(0.6, sp.diveTime / Math.max(0.1, diveRate));
 
         const tripSeconds = Math.max(1.8, (expectedLegSec * 2) + 0.5 + diveSec + 0.6);
@@ -1082,6 +1209,23 @@
           dps,
           fishPerMin: dps * 60
         };
+      }
+
+      calculatePersistentOfflineDPS() {
+        let total = 0;
+        const syn = this.getColonySynergies();
+        PENGUIN_SPECIES.forEach(sp => {
+          const pData = this.penguins[sp.id];
+          if (pData && pData.count > 0) {
+            total += this.getSpeciesTripMetrics(sp.id, syn, { persistentOnly: true }).dps;
+          }
+        });
+        const stripped = CorePolarSynergy
+          ? CorePolarSynergy.stripTransientBoostsForOffline(total)
+          : total;
+        return CoreEconomy
+          ? CoreEconomy.sanitizeFiniteNumber(stripped, 0, 0, CoreEconomy.MAX_SAFE_RESOURCE)
+          : (Number.isFinite(stripped) && stripped > 0 ? stripped : 0);
       }
 
       getSpeciesFishPerMinuteBreakdown() {
@@ -1187,10 +1331,16 @@
         if (this.fish < nextTier.cost) return { ok: false, reason: 'insufficient_fish', cost: nextTier.cost };
         this.fish = Math.max(0, this.fish - nextTier.cost);
         this.iglooTier = nextTier.tier;
-        sound.playLevelUp();
+        if (typeof sound.playCastleUpgrade === 'function') {
+          sound.playCastleUpgrade(nextTier.tier);
+        } else {
+          sound.playLevelUp();
+        }
         sound.triggerHaptic('celebrate');
         spawnLevelUpCelebration();
         showToast(`🏰 Upgraded to ${nextTier.name}! (Visual Castle Upgrade)`, '🏰', { category: 'purchase', durationMs: 4200 });
+        if (typeof syncProgressiveTabs === 'function') syncProgressiveTabs(true);
+        if (typeof updateMilestoneBarUI === 'function') updateMilestoneBarUI();
         this.save({ immediate: true });
         return { ok: true, tierDef: nextTier };
       }
@@ -1228,6 +1378,7 @@
         if (typeof syncActiveFishingHoles === 'function') {
           syncActiveFishingHoles(this.fishingHolesUnlocked);
         }
+        this.syncHotspotHole(false);
         sound.playIceCrackle(0.95);
         sound.playLevelUp();
         sound.triggerHaptic('celebrate');
@@ -1249,6 +1400,8 @@
           }
         }
         showToast(`🕳️ Carved ${nextHole.name}! (+10 Fishing Slots • ${this.fishingHolesUnlocked}/6 Holes)`, '🕳️', { category: 'purchase', durationMs: 4200 });
+        if (typeof syncProgressiveTabs === 'function') syncProgressiveTabs(true);
+        if (typeof updateMilestoneBarUI === 'function') updateMilestoneBarUI();
         this.save({ immediate: true });
         return { ok: true, holeDef: nextHole };
       }
@@ -1323,7 +1476,7 @@
       buildSavePayload() {
         const now = Date.now();
         return {
-          saveVersion: CoreSave ? CoreSave.CURRENT_SAVE_VERSION : 4,
+          saveVersion: CoreSave ? CoreSave.CURRENT_SAVE_VERSION : 5,
           savedAt: now,
           fish: this.fish,
           lifetimeFish: this.lifetimeFish,
@@ -1385,7 +1538,13 @@
           lastColonySpeechEndedAt: this.lastColonySpeechEndedAt,
           pendingOfflineFish: this.pendingOfflineFish,
           lastSeenFeatureReleaseId: this.lastSeenFeatureReleaseId,
-          disableRoutineToasts: Boolean(this.disableRoutineToasts)
+          disableRoutineToasts: Boolean(this.disableRoutineToasts),
+          completedPermanentMilestones: Array.isArray(this.completedPermanentMilestones) ? this.completedPermanentMilestones.slice() : [],
+          completedRunMilestones: Array.isArray(this.completedRunMilestones) ? this.completedRunMilestones.slice() : [],
+          skippedMilestones: Array.isArray(this.skippedMilestones) ? this.skippedMilestones.slice() : [],
+          unlockedTabs: Array.isArray(this.unlockedTabs) ? this.unlockedTabs.slice() : ['penguins', 'stats', 'settings'],
+          showAllTabs: Boolean(this.showAllTabs),
+          milestoneBarExpanded: Boolean(this.milestoneBarExpanded)
         };
       }
 
@@ -1643,25 +1802,46 @@
           this.lastSeenFeatureReleaseId = data.lastSeenFeatureReleaseId || '';
           this.disableRoutineToasts = Boolean(data.disableRoutineToasts);
 
+          // Schema v5 Milestone Compass & Progressive Tabs
+          this.completedPermanentMilestones = Array.isArray(data.completedPermanentMilestones)
+            ? data.completedPermanentMilestones.slice()
+            : [];
+          this.completedRunMilestones = Array.isArray(data.completedRunMilestones)
+            ? data.completedRunMilestones.slice()
+            : [];
+          this.skippedMilestones = Array.isArray(data.skippedMilestones)
+            ? data.skippedMilestones.slice()
+            : [];
+          this.unlockedTabs = Array.isArray(data.unlockedTabs) && data.unlockedTabs.length > 0
+            ? data.unlockedTabs.slice()
+            : (CoreMilestoneEngine ? CoreMilestoneEngine.evaluateUnlockedTabs(this) : ['penguins', 'stats', 'settings']);
+          this.showAllTabs = Boolean(data.showAllTabs);
+          this.milestoneBarExpanded = Boolean(data.milestoneBarExpanded);
+          this.hotspotSurgeTimer = 0;
+          this.syncHotspotHole(false);
+
           this._getPersistenceController().markLoaded(this.buildSavePayload());
 
           if (data.lastSaveTime > 0 && !recovered.futureClockDetected) {
             this.calculateDPS();
+            // Strictly use persistent baseline DPS for offline earnings (zero expired transient bonus leakage)
+            const offlineBaseDps = this.calculatePersistentOfflineDPS();
             const offlineRes = CoreEconomy
               ? CoreEconomy.calculateOfflineEarnings({
-                  dps: this.dps,
+                  dps: offlineBaseDps,
                   lastSaveTimeMs: data.lastSaveTime,
                   nowMs
                 })
               : {
                   earned: ((nowMs - data.lastSaveTime) / 1000 > 10)
-                    ? Math.floor(this.dps * Math.min(86400, (nowMs - data.lastSaveTime) / 1000) * (2 / 3))
+                    ? Math.floor(offlineBaseDps * Math.min(86400, (nowMs - data.lastSaveTime) / 1000) * (2 / 3))
                     : 0,
                   rawElapsedSec: (nowMs - data.lastSaveTime) / 1000,
                   clockMovedBackward: nowMs < data.lastSaveTime
                 };
 
             if (offlineRes.rawElapsedSec > 0 && !offlineRes.clockMovedBackward) {
+              this.decayTransientTimers(offlineRes.rawElapsedSec);
               this.advanceWeather(Math.min(offlineRes.rawElapsedSec, 86400));
             }
             if (offlineRes.earned > 0) {
@@ -1864,22 +2044,40 @@
     syncActiveFishingHoles(CoreEconomy ? CoreEconomy.MIN_FISHING_HOLES : 3);
 
     function claimAvailableSlot(penguinId) {
-      // Spread penguins evenly across holes by picking the least-crowded hole with a free slot,
-      // and within that hole pick the free slot furthest from already-occupied slots.
-      let bestHole = null;
-      let bestOccupied = Infinity;
-      for (let hole of FISHING_HOLES) {
+      // Stable 4-Rule Hotspot Routing: prefer open Hotspot Fishing Hole slot when starting a new trip,
+      // otherwise fall back to the least-crowded hole with a free slot.
+      const holeMetrics = FISHING_HOLES.map(hole => {
         let occ = 0;
         let hasFree = false;
         for (let slot of hole.slots) {
           if (slot.occupiedBy !== null) occ++;
           else hasFree = true;
         }
-        if (hasFree && occ < bestOccupied) {
-          bestOccupied = occ;
-          bestHole = hole;
+        return {
+          id: hole.id,
+          hole,
+          occupants: occ,
+          maxCapacity: hole.slots.length,
+          hasFree
+        };
+      });
+
+      const availableMetrics = holeMetrics.filter(m => m.hasFree);
+      let bestHole = null;
+      if (availableMetrics.length > 0) {
+        if (CorePolarSynergy && typeof CorePolarSynergy.chooseFishingHoleForPenguin === 'function') {
+          const picked = CorePolarSynergy.chooseFishingHoleForPenguin({
+            currentTargetHoleId: null,
+            holes: availableMetrics,
+            hotspotHoleId: state ? state.hotspotHoleId : null
+          });
+          bestHole = picked ? picked.hole : availableMetrics[0].hole;
+        } else {
+          availableMetrics.sort((a, b) => a.occupants - b.occupants);
+          bestHole = availableMetrics[0].hole;
         }
       }
+
       if (bestHole) {
         const freeSlots = bestHole.slots.filter(s => s.occupiedBy === null);
         const occupiedSlots = bestHole.slots.filter(s => s.occupiedBy !== null);
@@ -2461,7 +2659,10 @@
         const useColonyTraitAvg = pSpeciesData.count > MAX_VISIBLE_PER_COLONY;
         const speciesTraitAvg = useColonyTraitAvg ? state.getSpeciesTraitAverages(this.species.id) : null;
         const traitSpeed = useColonyTraitAvg ? speciesTraitAvg.speedMult : (this.trait ? this.trait.speedMult : 1.0);
-        let speed = this.species.baseSpeed * 40 * traitSpeed * state.perkWalkSpeedMult * synergies.walkSlideMult * (1 + state.tech.thermal_parkas * 0.15);
+        const polarSyn = CorePolarSynergy
+          ? CorePolarSynergy.getSpeciesSynergy(this.species.id, state.getCurrentWeather().id, state.paradeBoostTimer > 0)
+          : { speedMult: 1.0, diveSpeedMult: 1.0 };
+        let speed = this.species.baseSpeed * 40 * traitSpeed * state.perkWalkSpeedMult * synergies.walkSlideMult * polarSyn.speedMult * (1 + state.tech.thermal_parkas * 0.15);
         if (state.slushDebuffTimer > 0) speed *= 0.92;
         if (state.supernovaTimer > 0) speed *= 2.5;
 
@@ -2573,7 +2774,7 @@
             if (this.diveTimer <= 0) {
               this.state = 'FISHING';
               const traitDive = useColonyTraitAvg ? speciesTraitAvg.diveSpeedMult : (this.trait ? this.trait.diveSpeedMult : 1.0);
-              const diveRate = state.diveSpeedMult * traitDive * synergies.diveSpeedMult * (1 + (this.species.diveTime > 1 ? 0.2 : 0));
+              const diveRate = state.diveSpeedMult * traitDive * synergies.diveSpeedMult * polarSyn.diveSpeedMult * (1 + (this.species.diveTime > 1 ? 0.2 : 0));
               this.diveTimer = Math.max(0.6, this.species.diveTime / Math.max(0.1, diveRate));
               sound.playSplash();
               if (this.claimedTarget) {
@@ -2594,17 +2795,29 @@
               // Slight jitter around 0.60s mean preserves exact average trip timing while staggering waves
               this.diveTimer = 0.48 + Math.random() * 0.24;
               sound.playSplash();
+              const isAtHotspot = Boolean(this.claimedTarget && this.claimedTarget.hole && this.claimedTarget.hole.id === state.hotspotHoleId);
               if (this.claimedTarget) {
                 this.claimedTarget.hole.rippleTimer = 1.0;
-                spawnHoleRipple(this.claimedTarget.hole, 'rgba(125, 211, 252, 0.94)');
+                spawnHoleRipple(this.claimedTarget.hole, isAtHotspot ? 'rgba(254, 240, 138, 0.96)' : 'rgba(125, 211, 252, 0.94)');
               }
 
               const lineBonus = 1 + (state.tech.reinforced_line * 0.25);
               const pData = pSpeciesData;
               const traitYield = useColonyTraitAvg ? speciesTraitAvg.yieldMult : (this.trait ? this.trait.yieldMult : 1.0);
               const emperorMult = (this.species.id === 'emperor' && state.emperorBoost > 0) ? (1 + state.emperorBoost) : 1;
-              const catchVal = this.species.baseYield * (1 + (pData.level - 1) * COLONY_SIZE_BONUS_RATE) * traitYield * state.perkCatchMult * lineBonus * emperorMult * synergies.catchYieldMult;
-              this.carriedFish = Math.max(0.1, catchVal);
+              const baseCatchVal = this.species.baseYield * (1 + (pData.level - 1) * COLONY_SIZE_BONUS_RATE) * traitYield * state.perkCatchMult * lineBonus * emperorMult * synergies.catchYieldMult;
+              // Single documented PolarSynergy catch formula (evaluates live hotspotHoleId at dive completion)
+              const yieldRes = CorePolarSynergy
+                ? CorePolarSynergy.calculateEffectiveYield({
+                    baseCatch: baseCatchVal,
+                    weatherId: state.getCurrentWeather().id,
+                    speciesId: this.species.id,
+                    paradeActive: state.paradeBoostTimer > 0,
+                    isAtHotspot,
+                    hotspotSurgeTimer: state.hotspotSurgeTimer || 0
+                  })
+                : { effectiveCatch: baseCatchVal * state.getWeatherYieldMultiplier() };
+              this.carriedFish = Math.max(0.1, yieldRes.effectiveCatch);
 
               releaseSlot(this.uid);
               this.claimedTarget = null;
@@ -2636,7 +2849,8 @@
                 activePenguins.filter(p => p.speciesId === this.species.id && p.state !== 'SLEEPING').length
               );
               const colonyScale = Math.max(1, pData.count) / activeSpeciesCount;
-              const globalMult = state.getGlobalOutputMultiplier(synergies);
+              // Weather multiplier already applied ONCE inside PolarSynergy.calculateEffectiveYield
+              const globalMult = state.getGlobalOutputMultiplier(synergies, { includeWeather: false, includeTransient: true });
               const rawBanked = this.carriedFish * globalMult * colonyScale;
 
               if (!state.speciesFishRemainder) state.speciesFishRemainder = {};
@@ -3051,6 +3265,9 @@
       const chosen = eligible[Math.floor(Math.random() * eligible.length)];
       const record = chosen.speakRandomLine();
       if (record) {
+        if (typeof sound.playSpeciesCall === 'function') {
+          sound.playSpeciesCall(chosen.speciesId);
+        }
         const nowMs = Date.now();
         lastGlobalPenguinSpeechAt = nowMs;
         state.lastColonySpeechEndedAt = nowMs;
@@ -3431,6 +3648,8 @@
           achievementCheckTimer = 0;
           dailyManager.checkDailyReset();
           checkAchievements();
+          if (typeof syncProgressiveTabs === 'function') syncProgressiveTabs(true);
+          if (typeof updateMilestoneBarUI === 'function') updateMilestoneBarUI();
         }
 
         if (state.frenzyTimer > 0) state.frenzyTimer = Math.max(0, state.frenzyTimer - dt);
@@ -3440,6 +3659,7 @@
         if (state.goldenFishTimer > 0) state.goldenFishTimer = Math.max(0, state.goldenFishTimer - dt);
         if (state.paradeBoostTimer > 0) state.paradeBoostTimer = Math.max(0, state.paradeBoostTimer - dt);
         if (state.starlightFrenzyTimer > 0) state.starlightFrenzyTimer = Math.max(0, state.starlightFrenzyTimer - dt);
+        if (state.hotspotSurgeTimer > 0) state.hotspotSurgeTimer = Math.max(0, state.hotspotSurgeTimer - dt);
 
         const isOfflineOrWhatsNewBlocking = (typeof isModalBlockingAurora === 'function') && isModalBlockingAurora();
         if (!state.isAuroraModalOpen && !state.isAuroraAlertActive && !isOfflineOrWhatsNewBlocking) {
@@ -3460,15 +3680,18 @@
 
         if (state.advanceWeather(dt)) {
           const w = state.getCurrentWeather();
+          const synProfile = CorePolarSynergy ? CorePolarSynergy.getWeatherSynergyProfile(w.id) : null;
+          const hotspotObj = FISHING_HOLES.find(h => h.id === state.hotspotHoleId);
+          const hotspotNote = hotspotObj ? ` • ★ ${hotspotObj.name}` : '';
           if (w.id === 'blizzard') {
-            showToast('🌨️ Blizzard Incoming! Visibility down, +20% Fish Yield!', '🌨️', { category: 'weather', durationMs: 4200 });
+            showToast(`🌨️ Blizzard! ${synProfile ? synProfile.badge : '+20% Yield'}${hotspotNote}`, '🌨️', { category: 'weather', durationMs: 4500 });
           } else if (w.id === 'light_snow') {
-            showToast('❄️ Light Snow drifting over the glacier.', '❄️', { category: 'weather', durationMs: 4000 });
+            showToast(`❄️ Light Snow! ${synProfile ? synProfile.badge : 'Drifting snow'}${hotspotNote}`, '❄️', { category: 'weather', durationMs: 4300 });
           } else {
-            showToast('☀️ The polar skies have Cleared!', '☀️', { category: 'weather', durationMs: 4000 });
+            showToast(`☀️ Clear Skies! ${synProfile ? synProfile.badge : 'Bright polar skies'}${hotspotNote}`, '☀️', { category: 'weather', durationMs: 4300 });
           }
           state.save({ routine: true });
-          if (state.currentTab === 'stats') {
+          if (state.currentTab === 'stats' || state.currentTab === 'penguins' || state.currentTab === 'glacier') {
             updateSheetContent();
           }
         }
@@ -3581,6 +3804,22 @@
 
     function drawScene(ctx, dt) {
       if (!CoreSceneRenderer) return;
+      const curWeather = state ? state.getCurrentWeather() : WEATHER_TYPES[0];
+      const synProfile = CorePolarSynergy
+        ? CorePolarSynergy.getWeatherSynergyProfile(curWeather.id)
+        : { hotspotColor: '#fbbf24', hotspotSecondary: '#38bdf8' };
+      const totalPenguinsCount = state && state.penguins
+        ? Object.values(state.penguins).reduce((acc, p) => acc + (p && p.count ? p.count : 0), 0)
+        : 0;
+      const landmarks = state ? {
+        lanternPath: (state.glacierLevel || 1) >= 3 || (state.iglooTier || 0) >= 1,
+        colonyPennants: (state.fishingHolesUnlocked || 3) >= 4 || totalPenguinsCount >= 25,
+        auroraMonoliths: (state.iglooTier || 0) >= 3 || (state.glacierLevel || 1) >= 10,
+        monolithBoost: (state.starlightFrenzyTimer || 0) > 0 || (state.paradeBoostTimer || 0) > 0 || Boolean(state.isAuroraAlertActive),
+        rebirthMonument: (state.totalRebirths || 0) >= 1,
+        rebirthCount: state.totalRebirths || 0
+      } : {};
+
       CoreSceneRenderer.drawScene(ctx, dt, {
         width,
         height,
@@ -3592,10 +3831,15 @@
         depot: DEPOT,
         iglooTier: state ? state.iglooTier : 0,
         iglooTheme: state ? state.iglooTheme : 'glacier',
-        targetWeather: state ? state.getCurrentWeather() : WEATHER_TYPES[0],
+        targetWeather: curWeather,
         snowParticles,
         maxSnow: MAX_SNOW,
-        weatherMix
+        weatherMix,
+        hotspotHoleId: state ? state.hotspotHoleId : 1,
+        hotspotSurgeActive: Boolean(state && (state.hotspotSurgeTimer || 0) > 0),
+        hotspotColor: synProfile.hotspotColor,
+        hotspotSecondary: synProfile.hotspotSecondary,
+        landmarks
       });
     }
 
@@ -3630,6 +3874,13 @@
           if (skyRes.frenzyTriggered && skyRes.frenzyDurationSec > 0) {
             state.starlightFrenzyTimer = Math.max(state.starlightFrenzyTimer || 0, skyRes.frenzyDurationSec);
           }
+          // Additive Hotspot Event Surge (+25% capped at +85% / 1.85x for 20s)
+          const surgeDur = CorePolarSynergy ? CorePolarSynergy.HOTSPOT_SURGE_DURATION_SEC : 20;
+          state.hotspotSurgeTimer = Math.max(state.hotspotSurgeTimer || 0, surgeDur);
+          const surgeHole = FISHING_HOLES.find(h => h.id === state.hotspotHoleId);
+          if (surgeHole) {
+            spawnHoleRipple(surgeHole, 'rgba(254, 240, 138, 0.96)');
+          }
           state.addFish(skyRes.rewardFish);
           state.save({ immediate: true });
           sound.playLevelUp();
@@ -3654,8 +3905,9 @@
           const label = isStar ? '🌠 Shooting Star' : '🦐 Krill Swarm';
           addTapParticle(skyRes.x, skyRes.y - 16, `${isStar ? '🌠' : '🦐'} +${formatNumber(skyRes.rewardFish)} 🐟 (${skyRes.comboCount}×)`, '#fef08a', 17);
           const frenzyNote = skyRes.frenzyTriggered ? ' • 🌟 2× Starlight Frenzy (15s)!' : '';
-          showToast(`${label} Caught! +${formatNumber(skyRes.rewardFish)} 🐟 • ${skyRes.comboCount}× Combo${frenzyNote}`, isStar ? '🌠' : '🦐', { category: 'boost', durationMs: 3800 });
+          showToast(`${label} Caught! +${formatNumber(skyRes.rewardFish)} 🐟 • ⚡ Hotspot Surge (${surgeDur}s)${frenzyNote}`, isStar ? '🌠' : '🦐', { category: 'boost', durationMs: 3900 });
           updateSkyComboPill();
+          if (typeof updateMilestoneBarUI === 'function') updateMilestoneBarUI();
           if (state.currentTab === 'stats') {
             updateSheetContent();
           }
@@ -3714,7 +3966,11 @@
         if (Math.hypot(p.x - x, p.y - y) < 34) {
           tappedPenguin = true;
           dailyManager.track('penguin_taps', 1);
-          sound.playChirp();
+          if (typeof sound.playSpeciesCall === 'function') {
+            sound.playSpeciesCall(p.speciesId);
+          } else {
+            sound.playChirp();
+          }
           sound.triggerHaptic('penguin_tap');
           if (p.state === 'SLEEPING') {
             p.wakeUpFromSleep(true);
@@ -4589,7 +4845,7 @@
       // Re-calculate multipliers so only surviving Legendary & Mythic perks apply!
       state.recalculatePerkMultipliers();
 
-      // Clear transient/temporary timers
+      // Clear transient/temporary timers & run-scoped milestones (permanent milestones & unlocked tabs persist!)
       state.frenzyTimer = 0;
       state.supernovaTimer = 0;
       state.polarSurgeTimer = 0;
@@ -4597,7 +4853,11 @@
       state.goldenFishTimer = 0;
       state.paradeBoostTimer = 0;
       state.starlightFrenzyTimer = 0;
+      state.hotspotSurgeTimer = 0;
       state.tempSpeedBoost = 0;
+      state.completedRunMilestones = [];
+      state.currentShownMilestoneId = null;
+      state.syncHotspotHole(false);
       if (typeof paradeController !== 'undefined' && paradeController) {
         paradeController.cancelAndReset(activePenguins);
       }
@@ -4609,6 +4869,8 @@
       }
 
       checkAchievements();
+      if (typeof syncProgressiveTabs === 'function') syncProgressiveTabs(false);
+      if (typeof updateMilestoneBarUI === 'function') updateMilestoneBarUI();
       state.save({ immediate: true, force: true });
       syncActivePenguins();
       updateSheetContent();
@@ -4979,23 +5241,224 @@
       }
     }
 
+    // --- PROGRESSIVE TAB REVEAL & NEXT MILESTONE COMPASS (Update 2.7) ---
+    let activeMilestoneSnapshot = null;
+
+    function selectBottomTab(tabId) {
+      if (!tabId) return false;
+      const targetBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+      if (!targetBtn) return false;
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      targetBtn.classList.add('active');
+      targetBtn.setAttribute('aria-selected', 'true');
+      state.currentTab = tabId;
+      if (tabId === 'log') {
+        const logDot = document.getElementById('log-tab-dot');
+        if (logDot) logDot.style.display = 'none';
+      }
+      if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
+      updateSheetContent();
+      return true;
+    }
+
+    function syncProgressiveTabs(announceNew = true) {
+      if (!CoreMilestoneEngine || !state) return [];
+      const prevUnlocked = new Set(Array.isArray(state.unlockedTabs) ? state.unlockedTabs : CoreMilestoneEngine.STARTER_TAB_IDS);
+      const nextUnlocked = CoreMilestoneEngine.evaluateUnlockedTabs(state, Array.from(prevUnlocked));
+      const newlyUnlocked = nextUnlocked.filter(id => !prevUnlocked.has(id));
+      state.unlockedTabs = nextUnlocked;
+
+      const visibleTabs = new Set(CoreMilestoneEngine.getVisibleTabs(state));
+      const tabLabels = {
+        tech: '🔬 Tech Lab',
+        glacier: '🏰 Glacier Sanctuary',
+        daily: '🎯 Daily Objectives',
+        log: '💬 Colony Log',
+        prestige: '✨ Prestige'
+      };
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        const tabId = btn.getAttribute('data-tab');
+        const isVisible = visibleTabs.has(tabId);
+        btn.classList.toggle('is-locked-tab', !isVisible);
+        btn.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+        btn.setAttribute('tabindex', isVisible ? '0' : '-1');
+        if (announceNew && newlyUnlocked.includes(tabId)) {
+          btn.classList.remove('is-newly-unlocked');
+          void btn.offsetWidth;
+          btn.classList.add('is-newly-unlocked');
+        }
+      });
+
+      if (newlyUnlocked.length > 0 && announceNew) {
+        if (typeof sound.playMilestoneChime === 'function') {
+          sound.playMilestoneChime();
+        }
+        newlyUnlocked.forEach(tabId => {
+          const label = tabLabels[tabId] || tabId;
+          showToast(`🧭 Menu Tab Unlocked: ${label}!`, '✨', { category: 'boost', durationMs: 4200 });
+        });
+        state.save({ routine: true });
+      }
+
+      if (!visibleTabs.has(state.currentTab)) {
+        selectBottomTab('penguins');
+      }
+      return newlyUnlocked;
+    }
+
+    function updateMilestoneBarUI() {
+      if (!CoreMilestoneEngine || !state) return null;
+      const res = CoreMilestoneEngine.selectActiveMilestone(state, {
+        currentShownId: state.currentShownMilestoneId
+      });
+      state.completedPermanentMilestones = res.completedPermanentMilestones;
+      state.completedRunMilestones = res.completedRunMilestones;
+      if (Array.isArray(res.newlyCompleted) && res.newlyCompleted.length > 0) {
+        if (typeof sound.playMilestoneChime === 'function') {
+          sound.playMilestoneChime();
+        }
+        res.newlyCompleted.forEach(m => {
+          showToast(`🧭 Milestone Complete: ${m.icon} ${m.title}!`, '🧭', { category: 'boost', durationMs: 3800 });
+        });
+      }
+
+      const ms = res.milestone;
+      activeMilestoneSnapshot = ms;
+      state.currentShownMilestoneId = ms ? ms.id : null;
+
+      const bar = document.getElementById('milestone-bar');
+      if (!bar || !ms) return ms;
+
+      const vh = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 640;
+      const allowExpanded = Boolean(state.milestoneBarExpanded) && vh > 540;
+      bar.classList.toggle('is-expanded', allowExpanded);
+      bar.classList.toggle('is-ready', Boolean(ms.readyNow));
+      bar.setAttribute('data-milestone-id', ms.id);
+
+      const compactBtn = document.getElementById('milestone-compact-btn');
+      if (compactBtn) {
+        compactBtn.setAttribute('aria-expanded', allowExpanded ? 'true' : 'false');
+      }
+      const iconEl = document.getElementById('milestone-compact-icon');
+      const titleEl = document.getElementById('milestone-compact-title');
+      const fillEl = document.getElementById('milestone-inline-fill');
+      const pctEl = document.getElementById('milestone-compact-pct');
+      const whyEl = document.getElementById('milestone-why');
+      const unlockEl = document.getElementById('milestone-unlock-pill');
+      const progTextEl = document.getElementById('milestone-progress-text');
+      const goBtn = document.getElementById('milestone-go-btn');
+      const skipBtn = document.getElementById('milestone-skip-btn');
+
+      const pct = Math.max(0, Math.min(100, Math.round(((ms.progress && ms.progress.ratio) || 0) * 100)));
+      if (iconEl) iconEl.textContent = ms.icon || '🧭';
+      if (titleEl) titleEl.textContent = ms.title || 'Next Milestone';
+      if (fillEl) fillEl.style.width = `${pct}%`;
+      if (pctEl) pctEl.textContent = ms.readyNow ? 'READY' : `${pct}%`;
+      if (whyEl) whyEl.textContent = ms.whyItMatters || '';
+      if (unlockEl) unlockEl.textContent = `Next: ${ms.unlocksNext || ''}`;
+      if (progTextEl) progTextEl.textContent = (ms.progress && ms.progress.label) ? ms.progress.label : `${pct}%`;
+      if (goBtn) {
+        goBtn.style.display = ms.targetTab ? 'inline-flex' : 'none';
+        goBtn.textContent = ms.readyNow ? 'Claim →' : 'Go →';
+      }
+      if (skipBtn) {
+        skipBtn.style.display = ms.canSkip ? 'inline-flex' : 'none';
+      }
+      return ms;
+    }
+
+    function navigateToMilestoneTarget() {
+      const ms = activeMilestoneSnapshot || updateMilestoneBarUI();
+      if (!ms || !ms.targetTab) return false;
+      sound.init();
+      sound.playPlink();
+      sound.triggerHaptic('tap');
+
+      if (sheetSnapState === 'collapsed') {
+        setBottomSheetState('default');
+      }
+      // Make sure target tab is visible if already unlocked; if still locked, guide player to Penguins or show hint
+      const visibleTabs = CoreMilestoneEngine ? CoreMilestoneEngine.getVisibleTabs(state) : ['penguins'];
+      const tabToOpen = visibleTabs.includes(ms.targetTab) ? ms.targetTab : 'penguins';
+      selectBottomTab(tabToOpen);
+
+      if (ms.targetCardId) {
+        const targetEl = document.getElementById(ms.targetCardId) ||
+          document.querySelector(`[data-milestone-target="${ms.targetCardId}"]`);
+        if (targetEl) {
+          if (typeof targetEl.scrollIntoView === 'function') {
+            try { targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+          }
+          targetEl.classList.remove('milestone-focus-pulse');
+          void targetEl.offsetWidth;
+          targetEl.classList.add('milestone-focus-pulse');
+        }
+      }
+      return true;
+    }
+
+    function skipActiveMilestone() {
+      const ms = activeMilestoneSnapshot || updateMilestoneBarUI();
+      if (!ms || !ms.canSkip) return false;
+      sound.init();
+      sound.playPlink();
+      sound.triggerHaptic('tap');
+      if (!Array.isArray(state.skippedMilestones)) state.skippedMilestones = [];
+      if (!state.skippedMilestones.includes(ms.id)) {
+        state.skippedMilestones.push(ms.id);
+      }
+      state.currentShownMilestoneId = null;
+      state.save({ immediate: true });
+      updateMilestoneBarUI();
+      showToast(`Skipped suggestion "${ms.title}" (rewards & unlocks stay available).`, '🧭', { category: 'system', durationMs: 3200 });
+      return true;
+    }
+
     function setupUIEvents() {
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.tab-btn').forEach(b => {
-            b.classList.remove('active');
-            b.setAttribute('aria-selected', 'false');
-          });
-          btn.classList.add('active');
-          btn.setAttribute('aria-selected', 'true');
-          state.currentTab = btn.getAttribute('data-tab');
-          if (state.currentTab === 'log') {
-            const logDot = document.getElementById('log-tab-dot');
-            if (logDot) logDot.style.display = 'none';
-          }
-          if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
-          updateSheetContent();
+          if (btn.classList.contains('is-locked-tab')) return;
+          selectBottomTab(btn.getAttribute('data-tab'));
         });
+      });
+
+      const milestoneCompactBtn = document.getElementById('milestone-compact-btn');
+      if (milestoneCompactBtn) {
+        milestoneCompactBtn.addEventListener('click', () => {
+          sound.init();
+          sound.playPlink();
+          const vh = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 640;
+          if (vh <= 540) {
+            state.milestoneBarExpanded = false;
+            navigateToMilestoneTarget();
+            return;
+          }
+          state.milestoneBarExpanded = !state.milestoneBarExpanded;
+          updateMilestoneBarUI();
+          state.save({ routine: true });
+        });
+      }
+
+      const milestoneGoBtn = document.getElementById('milestone-go-btn');
+      if (milestoneGoBtn) {
+        milestoneGoBtn.addEventListener('click', () => {
+          navigateToMilestoneTarget();
+        });
+      }
+
+      const milestoneSkipBtn = document.getElementById('milestone-skip-btn');
+      if (milestoneSkipBtn) {
+        milestoneSkipBtn.addEventListener('click', () => {
+          skipActiveMilestone();
+        });
+      }
+
+      window.addEventListener('resize', () => {
+        updateMilestoneBarUI();
       });
 
       const multBtn = document.getElementById('buy-mult-toggle');
@@ -5125,9 +5588,15 @@
           const buildWeatherToast = () => {
             const w = state.getCurrentWeather();
             const timeStr = formatWeatherCountdown(state.weatherTimer);
+            const synProfile = CorePolarSynergy ? CorePolarSynergy.getWeatherSynergyProfile(w.id) : null;
+            const hotspotHole = FISHING_HOLES.find(h => h.id === state.hotspotHoleId);
+            const surgeNote = (state.hotspotSurgeTimer || 0) > 0
+              ? ` • ⚡ Surge ${Math.ceil(state.hotspotSurgeTimer)}s`
+              : '';
+            const hotspotTxt = hotspotHole ? ` • ★ ${hotspotHole.name}${surgeNote}` : '';
             return {
               icon: w.icon,
-              text: `${w.name} (${timeStr} left) — ${w.desc}`
+              text: `${w.name} (${timeStr}) — ${synProfile ? synProfile.badge : w.desc}${hotspotTxt}`
             };
           };
           const initial = buildWeatherToast();
@@ -5158,6 +5627,20 @@
       container.innerHTML = '';
 
       if (state.currentTab === 'penguins') {
+        if (CorePolarSynergy) {
+          const curWeather = state.getCurrentWeather();
+          const synProfile = CorePolarSynergy.getWeatherSynergyProfile(curWeather.id);
+          const hotspotHole = FISHING_HOLES.find(h => h.id === state.hotspotHoleId);
+          const surgeSec = Math.ceil(state.hotspotSurgeTimer || 0);
+          const banner = document.createElement('div');
+          banner.className = 'weather-synergy-banner';
+          banner.innerHTML = `
+            <span>${synProfile.badge}</span>
+            <strong>${hotspotHole ? `★ ${hotspotHole.name}` : '★ Hotspot'}${surgeSec > 0 ? ` ⚡${surgeSec}s` : ''}</strong>
+          `;
+          container.appendChild(banner);
+        }
+
         const synWrap = document.createElement('div');
         synWrap.innerHTML = renderColonySynergiesHtml(state.getColonySynergies());
         container.appendChild(synWrap.firstElementChild);
@@ -5166,6 +5649,7 @@
           const pData = state.penguins[sp.id] || { count: 0, level: 1, nextTrait: 'optimistic', traitCounts: {} };
           const nextTrait = getTraitDef(pData.nextTrait);
           const card = document.createElement('div');
+          card.id = `penguin-card-${sp.id}`;
           
           const firstCostMult = (nextTrait && Number.isFinite(nextTrait.costMult)) ? nextTrait.costMult : 1.0;
           let qty = 1;
@@ -5226,6 +5710,12 @@
             .join(' ');
 
           const levelYield = Math.round(sp.baseYield * (1 + (pData.level - 1) * COLONY_SIZE_BONUS_RATE) * 10) / 10;
+          const spWeatherSyn = CorePolarSynergy
+            ? CorePolarSynergy.getSpeciesSynergy(sp.id, state.getCurrentWeather().id, state.paradeBoostTimer > 0)
+            : { active: false, label: '' };
+          const weatherPillHtml = spWeatherSyn.active
+            ? `<span class="weather-synergy-pill">${spWeatherSyn.label}</span>`
+            : '';
 
           const spriteUrl = getPenguinPortraitDataUrl(sp.id, state.getSpeciesHat(sp.id));
           const avatarInnerHtml = spriteUrl
@@ -5241,6 +5731,7 @@
               <div class="roster-name-row">
                 <span class="roster-name">${sp.name}</span>
                 <span class="roster-level">Lvl ${pData.level}</span>
+                ${weatherPillHtml}
               </div>
               <div class="roster-stat">+${levelYield} fish / dive</div>
               <div class="roster-desc">${sp.desc}</div>
@@ -5273,10 +5764,16 @@
               }
               pData.nextTrait = rollRandomTraitId();
 
-              sound.playChirp();
+              if (typeof sound.playSpeciesCall === 'function') {
+                sound.playSpeciesCall(sp.id);
+              } else {
+                sound.playChirp();
+              }
               showToast(`Recruited ${nextTrait.icon} ${nextTrait.name} ${sp.name}${qty > 1 ? ` (+${qty - 1} more)` : ''}!`, '🐧', { category: 'purchase' });
               dailyManager.track('recruits', qty);
               checkAchievements();
+              syncProgressiveTabs(true);
+              updateMilestoneBarUI();
               state.save({ immediate: true });
 
               // Enforce 6 visible penguins per colony: if species is already at 6 on ice, swap oldest of this species
@@ -5350,6 +5847,7 @@
           const tierLabel = qty > 1 ? `Tier ${currentLvl} → ${currentLvl + qty}` : `Tier ${currentLvl}`;
 
           const card = document.createElement('div');
+          card.id = `tech-card-${tech.id}`;
           card.className = `roster-card ${canAfford ? 'can-afford' : ''}`;
 
           card.innerHTML = `
@@ -5376,6 +5874,8 @@
               showToast(`🔬 Researched ${tech.name} Tier ${currentLvl + qty}${qty > 1 ? ` (+${qty})` : ''}!`, '🔬', { category: 'purchase' });
               dailyManager.track('tech_upgrades', qty);
               checkAchievements();
+              syncProgressiveTabs(true);
+              updateMilestoneBarUI();
               state.save({ immediate: true });
               updateSheetContent();
             }
@@ -5400,6 +5900,7 @@
         const canAffordNextTier = Boolean(nextTier && state.fish >= nextTier.cost);
 
         const castleCard = document.createElement('div');
+        castleCard.id = 'glacier-igloo-castle-card';
         castleCard.className = 'glacier-section-card';
         castleCard.innerHTML = `
           <div class="glacier-card-header">
@@ -5491,6 +5992,7 @@
         const slotPct = Math.round((unlockedHoles / maxHoles) * 100);
 
         const holesCard = document.createElement('div');
+        holesCard.id = 'glacier-fishing-holes-card';
         holesCard.className = 'glacier-section-card';
         holesCard.innerHTML = `
           <div class="glacier-card-header">
@@ -5509,12 +6011,14 @@
               const isOpen = h.id <= unlockedHoles;
               const isNext = h.id === unlockedHoles + 1;
               const canBuy = isNext && state.fish >= h.cost;
+              const isHotspot = isOpen && h.id === state.hotspotHoleId;
+              const surgeActive = isHotspot && (state.hotspotSurgeTimer || 0) > 0;
               return `
                 <div class="hole-item-row ${isOpen ? 'is-open' : (canBuy ? 'can-afford' : 'is-locked')}">
                   <div class="hole-item-info">
                     <div class="hole-item-name">
-                      <span>${isOpen ? '🌊' : '🧊'} ${h.name}</span>
-                      ${h.starter ? '<span class="hole-tag starter">Starter</span>' : (isOpen ? '<span class="hole-tag open">Open</span>' : '')}
+                      <span>${isHotspot ? '⭐' : (isOpen ? '🌊' : '🧊')} ${h.name}</span>
+                      ${isHotspot ? `<span class="weather-synergy-pill">${surgeActive ? '⚡ SURGE HOTSPOT' : '★ HOTSPOT'}</span>` : (h.starter ? '<span class="hole-tag starter">Starter</span>' : (isOpen ? '<span class="hole-tag open">Open</span>' : ''))}
                     </div>
                     <div class="hole-item-desc">${h.desc || 'Glacier diving basin'} • +${h.slots || 10} diving slots</div>
                   </div>
@@ -5549,6 +6053,7 @@
         if (CoreWardrobe && Array.isArray(CoreWardrobe.WARDROBE_ITEMS)) {
           const wardrobeCard = document.createElement('div');
           wardrobeCard.id = 'colony-wardrobe-card';
+          wardrobeCard.setAttribute('data-milestone-target', 'glacier-wardrobe-card');
           wardrobeCard.className = 'glacier-feature-card wardrobe-card';
 
           const scope = state.wardrobeScope || 'all';
@@ -5886,7 +6391,7 @@
             <div style="font-size: 20px; font-weight: 800; color: #a855f7;">+${pendingShards} 💎 (+${nextMultiplierPct}% Boost)</div>
             <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;">Run Fish: ${formatNumber(state.runFish || 0)} • Next +1 💎 at ${formatNumber(nextShardThreshold)}</div>
           </div>
-          <label class="prestige-btn ${pendingShards > 0 ? '' : 'is-disabled'}" role="button" tabindex="${pendingShards > 0 ? '0' : '-1'}" aria-disabled="${pendingShards > 0 ? 'false' : 'true'}" data-ios-haptic-label="${pendingShards > 0 ? '1' : '0'}" id="rebirth-action-btn">
+          <label class="prestige-btn ${pendingShards > 0 ? '' : 'is-disabled'}" role="button" tabindex="${pendingShards > 0 ? '0' : '-1'}" aria-disabled="${pendingShards > 0 ? 'false' : 'true'}" data-ios-haptic-label="${pendingShards > 0 ? '1' : '0'}" id="rebirth-action-btn" data-milestone-target="prestige-rebirth-btn">
             ${pendingShards > 0 ? 'REBIRTH WITH ESSENCE' : 'EARN MORE RUN FISH'}
           </label>
         `;
@@ -6058,7 +6563,7 @@
 
           <!-- Colony Activity Stats -->
           <div class="stat-section-title">Colony Activity</div>
-          <div class="stats-grid">
+          <div class="stats-grid" id="stats-colony-activity-card">
             <div class="stat-card">
               <div class="stat-card-header">🐧 Total Colony Size</div>
               <div class="stat-card-val">${totalPenguins}</div>
@@ -6542,6 +7047,26 @@
           </div>
 
           <div class="settings-card">
+            <div class="settings-card-header">🧭 Guidance &amp; Menu Tabs</div>
+
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <div class="settings-label">Show All Menu Tabs</div>
+                <div class="settings-desc">Display every tab immediately (visibility only — costs &amp; gameplay unlock rules stay unchanged)</div>
+              </div>
+              <label id="settings-show-all-tabs-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="toggle-pill-btn ${state.showAllTabs ? '' : 'off'}">
+                ${state.showAllTabs ? '👁️ All Tabs Shown' : '🧭 Guided Reveal'}
+              </label>
+            </div>
+
+            <div class="settings-btn-row">
+              <label id="settings-reset-skipped-milestones-btn" role="button" tabindex="0" data-ios-haptic-label="1" class="settings-test-btn">
+                🔄 Reset Skipped Milestones (${Array.isArray(state.skippedMilestones) ? state.skippedMilestones.length : 0})
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-card">
             <div class="settings-card-header">🎉 Game Updates &amp; What's New</div>
             <div class="settings-desc">Review highlights from the latest Glacial Empire update (${LATEST_FEATURE_RELEASE.version})</div>
             <div class="settings-btn-row">
@@ -6642,6 +7167,37 @@
               state.disableRoutineToasts ? '🎯' : '🔔',
               { category: 'system' }
             );
+            updateSheetContent();
+          });
+        }
+
+        const showAllTabsBtn = settingsWrap.querySelector('#settings-show-all-tabs-btn');
+        if (showAllTabsBtn) {
+          showAllTabsBtn.addEventListener('click', () => {
+            sound.init();
+            state.showAllTabs = !state.showAllTabs;
+            syncProgressiveTabs(false);
+            state.save({ immediate: true });
+            showToast(
+              state.showAllTabs
+                ? '👁️ All menu tabs visible (unlock & cost rules unchanged).'
+                : '🧭 Progressive tab reveal active.',
+              state.showAllTabs ? '👁️' : '🧭',
+              { category: 'system' }
+            );
+            updateSheetContent();
+          });
+        }
+
+        const resetSkippedBtn = settingsWrap.querySelector('#settings-reset-skipped-milestones-btn');
+        if (resetSkippedBtn) {
+          resetSkippedBtn.addEventListener('click', () => {
+            sound.init();
+            state.skippedMilestones = [];
+            state.currentShownMilestoneId = null;
+            updateMilestoneBarUI();
+            state.save({ immediate: true });
+            showToast('🔄 Restored all skipped milestone suggestions.', '🧭', { category: 'system' });
             updateSheetContent();
           });
         }
@@ -6801,10 +7357,13 @@
         console.warn('Init load fallback:', e);
       }
       syncActiveFishingHoles(state.fishingHolesUnlocked);
+      state.syncHotspotHole(false);
       displayedFish = Math.max(0, Number(state.fish) || 0);
       dailyManager.checkDailyReset();
       syncActivePenguins();
       checkAchievements();
+      syncProgressiveTabs(false);
+      updateMilestoneBarUI();
       updateSheetContent();
       resizeCanvas(true);
       forceRenderFrameNow();
@@ -6883,27 +7442,32 @@
           backgroundedAt = null;
           if (awayStart) {
             state.calculateDPS();
+            // Strictly use persistent baseline DPS for offline earnings (zero expired transient bonus leakage)
+            const offlineBaseDps = state.calculatePersistentOfflineDPS();
             const offlineRes = CoreEconomy
               ? CoreEconomy.calculateOfflineEarnings({
-                  dps: state.dps,
+                  dps: offlineBaseDps,
                   lastSaveTimeMs: awayStart,
                   nowMs: resumeNow
                 })
               : {
                   earned: ((resumeNow - awayStart) / 1000 > 10)
-                    ? Math.floor(state.dps * Math.min(86400, (resumeNow - awayStart) / 1000) * (2 / 3))
+                    ? Math.floor(offlineBaseDps * Math.min(86400, (resumeNow - awayStart) / 1000) * (2 / 3))
                     : 0,
                   rawElapsedSec: (resumeNow - awayStart) / 1000,
                   clockMovedBackward: resumeNow < awayStart
                 };
 
             if (offlineRes.rawElapsedSec > 0 && !offlineRes.clockMovedBackward) {
+              state.decayTransientTimers(offlineRes.rawElapsedSec);
               state.advanceWeather(Math.min(offlineRes.rawElapsedSec, 86400));
             }
             if (offlineRes.earned > 0) {
               showOfflineModal(offlineRes.earned);
             }
             state.lastSaveTime = resumeNow;
+            syncProgressiveTabs(false);
+            updateMilestoneBarUI();
             state.save({ immediate: true });
           }
           if (state.pendingOfflineFish > 0) {

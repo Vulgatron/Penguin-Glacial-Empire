@@ -42,6 +42,7 @@
       this.snowFilter = null;
       this.windLfoGain = null;
       this._activeWinterScore = null;
+      this._lastSfxAt = Object.create(null);
     }
 
     init() {
@@ -418,6 +419,178 @@
       gain.connect(out);
       osc.start(now);
       osc.stop(now + 0.14);
+    }
+
+    _allowRateLimitedSfx(channelKey, minGapMs = 140) {
+      const nowMs = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+        ? performance.now()
+        : Date.now();
+      const prev = this._lastSfxAt[channelKey];
+      if (prev !== undefined && (nowMs - prev) < minGapMs) return false;
+      this._lastSfxAt[channelKey] = nowMs;
+      return true;
+    }
+
+    /**
+     * Species-specific procedural Web Audio calls with per-channel rate limiting
+     * so rapid colony taps remain crisp and never clip or distort.
+     */
+    playSpeciesCall(speciesId = 'adelie') {
+      if (!this.canPlayGameplaySfx()) return false;
+      if (!this._allowRateLimitedSfx(`species_${speciesId}`, 150)) return false;
+      const out = this.getSfxOutput();
+      if (!out) return false;
+      const now = this.ctx.currentTime;
+
+      if (speciesId === 'gentoo') {
+        // Playful rapid trumpet-honk
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(390, now);
+        osc.frequency.linearRampToValueAtTime(545, now + 0.065);
+        osc.frequency.exponentialRampToValueAtTime(340, now + 0.16);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.11, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+        osc.connect(gain);
+        gain.connect(out);
+        osc.start(now);
+        osc.stop(now + 0.18);
+        return true;
+      }
+
+      if (speciesId === 'chinstrap') {
+        // Crisp staccato double click-trill
+        [0, 0.065].forEach((offset, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          const base = idx === 0 ? 1050 : 1240;
+          osc.frequency.setValueAtTime(base, now + offset);
+          osc.frequency.exponentialRampToValueAtTime(base * 0.74, now + offset + 0.045);
+          gain.gain.setValueAtTime(0.14, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.055);
+          osc.connect(gain);
+          gain.connect(out);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.06);
+        });
+        return true;
+      }
+
+      if (speciesId === 'emperor') {
+        // Deep majestic baritone resonant call (layered fundamental + fifth)
+        [220, 330].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = idx === 0 ? 'triangle' : 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.linearRampToValueAtTime(freq * 1.24, now + 0.11);
+          osc.frequency.exponentialRampToValueAtTime(freq * 0.88, now + 0.28);
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(idx === 0 ? 0.15 : 0.08, now + 0.035);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.30);
+          osc.connect(gain);
+          gain.connect(out);
+          osc.start(now);
+          osc.stop(now + 0.31);
+        });
+        return true;
+      }
+
+      if (speciesId === 'cyber') {
+        // Futuristic harmonic synth-chirp arpeggio
+        [660, 990, 1320].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const t0 = now + idx * 0.038;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, t0);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.12, t0 + 0.06);
+          gain.gain.setValueAtTime(0.11, t0);
+          gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.08);
+          osc.connect(gain);
+          gain.connect(out);
+          osc.start(t0);
+          osc.stop(t0 + 0.085);
+        });
+        return true;
+      }
+
+      // Default 'adelie': Bright peppy double-peep
+      [0, 0.06].forEach((offset, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        const f0 = idx === 0 ? 920 : 1140;
+        osc.frequency.setValueAtTime(f0, now + offset);
+        osc.frequency.linearRampToValueAtTime(f0 * 1.32, now + offset + 0.045);
+        gain.gain.setValueAtTime(0.14, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.07);
+        osc.connect(gain);
+        gain.connect(out);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.075);
+      });
+      return true;
+    }
+
+    /**
+     * Crystalline Ice Castle construction chime scaling richer across Tiers 1..5.
+     */
+    playCastleUpgrade(tier = 1) {
+      if (!this.canPlayGameplaySfx()) return false;
+      if (!this._allowRateLimitedSfx('castle_upgrade', 250)) return false;
+      const out = this.getSfxOutput();
+      if (!out) return false;
+      const now = this.ctx.currentTime;
+      const safeTier = Math.max(1, Math.min(5, Math.floor(Number(tier) || 1)));
+      const scale = [392.00, 493.88, 587.33, 783.99, 987.77, 1174.66];
+      const count = Math.min(scale.length, 3 + safeTier);
+
+      for (let i = 0; i < count; i++) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const t0 = now + i * 0.075;
+        osc.type = i % 2 === 0 ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(scale[i], t0);
+        gain.gain.setValueAtTime(0.001, t0);
+        gain.gain.linearRampToValueAtTime(0.16, t0 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.42);
+        osc.connect(gain);
+        gain.connect(out);
+        osc.start(t0);
+        osc.stop(t0 + 0.44);
+      }
+      return true;
+    }
+
+    /**
+     * Warm 4-note ascending polar bell fanfare on Milestone completion or Tab reveal.
+     */
+    playMilestoneChime() {
+      if (!this.canPlayGameplaySfx()) return false;
+      if (!this._allowRateLimitedSfx('milestone_chime', 320)) return false;
+      const out = this.getSfxOutput();
+      if (!out) return false;
+      const now = this.ctx.currentTime;
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const t0 = now + idx * 0.068;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t0);
+        gain.gain.setValueAtTime(0.001, t0);
+        gain.gain.linearRampToValueAtTime(0.14, t0 + 0.018);
+        gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.36);
+        osc.connect(gain);
+        gain.connect(out);
+        osc.start(t0);
+        osc.stop(t0 + 0.38);
+      });
+      return true;
     }
 
     playSlide() {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'penguin-glacial-empire-v26';
+const CACHE_NAME = 'penguin-glacial-empire-v27';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,8 @@ const CORE_ASSETS = [
   './js/economy.js',
   './js/game-data.js',
   './js/wardrobe.js',
+  './js/milestone-engine.js',
+  './js/polar-synergy.js',
   './js/sky-events.js',
   './js/daily-system.js',
   './js/daily-manager.js',

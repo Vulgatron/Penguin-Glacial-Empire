@@ -217,30 +217,30 @@
   // Ordered newest-first; contains only the current update notice so launch alerts stay focused
   const APP_FEATURE_RELEASES = [
     {
-      id: '2026-11-update-v26',
-      version: '2.6',
-      title: "What's New in Update 2.6",
-      subtitle: '80% sky-view menu cap, interactive Shooting Stars & Krill Swarms, Ultra-Prestige Colony Wardrobe, and modular JS engine!',
+      id: '2026-11-update-v27',
+      version: '2.7',
+      title: "What's New in Update 2.7",
+      subtitle: 'Polar Weather × Species synergies, glowing Hotspot Fishing Holes, collapsible Next Milestone compass, distinctive colony audio, and scenic Glacier Landmarks!',
       features: [
         {
-          icon: '📱',
-          title: '80% Vertical Menu Cap & Sky-Tap Shrink',
-          desc: 'The colony drawer now caps cleanly at 80% height so your top HUD and aurora sky always stay visible and interactive — tap empty sky above the menu to shrink it back.'
+          icon: '🧭',
+          title: 'Collapsible Next Milestone Compass & Calm Tab Reveal',
+          desc: 'A slim collapsible bar at the top of the bottom menu highlights your highest-impact next milestone with a 1-tap Go button, skip option, and clean progressive tab reveals for new colonies.'
         },
         {
-          icon: '🌠',
-          title: 'Sky & Ice Mini-Events + Starlight Frenzy',
-          desc: 'Tap Shooting Stars gliding through the upper sky and shimmering Krill Swarms near the waterline to build a 1×–5× Sky Combo and trigger a 15-second 2× Starlight Frenzy!'
+          icon: '🌊',
+          title: 'Weather × Species Synergies & Hotspot Fishing Holes',
+          desc: 'Clear skies, Light Snow, and Blizzards now boost matching penguin species and illuminate a glowing Hotspot Fishing Hole — supercharged additively whenever you catch Shooting Stars or Krill Swarms!'
         },
         {
-          icon: '🎩',
-          title: 'Ultra-Prestige Colony Wardrobe (Per-Species Mixing)',
-          desc: 'Unlock 5 luxury Frost Essence hats (100 to 10,000 💎) with tap-again purchase safety, mix hats per penguin species or dress the whole colony at once. Purely visual & resets on Rebirth.'
+          icon: '🔊',
+          title: 'Species Calls, Castle Chimes & Milestone Fanfares',
+          desc: 'Every penguin species now has its own procedural voice call, joined by crystalline Ice Castle upgrade chimes and ascending Milestone bells.'
         },
         {
-          icon: '📊',
-          title: 'Expanded Stats & Modular JS Architecture',
-          desc: 'Track lifetime Sky Events Caught, Best Sky Combo, and Parades Witnessed in the Stats tab, backed by 6 freshly extracted modular JS engines for faster maintenance and scaling.'
+          icon: '🏮',
+          title: 'Visible Glacier Landmarks & Tuned Early Pacing',
+          desc: 'Unlock Frost Lantern Posts, wind-reactive Colony Pennants, Aurora Crystal Monoliths, and a permanent Rebirth Star Monument — with smoother early pacing for Fishing Hole 4 and Lantern-Lit Igloo.'
         }
       ]
     }

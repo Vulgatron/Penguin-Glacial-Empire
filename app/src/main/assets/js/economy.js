@@ -44,7 +44,7 @@
       tier: 1,
       id: 'lantern_igloo',
       name: 'Lantern-Lit Igloo',
-      cost: 250000,
+      cost: 65000,
       icon: '🏮',
       desc: 'Adds glowing frost-lantern posts, carved ice steps, and a chimney snow-wisp.'
     },
@@ -221,7 +221,7 @@
     { id: 1, name: 'West Starter Hole', desc: 'Shallow glacier cove near the western ridge', slots: 10, xRatio: 0.22, yRatio: 0.73, radiusX: 44, radiusY: 20, rippleOffset: 0.0, cost: 0, starter: true },
     { id: 2, name: 'Center Starter Hole', desc: 'Main colony plunge basin right below the igloo', slots: 10, xRatio: 0.50, yRatio: 0.81, radiusX: 50, radiusY: 22, rippleOffset: 1.2, cost: 0, starter: true },
     { id: 3, name: 'East Starter Hole', desc: 'Sheltered drift channel along the eastern shelf', slots: 10, xRatio: 0.78, yRatio: 0.74, radiusX: 44, radiusY: 20, rippleOffset: 2.4, cost: 0, starter: true },
-    { id: 4, name: 'Western Shelf Basin', desc: 'Carved outer ice basin expanding west-flank diving', slots: 10, xRatio: 0.16, yRatio: 0.59, radiusX: 40, radiusY: 18, rippleOffset: 0.6, cost: 25000, starter: false },
+    { id: 4, name: 'Western Shelf Basin', desc: 'Carved outer ice basin expanding west-flank diving', slots: 10, xRatio: 0.16, yRatio: 0.59, radiusX: 40, radiusY: 18, rippleOffset: 0.6, cost: 15000, starter: false },
     { id: 5, name: 'Eastern Shelf Basin', desc: 'Deep twilight fishing pool on the eastern shelf', slots: 10, xRatio: 0.84, yRatio: 0.59, radiusX: 40, radiusY: 18, rippleOffset: 1.8, cost: 750000, starter: false },
     { id: 6, name: 'Deep Abyssal Rift', desc: 'Central thermal fissure teeming with midnight schools', slots: 10, xRatio: 0.50, yRatio: 0.67, radiusX: 44, radiusY: 19, rippleOffset: 3.0, cost: 25000000, starter: false }
   ];

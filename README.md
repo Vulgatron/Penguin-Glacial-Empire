@@ -1,4 +1,4 @@
-# Penguin Glacial Empire (v2.6)
+# Penguin Glacial Empire (v2.7)
 
 An incremental/idle penguin colony game built with HTML5 Canvas, CSS, modular JavaScript, Progressive Web App (PWA) offline support, and a hardened Android WebView wrapper in Kotlin.
 
@@ -8,21 +8,23 @@ An incremental/idle penguin colony game built with HTML5 Canvas, CSS, modular Ja
 .
 ├── index.html                  # Single canonical web game entrypoint (auto-synced to Android assets)
 ├── styles/
-│   ├── core.css                # Core game layout, HUD, 80%-capped bottom sheet, modals & theme styling
+│   ├── core.css                # Core game layout, HUD, collapsible Next Milestone bar, 80%-capped sheet & theme styling
 │   ├── splash-cutscene.css     # Animated launch splash screen & Glacial Rebirth cutscene styles
 │   └── game.css                # Glacier tab (Ice Castle, Fishing Holes & Colony Wardrobe), responsive polish
 ├── js/
-│   ├── economy.js              # Overflow/NaN-safe economy, +1.25%/shard prestige, castle & fishing hole defs, safe frame timing
+│   ├── economy.js              # Overflow/NaN-safe economy, +1.25%/shard prestige, tuned castle & fishing hole defs, safe frame timing
 │   ├── game-data.js            # Species, traits, weather, colony speech, tech, Aurora perks, achievements & lore catalogs
 │   ├── wardrobe.js             # Ultra-Prestige Frost Essence Colony Wardrobe, per-species mixing, tap-again confirm & hat vectors
+│   ├── milestone-engine.js     # Deterministic priority-scored Next Milestone compass, permanent/run lifecycles & progressive tab reveal
+│   ├── polar-synergy.js        # Single-source Weather × Species × Hotspot Fishing Hole stacking math & stable 4-rule hole routing
 │   ├── sky-events.js           # Top-20% Shooting Stars, Ice Krill Swarms, 1×–5× Sky Combo & 2× Starlight Frenzy
 │   ├── daily-system.js         # 3:00 AM daily cycle keys, streak tracking, idempotent claims & sanitization
 │   ├── daily-manager.js        # Daily Objectives manager, modal rendering, badge & celebration banners
-│   ├── save-system.js          # Schema v4 migrations, validation, multi-slot recovery & throttled persistence
-│   ├── sound-engine.js         # Procedural Web Audio synthesizer, cutscene silence gate & winter Rebirth score
+│   ├── save-system.js          # Schema v5 migrations, validation, multi-slot recovery & throttled persistence
+│   ├── sound-engine.js         # Procedural Web Audio synthesizer, rate-limited species calls, castle/milestone chimes & winter score
 │   ├── castle-renderer.js      # Procedural Canvas & SVG renderer for the 6-tier Igloo-to-Ice-Castle + 6 palettes
 │   ├── penguin-sprites.js      # Procedural penguin Canvas renderer with Wardrobe hat rendering & cached portraits
-│   ├── scene-renderer.js       # Dynamic polar sky, aurora waves, glacier shelves, snow/blizzard & particle renderer
+│   ├── scene-renderer.js       # Dynamic polar sky, aurora waves, 4 glacier landmarks, glowing Hotspot holes & snow/blizzard renderer
 │   ├── parade-event.js         # 15-minute all-colony Penguin Parade choreography & 60s 2× boost scheduler
 │   ├── prestige-cutscene.js    # 10-second SVG Glacial Rebirth cutscene controller
 │   └── launch-splash.js        # Launch splash screen controller with wall-clock completion guard
@@ -30,7 +32,8 @@ An incremental/idle penguin colony game built with HTML5 Canvas, CSS, modular Ja
 ├── manifest.webmanifest        # PWA web app manifest
 ├── icons/                      # App & PWA icons
 ├── tests/
-│   └── game-core.test.mjs      # Node.js unit & invariant tests for economy, saves, Golden Fish, PWA & asset sync
+│   ├── game-core.test.mjs      # Node.js unit, time-state, invariant & cold-boot smoke tests
+│   └── pacing-simulator.mjs    # 4-profile pacing & time-state consistency simulator (Efficient, Casual, Active, Idle)
 └── app/
     ├── build.gradle.kts        # Android build with automatic `syncWebAssets` Gradle Sync task
     └── src/
@@ -53,7 +56,7 @@ All web code is authored in the **single canonical source** at the repository ro
 
 - `index.html`
 - `styles/core.css`, `styles/splash-cutscene.css`, `styles/game.css`
-- `js/economy.js`, `js/game-data.js`, `js/wardrobe.js`, `js/sky-events.js`, `js/daily-system.js`, `js/daily-manager.js`, `js/save-system.js`, `js/sound-engine.js`, `js/castle-renderer.js`, `js/penguin-sprites.js`, `js/scene-renderer.js`, `js/parade-event.js`, `js/prestige-cutscene.js`, `js/launch-splash.js`
+- `js/economy.js`, `js/game-data.js`, `js/wardrobe.js`, `js/milestone-engine.js`, `js/polar-synergy.js`, `js/sky-events.js`, `js/daily-system.js`, `js/daily-manager.js`, `js/save-system.js`, `js/sound-engine.js`, `js/castle-renderer.js`, `js/penguin-sprites.js`, `js/scene-renderer.js`, `js/parade-event.js`, `js/prestige-cutscene.js`, `js/launch-splash.js`
 - `manifest.webmanifest`
 - `icons/`
 

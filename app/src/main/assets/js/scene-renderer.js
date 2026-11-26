@@ -280,25 +280,43 @@
     ctx.restore();
   }
 
-  function drawIceHole(ctx, width, height, hole, auroraWavePhase) {
+  function drawIceHole(ctx, width, height, hole, auroraWavePhase, hotspotOpts = null) {
     const cx = width * hole.xRatio;
     const cy = height * hole.yRatio;
+    const isHotspot = Boolean(hotspotOpts && hotspotOpts.isHotspot);
+    const surgeActive = Boolean(hotspotOpts && hotspotOpts.surgeActive);
+    const hotspotColor = (hotspotOpts && hotspotOpts.color) || '#fbbf24';
+    const hotspotSecondary = (hotspotOpts && hotspotOpts.secondary) || '#38bdf8';
 
     ctx.save();
-    ctx.fillStyle = 'rgba(240, 250, 255, 0.85)';
+    if (isHotspot) {
+      const pulse = 0.88 + Math.sin(auroraWavePhase * (surgeActive ? 6.2 : 3.4)) * 0.12;
+      const auraRx = (hole.radiusX + (surgeActive ? 19 : 13)) * pulse;
+      const auraRy = (hole.radiusY + (surgeActive ? 11 : 8)) * pulse;
+      const glow = ctx.createRadialGradient(cx, cy, hole.radiusX * 0.25, cx, cy, auraRx);
+      glow.addColorStop(0, surgeActive ? 'rgba(254, 240, 138, 0.44)' : 'rgba(56, 189, 248, 0.30)');
+      glow.addColorStop(0.55, surgeActive ? 'rgba(251, 191, 36, 0.28)' : 'rgba(125, 211, 252, 0.16)');
+      glow.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 1, auraRx, auraRy, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = isHotspot ? 'rgba(254, 249, 195, 0.92)' : 'rgba(240, 250, 255, 0.85)';
     ctx.beginPath();
     ctx.ellipse(cx, cy + 1, hole.radiusX + 5.5, hole.radiusY + 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#7dd3fc';
+    ctx.fillStyle = isHotspot ? hotspotColor : '#7dd3fc';
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 0.5, hole.radiusX + 2, hole.radiusY + 1.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy - 0.5, hole.radiusX + 2.4, hole.radiusY + 1.8, 0, 0, Math.PI * 2);
     ctx.fill();
 
     const waterGrad = ctx.createRadialGradient(cx, cy + 2, 3, cx, cy, hole.radiusX);
-    waterGrad.addColorStop(0, '#021526');
-    waterGrad.addColorStop(0.65, '#073153');
-    waterGrad.addColorStop(1, '#0e5288');
+    waterGrad.addColorStop(0, isHotspot ? '#04223a' : '#021526');
+    waterGrad.addColorStop(0.65, isHotspot ? '#0b4a78' : '#073153');
+    waterGrad.addColorStop(1, isHotspot ? hotspotSecondary : '#0e5288');
     ctx.fillStyle = waterGrad;
     ctx.beginPath();
     ctx.ellipse(cx, cy + 1.5, hole.radiusX, hole.radiusY - 0.5, 0, 0, Math.PI * 2);
@@ -309,18 +327,239 @@
     ctx.ellipse(cx, cy + 1.5, hole.radiusX - 3, hole.radiusY - 2, 0, 0, Math.PI * 2);
     ctx.clip();
     const swimOffset = Math.sin(auroraWavePhase * 1.8 + hole.id * 2.1) * (hole.radiusX * 0.48);
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+    ctx.fillStyle = isHotspot ? 'rgba(254, 240, 138, 0.55)' : 'rgba(56, 189, 248, 0.25)';
     ctx.beginPath();
     ctx.ellipse(cx + swimOffset, cy + 2, 6.5, 2.3, 0, 0, Math.PI * 2);
     ctx.fill();
+    if (isHotspot) {
+      const swimOffset2 = Math.cos(auroraWavePhase * 2.4 + hole.id) * (hole.radiusX * 0.42);
+      ctx.fillStyle = 'rgba(224, 242, 254, 0.55)';
+      ctx.beginPath();
+      ctx.ellipse(cx + swimOffset2, cy - 2.5, 5.2, 1.9, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
 
     const ripple = (hole.rippleTimer % 2.0) / 2.0;
-    ctx.strokeStyle = `rgba(186, 230, 253, ${(0.72 * (1 - ripple)).toFixed(3)})`;
-    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = isHotspot
+      ? (surgeActive
+          ? `rgba(254, 240, 138, ${(0.90 * (1 - ripple)).toFixed(3)})`
+          : `rgba(251, 191, 36, ${(0.78 * (1 - ripple)).toFixed(3)})`)
+      : `rgba(186, 230, 253, ${(0.72 * (1 - ripple)).toFixed(3)})`;
+    ctx.lineWidth = isHotspot ? 2.2 : 1.6;
     ctx.beginPath();
     ctx.ellipse(cx, cy + 1, hole.radiusX * ripple, hole.radiusY * ripple, 0, 0, Math.PI * 2);
     ctx.stroke();
+
+    if (isHotspot) {
+      // Rising shimmer motes & compact glowing star crest above rim
+      const moteCount = surgeActive ? 5 : 3;
+      for (let i = 0; i < moteCount; i++) {
+        const mPhase = (auroraWavePhase * (surgeActive ? 1.4 : 0.9) + i * 0.72) % 1;
+        const mx = cx + Math.sin(auroraWavePhase * 2 + i * 2.1) * (hole.radiusX * 0.62);
+        const my = cy - 4 - mPhase * 18;
+        ctx.fillStyle = i % 2 === 0 ? hotspotColor : '#e0f2fe';
+        ctx.globalAlpha = Math.sin(mPhase * Math.PI) * 0.85;
+        ctx.beginPath();
+        ctx.arc(mx, my, surgeActive ? 2.2 : 1.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 0.92;
+      ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#061121';
+      const badgeLabel = surgeActive ? '⚡ SURGE' : '★ HOTSPOT';
+      const tw = badgeLabel.length * 5.2 + 10;
+      const by = cy - hole.radiusY - 11;
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(cx - tw / 2, by - 7, tw, 13, 6);
+      } else {
+        ctx.rect(cx - tw / 2, by - 7, tw, 13);
+      }
+      ctx.fill();
+      ctx.strokeStyle = hotspotColor;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = surgeActive ? '#fef08a' : '#f8fafc';
+      ctx.fillText(badgeLabel, cx, by + 2.5);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Draws 4 milestone-unlocked scenic landmarks cleanly along the snow ridge & shelf flanks
+   * (behind penguins and clear of fishing holes):
+   * 1. Frost Lantern Path (glacierLevel >= 3 || iglooTier >= 1)
+   * 2. Wind-Reactive Colony Pennants (fishingHolesUnlocked >= 4 || totalPenguins >= 25)
+   * 3. Aurora Crystal Monoliths (iglooTier >= 3 || glacierLevel >= 10)
+   * 4. Permanent Rebirth Star Monument (totalRebirths >= 1)
+   */
+  function drawGlacierLandmarks(ctx, width, height, phase, landmarks = {}, windFactor = 0.5) {
+    if (!ctx || !landmarks) return;
+    ctx.save();
+
+    // Landmark 1: Frost Lantern Path along upper ridge flanking the Igloo/Castle
+    if (landmarks.lanternPath) {
+      const posts = [
+        { x: 0.27, y: 0.455 },
+        { x: 0.37, y: 0.445 },
+        { x: 0.63, y: 0.445 },
+        { x: 0.73, y: 0.455 }
+      ];
+      posts.forEach((p, idx) => {
+        const px = width * p.x;
+        const py = height * p.y;
+        const flicker = 0.85 + Math.sin(phase * 3.8 + idx * 1.4) * 0.15;
+
+        // Warm glow pool
+        const halo = ctx.createRadialGradient(px, py - 12, 1, px, py - 12, 16 * flicker);
+        halo.addColorStop(0, 'rgba(254, 240, 138, 0.55)');
+        halo.addColorStop(0.55, 'rgba(251, 191, 36, 0.18)');
+        halo.addColorStop(1, 'rgba(251, 191, 36, 0)');
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(px, py - 12, 16 * flicker, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Carved frost post
+        ctx.strokeStyle = '#93c5fd';
+        ctx.lineWidth = 2.1;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px, py - 13);
+        ctx.stroke();
+
+        // Glowing lantern housing
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(px, py - 13, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // Landmark 2: Wind-Reactive Colony Pennants along outer flanks
+    if (landmarks.colonyPennants) {
+      const flags = [
+        { x: 0.09, y: 0.54, color: '#38bdf8' },
+        { x: 0.91, y: 0.54, color: '#fbbf24' }
+      ];
+      const windAmp = Math.min(2.6, 0.8 + Math.max(0, Number(windFactor) || 0.4) * 0.65);
+      flags.forEach((f, idx) => {
+        const fx = width * f.x;
+        const fy = height * f.y;
+        const wave = Math.sin(phase * (3.6 + windAmp * 1.4) + idx * 1.9) * (3.2 * windAmp);
+        const dir = f.x < 0.5 ? 1 : -1;
+
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(fx, fy);
+        ctx.lineTo(fx, fy - 24);
+        ctx.stroke();
+
+        ctx.fillStyle = f.color;
+        ctx.beginPath();
+        ctx.moveTo(fx, fy - 23);
+        ctx.quadraticCurveTo(fx + dir * 10, fy - 22 + wave * 0.5, fx + dir * 18, fy - 18 + wave);
+        ctx.lineTo(fx, fy - 14);
+        ctx.closePath();
+        ctx.fill();
+      });
+    }
+
+    // Landmark 3: Twin Aurora Crystal Monoliths at mountain foothills
+    if (landmarks.auroraMonoliths) {
+      const glowBoost = landmarks.monolithBoost ? 1.35 : 1.0;
+      const monoliths = [
+        { x: 0.16, y: 0.435, s: 1.0 },
+        { x: 0.84, y: 0.435, s: 1.0 }
+      ];
+      monoliths.forEach((m, idx) => {
+        const mx = width * m.x;
+        const my = height * m.y;
+        const pulse = (0.78 + Math.sin(phase * 2.6 + idx * Math.PI) * 0.22) * glowBoost;
+
+        const aura = ctx.createRadialGradient(mx, my - 16, 2, mx, my - 16, 24 * pulse);
+        aura.addColorStop(0, 'rgba(52, 211, 153, 0.36)');
+        aura.addColorStop(0.55, 'rgba(56, 189, 248, 0.16)');
+        aura.addColorStop(1, 'rgba(192, 132, 252, 0)');
+        ctx.fillStyle = aura;
+        ctx.beginPath();
+        ctx.arc(mx, my - 16, 24 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+
+        const grad = ctx.createLinearGradient(mx, my - 30, mx, my);
+        grad.addColorStop(0, '#a7f3d0');
+        grad.addColorStop(0.5, '#38bdf8');
+        grad.addColorStop(1, '#1e3a8a');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(mx, my - 30);
+        ctx.lineTo(mx + 7, my - 16);
+        ctx.lineTo(mx + 5, my);
+        ctx.lineTo(mx - 5, my);
+        ctx.lineTo(mx - 7, my - 16);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(240, 253, 250, 0.55)';
+        ctx.beginPath();
+        ctx.moveTo(mx, my - 30);
+        ctx.lineTo(mx, my);
+        ctx.lineTo(mx - 5, my);
+        ctx.lineTo(mx - 7, my - 16);
+        ctx.closePath();
+        ctx.fill();
+      });
+    }
+
+    // Landmark 4: Permanent Glacial Rebirth Star Monument (persists across Rebirths!)
+    if (landmarks.rebirthMonument) {
+      const rx = width * 0.78;
+      const ry = height * 0.452;
+      const tierRings = Math.min(3, Math.max(1, Number(landmarks.rebirthCount) || 1));
+      const hover = Math.sin(phase * 2.4) * 2.5;
+
+      // Pedestal
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.moveTo(rx - 10, ry);
+      ctx.lineTo(rx - 7, ry - 8);
+      ctx.lineTo(rx + 7, ry - 8);
+      ctx.lineTo(rx + 10, ry);
+      ctx.closePath();
+      ctx.fill();
+
+      // Orbiting prestige rings
+      for (let r = 0; r < tierRings; r++) {
+        ctx.strokeStyle = r === 0 ? 'rgba(192, 132, 252, 0.72)' : (r === 1 ? 'rgba(56, 189, 248, 0.62)' : 'rgba(251, 191, 36, 0.65)');
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.ellipse(rx, ry - 20 + hover, 9 + r * 3.8, 3.2 + r * 1.1, (phase * 0.5 + r * 0.8) % Math.PI, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Levitating star prism
+      const starGrad = ctx.createRadialGradient(rx, ry - 20 + hover, 1, rx, ry - 20 + hover, 14);
+      starGrad.addColorStop(0, '#fef08a');
+      starGrad.addColorStop(0.5, 'rgba(192, 132, 252, 0.55)');
+      starGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      ctx.fillStyle = starGrad;
+      ctx.beginPath();
+      ctx.arc(rx, ry - 20 + hover, 14, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#fef9c3';
+      ctx.beginPath();
+      ctx.moveTo(rx, ry - 28 + hover);
+      ctx.lineTo(rx + 5.5, ry - 20 + hover);
+      ctx.lineTo(rx, ry - 12 + hover);
+      ctx.lineTo(rx - 5.5, ry - 20 + hover);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     ctx.restore();
   }
@@ -513,9 +752,21 @@
 
     drawIceDetails(ctx, width, height);
 
+    const hotspotHoleId = sceneCtx.hotspotHoleId || null;
+    const hotspotSurgeActive = Boolean(sceneCtx.hotspotSurgeActive);
+    const hotspotColor = sceneCtx.hotspotColor || '#fbbf24';
+    const hotspotSecondary = sceneCtx.hotspotSecondary || '#38bdf8';
+
+    drawGlacierLandmarks(ctx, width, height, auroraWavePhase, sceneCtx.landmarks, targetWeather ? targetWeather.windFactor : 0.4);
+
     fishingHoles.forEach(hole => {
       hole.rippleTimer += dt * 1.5;
-      drawIceHole(ctx, width, height, hole, auroraWavePhase);
+      drawIceHole(ctx, width, height, hole, auroraWavePhase, {
+        isHotspot: hotspotHoleId !== null && hole.id === hotspotHoleId,
+        surgeActive: hotspotSurgeActive,
+        color: hotspotColor,
+        secondary: hotspotSecondary
+      });
     });
 
     drawSlideTrailsAndRipples(ctx, dt, width, height, slideTrails, holeRipples);
@@ -604,6 +855,7 @@
     drawAuroraWaves,
     drawDistantMountains,
     drawIceDetails,
+    drawGlacierLandmarks,
     drawIceHole,
     drawIglooDepot,
     drawSlideTrailsAndRipples,

@@ -16,3 +16,10 @@
 local.properties
 .env
 debug.keystore
+/app/src/main/assets/
+/public/assets/aistudio/
+Screenshot_*.jpg
+Screenshot_*.jpeg
+Screenshot_*.png
+Screenshot_*.webp
+

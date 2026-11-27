@@ -1337,7 +1337,34 @@ test('Integration invariants: viewport zoom policy, modular CSS, offline PWA cac
   assert.match(html, /computeGoldenFishCooldownStep/);
   assert.match(html, /goldenFishTimerSec:\s*state\.goldenFishTimer/);
 
-  // Canonical web assets match synced Android assets byte-for-byte
+  // Housekeeping invariants: zero checked-in duplicate Android web assets & zero screenshots anywhere in repo
+  assert.equal(
+    fs.existsSync(path.join(ROOT, 'app/src/main/assets')),
+    false,
+    'Duplicate checked-in app/src/main/assets/ directory must not exist; Gradle stages web assets into app/build/generated/webAssets'
+  );
+  assert.equal(
+    fs.existsSync(path.join(ROOT, 'public/assets/aistudio')),
+    false,
+    'Uploaded screenshot directory public/assets/aistudio must not exist'
+  );
+  const ignoredWalkDirs = new Set(['.git', '.gradle', '.aistudio', '.build-outputs', 'build']);
+  const walkFindScreenshots = (dir) => {
+    const found = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (ignoredWalkDirs.has(entry.name)) continue;
+        found.push(...walkFindScreenshots(path.join(dir, entry.name)));
+      } else if (/screenshot/i.test(entry.name)) {
+        found.push(path.relative(ROOT, path.join(dir, entry.name)));
+      }
+    }
+    return found;
+  };
+  assert.deepEqual(walkFindScreenshots(ROOT), [], 'No screenshot files should remain anywhere in the repository');
+
+  // Canonical web assets match Gradle's build-time staged Android assets byte-for-byte
+  const stagedAssetsDir = path.join(ROOT, 'app/build/generated/webAssets');
   const syncedFiles = [
     'index.html',
     'styles/core.css',
@@ -1359,16 +1386,20 @@ test('Integration invariants: viewport zoom policy, modular CSS, offline PWA cac
     'js/parade-event.js',
     'js/prestige-cutscene.js',
     'js/launch-splash.js',
-    'manifest.webmanifest'
+    'manifest.webmanifest',
+    'icons/apple-touch-icon.png',
+    'icons/favicon-32.png',
+    'icons/icon-192.png',
+    'icons/icon-512.png'
   ];
   for (const rel of syncedFiles) {
-    const rootContent = fs.readFileSync(path.join(ROOT, rel), 'utf8');
-    const assetPath = path.join(ROOT, 'app/src/main/assets', rel);
-    assert.equal(fs.existsSync(assetPath), true, `Expected synced Android asset: ${rel}`);
+    const rootBuf = fs.readFileSync(path.join(ROOT, rel));
+    const assetPath = path.join(stagedAssetsDir, rel);
+    assert.equal(fs.existsSync(assetPath), true, `Expected Gradle build-staged Android asset: ${rel}`);
     assert.equal(
-      fs.readFileSync(assetPath, 'utf8'),
-      rootContent,
-      `Synced Android asset diverged from canonical root file: ${rel}`
+      fs.readFileSync(assetPath).equals(rootBuf),
+      true,
+      `Staged Android asset diverged from canonical root file: ${rel}`
     );
   }
 });

@@ -60,15 +60,11 @@ All web code is authored in the **single canonical source** at the repository ro
 - `manifest.webmanifest`
 - `icons/`
 
-During Android builds, Gradle automatically runs the `syncWebAssets` task (wired to `preBuild`) to mirror those canonical root files into `app/src/main/assets/`:
+During Android builds, Gradle automatically runs the `syncWebAssets` task (wired to `preBuild` and AGP asset merge tasks) to stage those canonical root files into Gradle's build output directory (`app/build/generated/webAssets`):
 
-- `syncWebAssets` uses a Gradle `Sync` task so files deleted from the root are automatically pruned from `app/src/main/assets/`.
-- A built-in freshness guard aborts the sync if any file inside `app/src/main/assets/` was edited more recently than its canonical root counterpart, preventing accidental loss of manual edits.
-- Never hand-edit files inside `app/src/main/assets/`; edit the root files instead. If you intentionally need to overwrite newer files inside `app/src/main/assets/`, run:
-
-```bash
-gradle :app:syncWebAssets -PforceSyncWebAssets=true
-```
+- No duplicate copies of web files are checked into `app/src/main/assets/`.
+- `syncWebAssets` uses a Gradle `Sync` task so files deleted from the root are automatically pruned from the staged build assets.
+- Both PWA hosting and Android `WebViewAssetLoader` always read from the exact same canonical root files.
 
 ## Testing Instructions
 
@@ -79,7 +75,7 @@ node --check js/*.js sw.js
 node --test tests/game-core.test.mjs
 ```
 
-Note: `tests/game-core.test.mjs` also verifies byte-for-byte parity between the canonical root web files and `app/src/main/assets/`. Run `gradle :app:syncWebAssets` first after editing root web files.
+Note: `tests/game-core.test.mjs` also verifies that no duplicate checked-in `app/src/main/assets/` copies or screenshots exist and that Gradle's build-staged `app/build/generated/webAssets/` matches the canonical root web files byte-for-byte. Run `gradle :app:syncWebAssets` first after editing root web files.
 
 ### 2. Android Unit & Robolectric Tests
 
@@ -125,7 +121,6 @@ Penguin Glacial Empire works as an installable, offline-capable Progressive Web 
 
 ## Troubleshooting
 
-- **`syncWebAssets` fails with "Refusing to overwrite newer file(s) in app/src/main/assets":** Copy any intentional changes back into the canonical root file (`index.html`, `styles/`, or `js/`), or run `gradle :app:syncWebAssets -PforceSyncWebAssets=true` if the root file is authoritative.
-- **Asset parity test fails in `tests/game-core.test.mjs`:** Run `gradle :app:syncWebAssets` after modifying root web files so `app/src/main/assets/` is updated.
+- **Asset parity test fails in `tests/game-core.test.mjs`:** Run `gradle :app:syncWebAssets` after modifying root web files so `app/build/generated/webAssets/` is refreshed.
 - **PWA serves an older cached build in a browser:** Close all open tabs of the app and reopen it so the waiting service worker activates cleanly on the next cold start.
 - **Offline progress shows 0 after changing device time:** Backward device clock changes intentionally return `0` offline earnings to prevent clock-rollback exploits.

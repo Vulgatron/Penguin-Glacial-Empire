@@ -10,6 +10,8 @@
 
   const SPECIES_IDS = ['adelie', 'gentoo', 'chinstrap', 'emperor', 'cyber'];
   const DEFAULT_CONFIRM_WINDOW_MS = 4000;
+  const WARDROBE_MIN_REBIRTHS = 6;
+  const EMPEROR_BLOCKED_HATS = new Set(['star_crown']);
 
   // Ultra-Prestige Frost Essence Cosmetic Wardrobe (Purely Visual • Resets on Rebirth • Never Achievement-Locked)
   const WARDROBE_ITEMS = [
@@ -74,6 +76,25 @@
     return typeof hatId === 'string' && VALID_HAT_SET.has(hatId);
   }
 
+  function isWardrobeUnlocked(totalRebirths = 0) {
+    const n = Number(totalRebirths);
+    return Number.isFinite(n) && Math.floor(n) >= WARDROBE_MIN_REBIRTHS;
+  }
+
+  function canSpeciesWearHat(speciesId, hatId) {
+    if (!isValidHatId(hatId)) return false;
+    if (speciesId === 'emperor' && EMPEROR_BLOCKED_HATS.has(hatId)) return false;
+    return true;
+  }
+
+  function resolveHatForSpecies(speciesId, equippedHat = 'none', speciesHats = null) {
+    const candidate = (speciesHats && typeof speciesHats === 'object' && typeof speciesHats[speciesId] === 'string')
+      ? speciesHats[speciesId]
+      : equippedHat;
+    if (!canSpeciesWearHat(speciesId, candidate)) return 'none';
+    return candidate;
+  }
+
   function createDefaultSpeciesHats() {
     const map = {};
     SPECIES_IDS.forEach(spId => {
@@ -100,7 +121,7 @@
     const hasSpeciesMap = Boolean(rawSpeciesHats && typeof rawSpeciesHats === 'object' && !Array.isArray(rawSpeciesHats));
     SPECIES_IDS.forEach(spId => {
       const candidate = hasSpeciesMap ? rawSpeciesHats[spId] : equippedHat;
-      if (isValidHatId(candidate) && unlockedSet.has(candidate)) {
+      if (isValidHatId(candidate) && unlockedSet.has(candidate) && canSpeciesWearHat(spId, candidate)) {
         speciesHats[spId] = candidate;
       } else {
         speciesHats[spId] = 'none';
@@ -179,6 +200,7 @@
    */
   function drawPenguinAccessory(ctx, hatId, speciesId, pose, time) {
     if (!ctx || !hatId || hatId === 'none') return;
+    if (!canSpeciesWearHat(speciesId, hatId)) return;
     const t = Number.isFinite(time) ? time : 0;
     const flutter = Math.sin(t * 7.2) * 1.8;
 
@@ -481,10 +503,14 @@
   return {
     SPECIES_IDS,
     DEFAULT_CONFIRM_WINDOW_MS,
+    WARDROBE_MIN_REBIRTHS,
     WARDROBE_ITEMS,
     VALID_HAT_IDS,
     getWardrobeItem,
     isValidHatId,
+    isWardrobeUnlocked,
+    canSpeciesWearHat,
+    resolveHatForSpecies,
     createDefaultSpeciesHats,
     sanitizeWardrobeState,
     createPurchaseGuard,

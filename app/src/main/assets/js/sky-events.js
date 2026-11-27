@@ -8,25 +8,19 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  const SKY_COMBO_DECAY_SEC = 20;
-  const SKY_COMBO_MAX = 5;
-  const STARLIGHT_FRENZY_THRESHOLD = 3;
-  const STARLIGHT_FRENZY_DURATION_SEC = 15;
-  const STARLIGHT_FRENZY_MULTIPLIER = 2;
-
-  const SHOOTING_STAR_MIN_CD = 30;
-  const SHOOTING_STAR_MAX_CD = 45;
-  const KRILL_SWARM_MIN_CD = 45;
-  const KRILL_SWARM_MAX_CD = 65;
+  const SHOOTING_STAR_MIN_CD = 180; // 3 - 4.5 min rare cadence
+  const SHOOTING_STAR_MAX_CD = 270;
+  const KRILL_SWARM_MIN_CD = 240;   // 4 - 6 min rare cadence
+  const KRILL_SWARM_MAX_CD = 360;
 
   const SHOOTING_STAR_TOUCH_RADIUS = 52;
   const KRILL_SWARM_TOUCH_RADIUS = 50;
 
-  function calculateSkyEventReward(dps, combo, kind) {
+  function calculateSkyEventReward(dps, kindOrUnused, maybeKind) {
     const safeDps = Number.isFinite(Number(dps)) && Number(dps) > 0 ? Number(dps) : 0;
-    const safeCombo = Math.max(1, Math.min(SKY_COMBO_MAX, Math.floor(Number(combo) || 1)));
-    const secondsFactor = kind === 'krill_swarm' ? 9 : 8;
-    const raw = Math.round(safeDps * secondsFactor * safeCombo);
+    const kind = typeof kindOrUnused === 'string' ? kindOrUnused : (typeof maybeKind === 'string' ? maybeKind : 'shooting_star');
+    const secondsFactor = kind === 'krill_swarm' ? 14 : 12;
+    const raw = Math.round(safeDps * secondsFactor);
     return Math.max(40, Number.isFinite(raw) ? raw : 40);
   }
 
@@ -40,23 +34,19 @@
       this.rng = typeof options.rng === 'function' ? options.rng : Math.random;
       this.starCooldownSec = Number.isFinite(options.initialStarCooldownSec)
         ? Math.max(0.1, options.initialStarCooldownSec)
-        : randomRange(18, 30, this.rng);
+        : randomRange(90, 150, this.rng);
       this.krillCooldownSec = Number.isFinite(options.initialKrillCooldownSec)
         ? Math.max(0.1, options.initialKrillCooldownSec)
-        : randomRange(28, 44, this.rng);
+        : randomRange(120, 210, this.rng);
 
       this.activeStar = null;
       this.activeKrill = null;
-      this.comboCount = 0;
-      this.comboTimer = 0;
       this._phase = 0;
     }
 
     resetTransient() {
       this.activeStar = null;
       this.activeKrill = null;
-      this.comboCount = 0;
-      this.comboTimer = 0;
       this.starCooldownSec = randomRange(SHOOTING_STAR_MIN_CD, SHOOTING_STAR_MAX_CD, this.rng);
       this.krillCooldownSec = randomRange(KRILL_SWARM_MIN_CD, KRILL_SWARM_MAX_CD, this.rng);
     }
@@ -121,14 +111,6 @@
       if (safeDt <= 0) return;
 
       this._phase += safeDt;
-
-      // Combo decay pauses cleanly while blocked by modals/cutscenes
-      if (!ctx.isBlocked && this.comboCount > 0) {
-        this.comboTimer = Math.max(0, this.comboTimer - safeDt);
-        if (this.comboTimer <= 0) {
-          this.comboCount = 0;
-        }
-      }
 
       if (ctx.isBlocked) return;
 
@@ -209,33 +191,19 @@
     }
 
     _finalizeCatch(kind, x, y, dps) {
-      this.comboCount = Math.min(SKY_COMBO_MAX, (this.comboCount || 0) + 1);
-      this.comboTimer = SKY_COMBO_DECAY_SEC;
-      const rewardFish = calculateSkyEventReward(dps, this.comboCount, kind);
-      const frenzyTriggered = this.comboCount >= STARLIGHT_FRENZY_THRESHOLD;
+      const rewardFish = calculateSkyEventReward(dps, kind);
       return {
         caught: true,
         kind,
         x,
         y,
-        comboCount: this.comboCount,
-        comboTimer: this.comboTimer,
-        rewardFish,
-        frenzyTriggered,
-        frenzyDurationSec: frenzyTriggered ? STARLIGHT_FRENZY_DURATION_SEC : 0
+        rewardFish
       };
     }
 
-    getHudSnapshot(starlightFrenzyTimer = 0) {
-      const frenzySec = Math.max(0, Number(starlightFrenzyTimer) || 0);
-      const frenzyActive = frenzySec > 0;
-      const visible = this.comboCount > 0 || frenzyActive;
+    getHudSnapshot() {
       return {
-        visible,
-        comboCount: this.comboCount,
-        comboTimer: this.comboTimer,
-        frenzyActive,
-        frenzyRemainingSec: frenzySec
+        visible: false
       };
     }
 
@@ -345,11 +313,6 @@
   }
 
   return {
-    SKY_COMBO_DECAY_SEC,
-    SKY_COMBO_MAX,
-    STARLIGHT_FRENZY_THRESHOLD,
-    STARLIGHT_FRENZY_DURATION_SEC,
-    STARLIGHT_FRENZY_MULTIPLIER,
     SHOOTING_STAR_MIN_CD,
     SHOOTING_STAR_MAX_CD,
     KRILL_SWARM_MIN_CD,

@@ -277,7 +277,7 @@
 
     <!-- Safe-Area Version Footer -->
     <footer class="splash-footer">
-      <span id="splash-version-label" class="splash-version-pill">v2.7</span>
+      <span id="splash-version-label" class="splash-version-pill">v2.7.2</span>
     </footer>
   </div>
 
@@ -302,7 +302,7 @@
     <div class="hud-group">
       <div id="aurora-timer-pill" style="display: none;" aria-hidden="true">
         <span>✨</span>
-        <span id="aurora-countdown">90s</span>
+        <span id="aurora-countdown">9:00</span>
       </div>
       <button class="weather-pill" id="weather-pill" type="button" title="Current Polar Weather" aria-label="Current polar weather details">
         <span id="weather-icon" aria-hidden="true">☀️</span>
@@ -311,9 +311,6 @@
       <button class="top-btn" id="info-btn" type="button" title="Game Info" aria-label="Game controls and tips">ℹ️</button>
     </div>
   </div>
-
-  <!-- Sky Mini-Event Combo & Starlight Frenzy Pill (only visible while combo/frenzy active) -->
-  <div id="sky-combo-pill" class="sky-combo-pill hidden" aria-live="polite"></div>
 
   <!-- Collapsible Bottom Drawer -->
   <div id="bottom-sheet" aria-label="Colony management menu">
@@ -440,7 +437,7 @@
         While you were resting, your loyal penguin colony kept diving through the ice sheets!
       </p>
       <div style="background: rgba(56, 189, 248, 0.15); border: 1px solid var(--accent-cyan); border-radius: 16px; padding: 12px; width: 100%;">
-        <div id="offline-rate-caption" style="font-size: 11px; color: #cbd5e1; margin-bottom: 4px;">Fish Banked (1/3 Idle Reduction • Up to 24h Full + 7d Cap)</div>
+        <div id="offline-rate-caption" style="font-size: 11px; color: #cbd5e1; margin-bottom: 4px;">Fish Banked (35% Idle Rate • Up to 24h Full + 7d Cap)</div>
         <div style="font-size: 22px; font-weight: 900; color: var(--accent-gold);" id="offline-fish-val">+0 🐟</div>
       </div>
       <label class="prestige-btn" id="offline-claim-btn" role="button" tabindex="0" data-ios-haptic-label="1" style="width: 100%; touch-action: manipulation;">Claim Catch</label>
@@ -706,10 +703,9 @@
         this.slushDebuffTimer = 0;
         this.goldenFishTimer = 0;
         this.paradeBoostTimer = 0;
-        this.starlightFrenzyTimer = 0;
 
-        this.auroraEventInterval = 90;
-        this.auroraEventTimer = 90;
+        this.auroraEventInterval = CoreEconomy ? CoreEconomy.AURORA_BASE_INTERVAL_SEC : 540;
+        this.auroraEventTimer = this.auroraEventInterval;
         this.isAuroraModalOpen = false;
         this.isAuroraAlertActive = false;
         this.auroraTimeoutSeconds = 10;
@@ -731,16 +727,20 @@
         this.totalDives = 0;
         this.totalSlides = 0;
         this.skyEventsCaught = 0;
-        this.bestSkyCombo = 0;
         this.paradesWitnessed = 0;
         this.gameStartTime = Date.now();
         this.highestDPS = 0;
 
-        // 5-Minute Cycling Weather System + Hotspot Fishing Hole Synergy
+        // 5-Minute Cycling Weather System + Rare 30s Single-Hotspot Window (every 5-7 min)
         this.weatherIndex = 0;
         this.weatherTimer = WEATHER_CYCLE_SECONDS;
         this.weatherRotationEpoch = 0;
-        this.hotspotHoleId = 1;
+        this.hotspotHoleId = null;
+        this.hotspotActiveTimer = 0;
+        this.hotspotCooldownTimer = CorePolarSynergy
+          ? CorePolarSynergy.rollHotspotCooldownSec()
+          : 360;
+        this.hotspotRotationEpoch = 0;
         this.hotspotSurgeTimer = 0;
 
         // Guided Milestone Compass & Progressive Tab Reveal (Schema v5)
@@ -817,11 +817,54 @@
         }, 0);
       }
 
+      getTotalPenguinCount() {
+        let total = 0;
+        if (this.penguins && typeof this.penguins === 'object') {
+          Object.keys(this.penguins).forEach(k => {
+            total += Math.max(0, Math.floor(Number(this.penguins[k] && this.penguins[k].count) || 0));
+          });
+        }
+        return total;
+      }
+
+      getColonyCap() {
+        if (CoreEconomy && typeof CoreEconomy.calculateColonyCap === 'function') {
+          return CoreEconomy.calculateColonyCap(this.glacierLevel, this.totalRebirths);
+        }
+        return 15 + Math.max(0, (this.glacierLevel || 1) - 1) * 5 + Math.max(0, this.totalRebirths || 0) * 10;
+      }
+
+      getRemainingColonySlots() {
+        return Math.max(0, this.getColonyCap() - this.getTotalPenguinCount());
+      }
+
+      hasCollectedPerk(perkId) {
+        return Boolean(Array.isArray(this.collectedPerks) && this.collectedPerks.some(p => p && p.id === perkId && (p.count || 1) >= 1));
+      }
+
+      isCappedPerkOwned(perk) {
+        if (!perk) return false;
+        const isCapped = CoreGameData && typeof CoreGameData.isCappedPerkRarity === 'function'
+          ? CoreGameData.isCappedPerkRarity(perk.rarity)
+          : (perk.rarity === 'legendary' || perk.rarity === 'mythic');
+        return isCapped && this.hasCollectedPerk(perk.id);
+      }
+
       addCollectedPerk(perk) {
         if (!this.collectedPerks) this.collectedPerks = [];
-        const isPreserved = (perk.rarity === 'legendary' || perk.rarity === 'mythic');
+        const isCapped = CoreGameData && typeof CoreGameData.isCappedPerkRarity === 'function'
+          ? CoreGameData.isCappedPerkRarity(perk.rarity)
+          : (perk.rarity === 'legendary' || perk.rarity === 'mythic');
+        const isPreserved = isCapped;
         const existing = this.collectedPerks.find(p => p.id === perk.id);
         if (existing) {
+          if (isCapped) {
+            existing.count = 1;
+            existing.lastAcquiredAt = Date.now();
+            existing.isPreserved = true;
+            this.recalculatePerkMultipliers();
+            return { isDuplicateCapped: true };
+          }
           existing.count = (existing.count || 1) + 1;
           existing.lastAcquiredAt = Date.now();
           existing.isPreserved = isPreserved;
@@ -841,6 +884,7 @@
         }
         this.recalculatePerkMultipliers();
         checkAchievements();
+        return { isDuplicateCapped: false };
       }
 
       recalculatePerkMultipliers() {
@@ -853,67 +897,120 @@
 
         if (this.collectedPerks && Array.isArray(this.collectedPerks)) {
           this.collectedPerks.forEach(cp => {
-            const count = cp.count || 1;
-            if (cp.id === 'c_booties') this.perkWalkSpeedMult += 0.15 * count;
-            if (cp.id === 'c_herring') this.perkCatchMult += 0.20 * count;
-            if (cp.id === 'c_flappers') this.clickMult += 0.35 * count;
+            const isCapped = (CoreGameData && typeof CoreGameData.isCappedPerkRarity === 'function')
+              ? CoreGameData.isCappedPerkRarity(cp.rarity)
+              : (cp.rarity === 'legendary' || cp.rarity === 'mythic');
+            if (isCapped && (cp.count || 1) > 1) {
+              cp.count = 1;
+            }
+            const count = isCapped ? 1 : Math.max(1, cp.count || 1);
+
+            // Common perks
+            if (cp.id === 'c_booties') this.perkWalkSpeedMult += 0.10 * count;
+            if (cp.id === 'c_herring') this.perkCatchMult += 0.12 * count;
+            if (cp.id === 'c_flappers') this.clickMult += 0.25 * count;
             if (cp.id === 'c_sonar') {
-              this.perkCatchMult += 0.12 * count;
-              this.diveSpeedMult += 0.10 * count;
+              this.perkCatchMult += 0.08 * count;
+              this.diveSpeedMult += 0.08 * count;
             }
             if (cp.id === 'c_wax') {
-              this.perkSlideSpeedMult += 0.25 * count;
+              this.perkSlideSpeedMult += 0.18 * count;
               this.clickMult += 0.10 * count;
             }
-            if (cp.id === 'r_sledding') this.perkSlideSpeedMult += 0.50 * count;
+            if (cp.id === 'c_waxed_flippers') {
+              this.diveSpeedMult += 0.12 * count;
+              this.perkWalkSpeedMult += 0.06 * count;
+            }
+            if (cp.id === 'c_bait_bucket') this.perkCatchMult += 0.10 * count;
+            if (cp.id === 'c_shelf_map') {
+              this.perkSlideSpeedMult += 0.12 * count;
+              this.perkCatchMult += 0.08 * count;
+            }
+
+            // Rare perks
+            if (cp.id === 'r_sledding') this.perkSlideSpeedMult += 0.30 * count;
             if (cp.id === 'r_trench') {
-              this.perkCatchMult += 0.40 * count;
-              this.diveSpeedMult += 0.25 * count;
+              this.perkCatchMult += 0.20 * count;
+              this.diveSpeedMult += 0.18 * count;
             }
             if (cp.id === 'r_cryo_net') {
-              this.perkCatchMult += 0.30 * count;
-              this.clickMult += 0.20 * count;
+              this.perkCatchMult += 0.18 * count;
+              this.clickMult += 0.15 * count;
             }
             if (cp.id === 'r_storm_sail') {
-              this.perkWalkSpeedMult += 0.25 * count;
-              this.perkSlideSpeedMult += 0.30 * count;
+              this.perkWalkSpeedMult += 0.16 * count;
+              this.perkSlideSpeedMult += 0.20 * count;
             }
             if (cp.id === 'r_ember_lantern') {
-              this.diveSpeedMult += 0.20 * count;
-              this.perkCatchMult += 0.25 * count;
+              this.diveSpeedMult += 0.14 * count;
+              this.perkCatchMult += 0.16 * count;
             }
-            if (cp.id === 'l_frenzy') this.perkCatchMult += 0.15 * count;
+            if (cp.id === 'r_frost_harpoon') {
+              this.perkCatchMult += 0.22 * count;
+              this.diveSpeedMult += 0.10 * count;
+            }
+            if (cp.id === 'r_wind_tunnel') {
+              this.perkWalkSpeedMult += 0.18 * count;
+              this.perkSlideSpeedMult += 0.22 * count;
+            }
+            if (cp.id === 'r_huddle_warmth') {
+              this.perkCatchMult += 0.14 * count;
+              this.clickMult += 0.12 * count;
+            }
+
+            // Legendary perks (strictly capped at 1/1)
+            if (cp.id === 'l_frenzy') this.perkCatchMult += 0.08 * count;
             if (cp.id === 'l_monarch') {
-              this.emperorBoost += 1.0 * count;
-              this.perkWalkSpeedMult += 0.50 * count;
+              this.emperorBoost += 0.35 * count;
+              this.perkWalkSpeedMult += 0.15 * count;
             }
-            if (cp.id === 'l_mammoth') this.perkCatchMult += 0.20 * count;
+            if (cp.id === 'l_mammoth') this.perkCatchMult += 0.10 * count;
             if (cp.id === 'l_glacier_heart') {
-              this.perkCatchMult += 0.50 * count;
-              this.clickMult += 0.35 * count;
+              this.perkCatchMult += 0.18 * count;
+              this.clickMult += 0.15 * count;
             }
             if (cp.id === 'l_chrono_flipper') {
-              this.perkWalkSpeedMult += 0.40 * count;
-              this.perkSlideSpeedMult += 0.60 * count;
-              this.diveSpeedMult += 0.30 * count;
+              this.perkWalkSpeedMult += 0.14 * count;
+              this.perkSlideSpeedMult += 0.20 * count;
+              this.diveSpeedMult += 0.12 * count;
             }
-            if (cp.id === 'l_golden_aurora') this.perkCatchMult += 0.40 * count;
+            if (cp.id === 'l_golden_aurora') this.perkCatchMult += 0.15 * count;
+            if (cp.id === 'l_solstice_crown') {
+              this.perkCatchMult += 0.14 * count;
+              this.diveSpeedMult += 0.14 * count;
+            }
+            if (cp.id === 'l_boreal_echo') {
+              this.perkCatchMult += 0.12 * count;
+              this.perkWalkSpeedMult += 0.12 * count;
+              this.clickMult += 0.20 * count;
+            }
+
+            // Mythic perks (strictly capped at 1/1)
             if (cp.id === 'm_supernova') {
-              this.perkCatchMult += 0.35 * count;
-              this.perkWalkSpeedMult += 0.30 * count;
+              this.perkCatchMult += 0.18 * count;
+              this.perkWalkSpeedMult += 0.14 * count;
             }
             if (cp.id === 'm_eternal_frost') {
-              this.perkCatchMult += 1.00 * count;
-              this.perkWalkSpeedMult += 0.50 * count;
-              this.diveSpeedMult += 0.50 * count;
+              this.perkCatchMult += 0.30 * count;
+              this.perkWalkSpeedMult += 0.18 * count;
+              this.diveSpeedMult += 0.18 * count;
             }
             if (cp.id === 'm_starlight_nexus') {
-              this.clickMult += 1.50 * count;
-              this.perkSlideSpeedMult += 0.60 * count;
+              this.clickMult += 0.40 * count;
+              this.perkSlideSpeedMult += 0.22 * count;
             }
             if (cp.id === 'm_glacial_ascension') {
-              this.perkCatchMult += 0.75 * count;
-              this.clickMult += 0.75 * count;
+              this.perkCatchMult += 0.25 * count;
+              this.clickMult += 0.25 * count;
+            }
+            if (cp.id === 'm_polar_core') {
+              this.perkCatchMult += 0.22 * count;
+              this.perkSlideSpeedMult += 0.15 * count;
+              this.diveSpeedMult += 0.15 * count;
+            }
+            if (cp.id === 'm_abyssal_crest') {
+              this.perkCatchMult += 0.28 * count;
+              this.emperorBoost += 0.30 * count;
             }
           });
         }
@@ -999,18 +1096,35 @@
         return w.yieldMult || 1.0;
       }
 
+      getActiveHotspotHoleId() {
+        if (this.hotspotHoleId !== null && this.hotspotHoleId !== undefined && (this.hotspotActiveTimer || 0) > 0) {
+          return this.hotspotHoleId;
+        }
+        return null;
+      }
+
+      clearActiveHotspot(resetCooldown = false) {
+        this.hotspotHoleId = null;
+        this.hotspotActiveTimer = 0;
+        this.hotspotSurgeTimer = 0;
+        if (resetCooldown) {
+          this.hotspotCooldownTimer = CorePolarSynergy
+            ? CorePolarSynergy.rollHotspotCooldownSec()
+            : 360;
+        }
+      }
+
       syncHotspotHole(incrementEpoch = false) {
         if (incrementEpoch) {
           this.weatherRotationEpoch = (this.weatherRotationEpoch || 0) + 1;
         }
+        // In v2.7.2, Hotspots are timed 30s windows managed by stepHotspotLifecycle.
+        // Only validate bounds if a Hotspot is currently active.
         const unlockedCount = Math.max(3, Math.min(6, Math.floor(Number(this.fishingHolesUnlocked) || 3)));
-        const unlockedIds = [];
-        for (let i = 1; i <= unlockedCount; i++) unlockedIds.push(i);
-        const weatherId = this.getCurrentWeather().id;
-        this.hotspotHoleId = CorePolarSynergy
-          ? CorePolarSynergy.selectHotspotHoleId(weatherId, unlockedIds, this.weatherRotationEpoch || 0)
-          : unlockedIds[0];
-        return this.hotspotHoleId;
+        if (this.hotspotHoleId !== null && (this.hotspotHoleId > unlockedCount || (this.hotspotActiveTimer || 0) <= 0)) {
+          this.clearActiveHotspot(false);
+        }
+        return this.getActiveHotspotHoleId();
       }
 
       decayTransientTimers(elapsedSec) {
@@ -1022,9 +1136,8 @@
         this.slushDebuffTimer = Math.max(0, (this.slushDebuffTimer || 0) - sec);
         this.goldenFishTimer = Math.max(0, (this.goldenFishTimer || 0) - sec);
         this.paradeBoostTimer = Math.max(0, (this.paradeBoostTimer || 0) - sec);
-        this.starlightFrenzyTimer = Math.max(0, (this.starlightFrenzyTimer || 0) - sec);
-        // Hotspot Event Surge is strictly transient and expires/resets across offline/reload gaps
-        this.hotspotSurgeTimer = 0;
+        // Active Hotspot window & Event Surge are strictly transient and expire cleanly on offline/reload
+        this.clearActiveHotspot(false);
       }
 
       advanceWeather(seconds) {
@@ -1040,7 +1153,6 @@
             this.weatherTimer = WEATHER_CYCLE_SECONDS;
           }
           this.weatherRotationEpoch = (this.weatherRotationEpoch || 0) + steps;
-          this.syncHotspotHole(false);
         } else {
           this.weatherTimer = rem;
         }
@@ -1054,13 +1166,12 @@
         const levelBonus = this.getGlacierLevelMultiplier();
         const streakBonus = this.getDailyStreakFishMultiplier();
         const synergies = this.getColonySynergies();
-        const frenzy = this.frenzyTimer > 0 ? 3 : 1;
-        const supernova = this.supernovaTimer > 0 ? 4 : 1;
+        const frenzy = this.frenzyTimer > 0 ? 2 : 1;
+        const supernova = this.supernovaTimer > 0 ? 2.5 : 1;
         const polarSurge = this.polarSurgeTimer > 0 ? 2 : 1;
         const paradeBoost = this.paradeBoostTimer > 0 ? (CoreParade ? CoreParade.PARADE_BOOST_MULTIPLIER : 2) : 1;
-        const starlightFrenzy = this.starlightFrenzyTimer > 0 ? (CoreSkyEvents ? CoreSkyEvents.STARLIGHT_FRENZY_MULTIPLIER : 2) : 1;
         const weatherMult = this.getWeatherYieldMultiplier();
-        const rawClick = base * krillBonus * prestige * levelBonus * streakBonus * synergies.allFishMult * frenzy * supernova * polarSurge * paradeBoost * starlightFrenzy * weatherMult * this.clickMult;
+        const rawClick = base * krillBonus * prestige * levelBonus * streakBonus * synergies.allFishMult * frenzy * supernova * polarSurge * paradeBoost * weatherMult * this.clickMult;
         if (CoreEconomy) {
           return Math.max(1, Math.floor(CoreEconomy.sanitizeFiniteNumber(rawClick, 1, 1, CoreEconomy.MAX_SAFE_RESOURCE)));
         }
@@ -1116,13 +1227,12 @@
         const levelBonus = this.getGlacierLevelMultiplier();
         const streakBonus = this.getDailyStreakFishMultiplier();
         const cryoBonus = 1 + (this.tech.cryo_storage * 0.2);
-        const frenzy = (includeTransient && this.frenzyTimer > 0) ? 3 : 1;
-        const supernova = (includeTransient && this.supernovaTimer > 0) ? 4 : 1;
+        const frenzy = (includeTransient && this.frenzyTimer > 0) ? 2 : 1;
+        const supernova = (includeTransient && this.supernovaTimer > 0) ? 2.5 : 1;
         const polarSurge = (includeTransient && this.polarSurgeTimer > 0) ? 2 : 1;
         const paradeBoost = (includeTransient && this.paradeBoostTimer > 0) ? (CoreParade ? CoreParade.PARADE_BOOST_MULTIPLIER : 2) : 1;
-        const starlightFrenzy = (includeTransient && this.starlightFrenzyTimer > 0) ? (CoreSkyEvents ? CoreSkyEvents.STARLIGHT_FRENZY_MULTIPLIER : 2) : 1;
         const weatherMult = includeWeather ? this.getWeatherYieldMultiplier() : 1.0;
-        return prestige * levelBonus * streakBonus * cryoBonus * frenzy * supernova * polarSurge * paradeBoost * starlightFrenzy * weatherMult * syn.allFishMult;
+        return prestige * levelBonus * streakBonus * cryoBonus * frenzy * supernova * polarSurge * paradeBoost * weatherMult * syn.allFishMult;
       }
 
       getSpeciesTripMetrics(speciesId, synergies = null, options = {}) {
@@ -1166,27 +1276,33 @@
               isAtHotspot: false,
               hotspotSurgeTimer: 0
             }).effectiveCatch;
-            const hotspotYield = CorePolarSynergy.calculateEffectiveYield({
-              baseCatch,
-              weatherId,
-              speciesId: sp.id,
-              paradeActive,
-              isAtHotspot: true,
-              hotspotSurgeTimer: this.hotspotSurgeTimer || 0
-            }).effectiveCatch;
-            const unlockedHoles = Math.max(1, this.fishingHolesUnlocked || 3);
-            const hotspotShare = Math.min(1, 1 / unlockedHoles);
-            const expectedEffectiveCatch = normalYield * (1 - hotspotShare) + hotspotYield * hotspotShare;
+            let expectedEffectiveCatch = normalYield;
+            if (this.getActiveHotspotHoleId() !== null) {
+              const hotspotYield = CorePolarSynergy.calculateEffectiveYield({
+                baseCatch,
+                weatherId,
+                speciesId: sp.id,
+                paradeActive,
+                isAtHotspot: true,
+                hotspotSurgeTimer: this.hotspotSurgeTimer || 0
+              }).effectiveCatch;
+              const unlockedHoles = Math.max(1, this.fishingHolesUnlocked || 3);
+              const hotspotShare = Math.min(1, 1 / unlockedHoles);
+              expectedEffectiveCatch = normalYield * (1 - hotspotShare) + hotspotYield * hotspotShare;
+            }
             perPenguinTripYield = expectedEffectiveCatch * nonWeatherGlobalMult;
           } else {
             perPenguinTripYield = baseCatch * this.getGlobalOutputMultiplier(syn, { includeWeather: true, includeTransient: true });
           }
         }
 
-        let walkSpeed = sp.baseSpeed * 40 * traitAvg.speedMult * this.perkWalkSpeedMult * syn.walkSlideMult * weatherSpeedMult * (1 + this.tech.thermal_parkas * 0.15);
+        const collectionSpeedScale = CoreEconomy ? CoreEconomy.COLLECTION_SPEED_SCALE : 0.65;
+        const diveTimeScale = CoreEconomy ? CoreEconomy.DIVE_TIME_SCALE : 1.33;
+
+        let walkSpeed = sp.baseSpeed * 40 * collectionSpeedScale * traitAvg.speedMult * this.perkWalkSpeedMult * syn.walkSlideMult * weatherSpeedMult * (1 + this.tech.thermal_parkas * 0.15);
         if (!persistentOnly && this.slushDebuffTimer > 0) walkSpeed *= 0.92;
-        if (!persistentOnly && this.supernovaTimer > 0) walkSpeed *= 2.5;
-        walkSpeed = Math.max(12, walkSpeed);
+        if (!persistentOnly && this.supernovaTimer > 0) walkSpeed *= 2.0;
+        walkSpeed = Math.max(10, walkSpeed);
 
         const slideChance = sp.id === 'gentoo' ? 1.0 : 0.35;
         const slideFactor = 1.8 * this.perkSlideSpeedMult * (1 + this.tech.smooth_ice * 0.3);
@@ -1194,9 +1310,9 @@
         const expectedLegSec = (1 - slideChance) * (avgLegDist / walkSpeed) + slideChance * (avgLegDist / (walkSpeed * slideFactor));
 
         const diveRate = this.diveSpeedMult * traitAvg.diveSpeedMult * syn.diveSpeedMult * weatherDiveMult * (1 + (sp.diveTime > 1 ? 0.2 : 0));
-        const diveSec = Math.max(0.6, sp.diveTime / Math.max(0.1, diveRate));
+        const diveSec = Math.max(0.75, (sp.diveTime * diveTimeScale) / Math.max(0.1, diveRate));
 
-        const tripSeconds = Math.max(1.8, (expectedLegSec * 2) + 0.5 + diveSec + 0.6);
+        const tripSeconds = Math.max(2.2, (expectedLegSec * 2) + 0.5 + diveSec + 0.6);
         const dps = (perPenguinTripYield / tripSeconds) * pData.count;
         return {
           speciesId: sp.id,
@@ -1370,6 +1486,14 @@
       }
 
       purchaseFishingHole() {
+        const minRebirths = CoreEconomy ? CoreEconomy.FISHING_HOLES_MIN_REBIRTHS : 5;
+        const holesGateOpen = CoreEconomy && typeof CoreEconomy.canUnlockAdditionalFishingHoles === 'function'
+          ? CoreEconomy.canUnlockAdditionalFishingHoles(this.totalRebirths)
+          : ((this.totalRebirths || 0) >= minRebirths);
+        if (!holesGateOpen) {
+          showToast(`🔒 Extra Fishing Holes unlock after ${minRebirths} Glacial Rebirths (${this.totalRebirths || 0}/${minRebirths}).`, '🔒', { category: 'system', durationMs: 3600 });
+          return { ok: false, reason: 'rebirth_locked', requiredRebirths: minRebirths };
+        }
         const nextHole = CoreEconomy ? CoreEconomy.getNextFishingHoleDef(this.fishingHolesUnlocked) : null;
         if (!nextHole) return { ok: false, reason: 'max_holes' };
         if (this.fish < nextHole.cost) return { ok: false, reason: 'insufficient_fish', cost: nextHole.cost };
@@ -1407,10 +1531,13 @@
       }
 
       getSpeciesHat(speciesId) {
-        if (!this.speciesHats || typeof this.speciesHats !== 'object') {
-          return this.equippedHat || 'none';
+        const candidate = (this.speciesHats && typeof this.speciesHats === 'object')
+          ? this.speciesHats[speciesId]
+          : (this.equippedHat || 'none');
+        if (CoreWardrobe && typeof CoreWardrobe.resolveHatForSpecies === 'function') {
+          return CoreWardrobe.resolveHatForSpecies(speciesId, candidate, this.unlockedHats);
         }
-        const candidate = this.speciesHats[speciesId];
+        if (speciesId === 'emperor' && candidate === 'star_crown') return 'none';
         if (candidate && Array.isArray(this.unlockedHats) && this.unlockedHats.includes(candidate)) {
           return candidate;
         }
@@ -1418,8 +1545,20 @@
       }
 
       purchaseOrEquipHat(hatId, scope = this.wardrobeScope || 'all') {
+        const minWardrobeRebirths = CoreWardrobe ? CoreWardrobe.WARDROBE_MIN_REBIRTHS : 6;
+        const wardrobeOpen = CoreWardrobe && typeof CoreWardrobe.isWardrobeUnlocked === 'function'
+          ? CoreWardrobe.isWardrobeUnlocked(this.totalRebirths)
+          : ((this.totalRebirths || 0) >= minWardrobeRebirths);
+        if (!wardrobeOpen) {
+          showToast(`🔒 Colony Wardrobe unlocks after ${minWardrobeRebirths} Glacial Rebirths (${this.totalRebirths || 0}/${minWardrobeRebirths}).`, '🔒', { category: 'system', durationMs: 3600 });
+          return { ok: false, reason: 'rebirth_locked', requiredRebirths: minWardrobeRebirths };
+        }
         const item = CoreWardrobe ? CoreWardrobe.getWardrobeItem(hatId) : null;
         if (!item || item.id !== hatId) return { ok: false, reason: 'invalid' };
+        if (scope !== 'all' && CoreWardrobe && typeof CoreWardrobe.canSpeciesWearHat === 'function' && !CoreWardrobe.canSpeciesWearHat(scope, hatId)) {
+          showToast(`👑 Emperor Penguins already wear their native royal crown and cannot equip ${item.name}.`, '👑', { category: 'system', durationMs: 3400 });
+          return { ok: false, reason: 'species_incompatible', speciesId: scope, hatId };
+        }
         if (!Array.isArray(this.unlockedHats)) this.unlockedHats = ['none'];
         if (!this.unlockedHats.includes('none')) this.unlockedHats.unshift('none');
 
@@ -1443,10 +1582,19 @@
         }
 
         const speciesList = CoreWardrobe ? CoreWardrobe.SPECIES_IDS : ['adelie', 'gentoo', 'chinstrap', 'emperor', 'cyber'];
+        let emperorSkipped = false;
         if (scope === 'all' || !speciesList.includes(scope)) {
           this.equippedHat = hatId;
           speciesList.forEach(spId => {
-            this.speciesHats[spId] = hatId;
+            const canWear = !CoreWardrobe || typeof CoreWardrobe.canSpeciesWearHat !== 'function' || CoreWardrobe.canSpeciesWearHat(spId, hatId);
+            if (canWear) {
+              this.speciesHats[spId] = hatId;
+            } else {
+              emperorSkipped = true;
+              if (this.speciesHats[spId] === hatId) {
+                this.speciesHats[spId] = 'none';
+              }
+            }
           });
         } else {
           this.speciesHats[scope] = hatId;
@@ -1456,21 +1604,22 @@
         if (typeof clearPenguinSpriteCache === 'function') {
           clearPenguinSpriteCache();
         }
+        const emperorNote = emperorSkipped ? ' (Emperor keeps native crown)' : '';
         if (purchased) {
           sound.playLevelUp();
           sound.triggerHaptic('celebrate');
-          showToast(`${item.icon} Unlocked & equipped ${item.name} (-${item.costEssence.toLocaleString()} 💎)!`, item.icon, { category: 'purchase', durationMs: 4200 });
+          showToast(`${item.icon} Unlocked & equipped ${item.name} (-${item.costEssence.toLocaleString()} 💎)${emperorNote}!`, item.icon, { category: 'purchase', durationMs: 4200 });
         } else {
           sound.playChirp();
           sound.triggerHaptic('penguin_tap');
           const scopeLabel = scope === 'all'
             ? 'whole colony'
             : ((PENGUIN_SPECIES.find(s => s.id === scope) || {}).name || scope);
-          showToast(`${item.icon} Equipped ${item.name} on ${scopeLabel}!`, item.icon, { category: 'purchase', durationMs: 3000 });
+          showToast(`${item.icon} Equipped ${item.name} on ${scopeLabel}${emperorNote}!`, item.icon, { category: 'purchase', durationMs: 3200 });
         }
 
         this.save({ immediate: true });
-        return { ok: true, purchased, item, scope };
+        return { ok: true, purchased, item, scope, emperorSkipped };
       }
 
       buildSavePayload() {
@@ -1527,7 +1676,6 @@
           totalDives: this.totalDives,
           totalSlides: this.totalSlides,
           skyEventsCaught: this.skyEventsCaught || 0,
-          bestSkyCombo: this.bestSkyCombo || 0,
           paradesWitnessed: this.paradesWitnessed || 0,
           gameStartTime: this.gameStartTime,
           highestDPS: this.highestDPS,
@@ -1774,7 +1922,6 @@
           this.totalDives = data.totalDives || 0;
           this.totalSlides = data.totalSlides || 0;
           this.skyEventsCaught = data.skyEventsCaught || 0;
-          this.bestSkyCombo = data.bestSkyCombo || 0;
           this.paradesWitnessed = data.paradesWitnessed || 0;
           this.gameStartTime = data.gameStartTime || nowMs;
           this.highestDPS = data.highestDPS || 0;
@@ -1817,8 +1964,11 @@
             : (CoreMilestoneEngine ? CoreMilestoneEngine.evaluateUnlockedTabs(this) : ['penguins', 'stats', 'settings']);
           this.showAllTabs = Boolean(data.showAllTabs);
           this.milestoneBarExpanded = Boolean(data.milestoneBarExpanded);
-          this.hotspotSurgeTimer = 0;
-          this.syncHotspotHole(false);
+          this.clearActiveHotspot(true);
+          this.auroraEventInterval = CoreEconomy
+            ? CoreEconomy.calculateAuroraIntervalSec(this.tech.aurora_coils)
+            : Math.max(420, 540 - (this.tech.aurora_coils || 0));
+          this.auroraEventTimer = Math.min(this.auroraEventInterval, Math.max(30, this.auroraEventTimer || this.auroraEventInterval));
 
           this._getPersistenceController().markLoaded(this.buildSavePayload());
 
@@ -1834,7 +1984,7 @@
                 })
               : {
                   earned: ((nowMs - data.lastSaveTime) / 1000 > 10)
-                    ? Math.floor(offlineBaseDps * Math.min(86400, (nowMs - data.lastSaveTime) / 1000) * (2 / 3))
+                    ? Math.floor(offlineBaseDps * Math.min(86400, (nowMs - data.lastSaveTime) / 1000) * 0.35)
                     : 0,
                   rawElapsedSec: (nowMs - data.lastSaveTime) / 1000,
                   clockMovedBackward: nowMs < data.lastSaveTime
@@ -2069,7 +2219,7 @@
           const picked = CorePolarSynergy.chooseFishingHoleForPenguin({
             currentTargetHoleId: null,
             holes: availableMetrics,
-            hotspotHoleId: state ? state.hotspotHoleId : null
+            hotspotHoleId: state ? state.getActiveHotspotHoleId() : null
           });
           bestHole = picked ? picked.hole : availableMetrics[0].hole;
         } else {
@@ -2186,7 +2336,9 @@
 
     // Golden Fish School Timed Mini-Event State (Update 1.8)
     let goldenFishEvent = null;
-    let nextGoldenFishCooldown = 78 + Math.random() * 34; // 78–112s between leaps
+    let nextGoldenFishCooldown = CoreEconomy
+      ? CoreEconomy.computeGoldenFishNextCooldown({ goldenFishTimerSec: 0 })
+      : (360 + Math.random() * 180); // 6–9 min between rare leaps
 
     const tapParticles = [];
     function addTapParticle(x, y, text, color = '#38bdf8', size = 16) {
@@ -2662,9 +2814,10 @@
         const polarSyn = CorePolarSynergy
           ? CorePolarSynergy.getSpeciesSynergy(this.species.id, state.getCurrentWeather().id, state.paradeBoostTimer > 0)
           : { speedMult: 1.0, diveSpeedMult: 1.0 };
-        let speed = this.species.baseSpeed * 40 * traitSpeed * state.perkWalkSpeedMult * synergies.walkSlideMult * polarSyn.speedMult * (1 + state.tech.thermal_parkas * 0.15);
+        const collectionSpeedScale = CoreEconomy ? CoreEconomy.COLLECTION_SPEED_SCALE : 0.65;
+        let speed = this.species.baseSpeed * 40 * collectionSpeedScale * traitSpeed * state.perkWalkSpeedMult * synergies.walkSlideMult * polarSyn.speedMult * (1 + state.tech.thermal_parkas * 0.15);
         if (state.slushDebuffTimer > 0) speed *= 0.92;
-        if (state.supernovaTimer > 0) speed *= 2.5;
+        if (state.supernovaTimer > 0) speed *= 2.0;
 
         if (this.departureDelay > 0 && this.state === 'NAVIGATE_TO_HOLE') {
           this.departureDelay = Math.max(0, this.departureDelay - dt);
@@ -2775,7 +2928,8 @@
               this.state = 'FISHING';
               const traitDive = useColonyTraitAvg ? speciesTraitAvg.diveSpeedMult : (this.trait ? this.trait.diveSpeedMult : 1.0);
               const diveRate = state.diveSpeedMult * traitDive * synergies.diveSpeedMult * polarSyn.diveSpeedMult * (1 + (this.species.diveTime > 1 ? 0.2 : 0));
-              this.diveTimer = Math.max(0.6, this.species.diveTime / Math.max(0.1, diveRate));
+              const diveTimeScale = CoreEconomy ? CoreEconomy.DIVE_TIME_SCALE : 1.33;
+              this.diveTimer = Math.max(0.75, (this.species.diveTime * diveTimeScale) / Math.max(0.1, diveRate));
               sound.playSplash();
               if (this.claimedTarget) {
                 this.claimedTarget.hole.rippleTimer = 1.0;
@@ -2795,7 +2949,8 @@
               // Slight jitter around 0.60s mean preserves exact average trip timing while staggering waves
               this.diveTimer = 0.48 + Math.random() * 0.24;
               sound.playSplash();
-              const isAtHotspot = Boolean(this.claimedTarget && this.claimedTarget.hole && this.claimedTarget.hole.id === state.hotspotHoleId);
+              const activeHotspotId = state.getActiveHotspotHoleId();
+              const isAtHotspot = Boolean(activeHotspotId !== null && this.claimedTarget && this.claimedTarget.hole && this.claimedTarget.hole.id === activeHotspotId);
               if (this.claimedTarget) {
                 this.claimedTarget.hole.rippleTimer = 1.0;
                 spawnHoleRipple(this.claimedTarget.hole, isAtHotspot ? 'rgba(254, 240, 138, 0.96)' : 'rgba(125, 211, 252, 0.94)');
@@ -3381,31 +3536,7 @@
       : null;
     window.skyEventController = skyEventController;
 
-    function updateSkyComboPill() {
-      const pillEl = document.getElementById('sky-combo-pill');
-      if (!pillEl) return;
-      if (!skyEventController) {
-        pillEl.classList.add('hidden');
-        return;
-      }
-      const snap = skyEventController.getHudSnapshot(state.starlightFrenzyTimer || 0);
-      if (!snap.visible) {
-        pillEl.classList.add('hidden');
-        pillEl.classList.remove('is-frenzy');
-        return;
-      }
-      pillEl.classList.remove('hidden');
-      if (snap.frenzyActive) {
-        pillEl.classList.add('is-frenzy');
-        const frenzySec = Math.ceil(snap.frenzyRemainingSec);
-        const comboPart = snap.comboCount > 0 ? ` • ${snap.comboCount}× Combo` : '';
-        pillEl.textContent = `🌟 Starlight Frenzy 2× (${frenzySec}s)${comboPart}`;
-      } else {
-        pillEl.classList.remove('is-frenzy');
-        const decaySec = Math.ceil(snap.comboTimer);
-        pillEl.textContent = `🌠 Sky Combo ${snap.comboCount}× (${decaySec}s)`;
-      }
-    }
+    // Sky Combo removed in Update 2.7.2 — Shooting Stars & Krill Swarms are rare standalone catches.
 
     // --- MAIN GAME LOOP (60FPS requestAnimationFrame) ---
 
@@ -3511,7 +3642,7 @@
           nextGoldenFishCooldown -= dt * rate;
           if (nextGoldenFishCooldown <= 0) {
             spawnGoldenFishEvent();
-            const baseCd = 78 + Math.random() * 36;
+            const baseCd = 360 + Math.random() * 180;
             nextGoldenFishCooldown = (state.goldenFishTimer || 0) > 0 ? baseCd / 2 : baseCd;
           }
         }
@@ -3658,18 +3789,23 @@
         if (state.slushDebuffTimer > 0) state.slushDebuffTimer = Math.max(0, state.slushDebuffTimer - dt);
         if (state.goldenFishTimer > 0) state.goldenFishTimer = Math.max(0, state.goldenFishTimer - dt);
         if (state.paradeBoostTimer > 0) state.paradeBoostTimer = Math.max(0, state.paradeBoostTimer - dt);
-        if (state.starlightFrenzyTimer > 0) state.starlightFrenzyTimer = Math.max(0, state.starlightFrenzyTimer - dt);
         if (state.hotspotSurgeTimer > 0) state.hotspotSurgeTimer = Math.max(0, state.hotspotSurgeTimer - dt);
 
         const isOfflineOrWhatsNewBlocking = (typeof isModalBlockingAurora === 'function') && isModalBlockingAurora();
+        const isSplashActiveNow = typeof launchSplash !== 'undefined' && launchSplash && launchSplash.isActive;
         if (!state.isAuroraModalOpen && !state.isAuroraAlertActive && !isOfflineOrWhatsNewBlocking) {
-          const coilsReduction = state.tech.aurora_coils * 4;
-          const targetInterval = Math.max(30, state.auroraEventInterval - coilsReduction);
+          const targetInterval = CoreEconomy
+            ? CoreEconomy.calculateAuroraIntervalSec(state.tech.aurora_coils)
+            : Math.max(420, 540 - (state.tech.aurora_coils || 0));
+          state.auroraEventInterval = targetInterval;
+          if (state.auroraEventTimer > targetInterval) {
+            state.auroraEventTimer = targetInterval;
+          }
           state.auroraEventTimer -= dt;
 
           const countdownEl = document.getElementById('aurora-countdown');
           if (countdownEl) {
-            countdownEl.textContent = Math.ceil(Math.max(0, state.auroraEventTimer)) + 's';
+            countdownEl.textContent = formatWeatherCountdown(state.auroraEventTimer);
           }
 
           if (state.auroraEventTimer <= 0) {
@@ -3678,11 +3814,55 @@
           }
         }
 
+        // Timed 30-second Single-Hotspot Window (spawns every 5-7 min)
+        if (CorePolarSynergy && typeof CorePolarSynergy.stepHotspotLifecycle === 'function') {
+          const unlockedHoleIds = FISHING_HOLES.map(h => h.id);
+          const hsStep = CorePolarSynergy.stepHotspotLifecycle({
+            dt,
+            hotspotHoleId: state.hotspotHoleId,
+            hotspotActiveTimer: state.hotspotActiveTimer,
+            hotspotCooldownTimer: state.hotspotCooldownTimer,
+            hotspotRotationEpoch: state.hotspotRotationEpoch,
+            weatherId: state.getCurrentWeather().id,
+            unlockedHoleIds,
+            isBlocked: isOfflineOrWhatsNewBlocking || state.isAuroraModalOpen || isSplashActiveNow || (typeof document !== 'undefined' && document.hidden)
+          });
+          state.hotspotHoleId = hsStep.hotspotHoleId;
+          state.hotspotActiveTimer = hsStep.hotspotActiveTimer;
+          state.hotspotCooldownTimer = hsStep.hotspotCooldownTimer;
+          state.hotspotRotationEpoch = hsStep.hotspotRotationEpoch;
+
+          if (hsStep.activated) {
+            state.hotspotSurgeTimer = 0;
+            const newHole = FISHING_HOLES.find(h => h.id === state.hotspotHoleId);
+            if (newHole) {
+              spawnHoleRipple(newHole, 'rgba(254, 240, 138, 0.96)');
+            }
+            if (typeof sound.playMilestoneChime === 'function') {
+              sound.playMilestoneChime();
+            }
+            showToast(
+              `⭐ Hotspot Active at ${newHole ? newHole.name : 'Fishing Hole'}! (+50% catch for ${CorePolarSynergy.HOTSPOT_ACTIVE_DURATION_SEC}s)`,
+              '⭐',
+              { category: 'weather', durationMs: 4400 }
+            );
+            if (state.currentTab === 'penguins' || state.currentTab === 'glacier') {
+              updateSheetContent();
+            }
+          } else if (hsStep.expired) {
+            state.hotspotSurgeTimer = 0;
+            if (state.currentTab === 'penguins' || state.currentTab === 'glacier') {
+              updateSheetContent();
+            }
+          }
+        }
+
         if (state.advanceWeather(dt)) {
           const w = state.getCurrentWeather();
           const synProfile = CorePolarSynergy ? CorePolarSynergy.getWeatherSynergyProfile(w.id) : null;
-          const hotspotObj = FISHING_HOLES.find(h => h.id === state.hotspotHoleId);
-          const hotspotNote = hotspotObj ? ` • ★ ${hotspotObj.name}` : '';
+          const activeHsId = state.getActiveHotspotHoleId();
+          const hotspotObj = activeHsId !== null ? FISHING_HOLES.find(h => h.id === activeHsId) : null;
+          const hotspotNote = hotspotObj ? ` • ★ ${hotspotObj.name} (${Math.ceil(state.hotspotActiveTimer)}s)` : '';
           if (w.id === 'blizzard') {
             showToast(`🌨️ Blizzard! ${synProfile ? synProfile.badge : '+20% Yield'}${hotspotNote}`, '🌨️', { category: 'weather', durationMs: 4500 });
           } else if (w.id === 'light_snow') {
@@ -3784,7 +3964,6 @@
         activePenguins.forEach(p => p.drawSpeechBubble(ctx));
         updateParticles(ctx, dt);
         updateDisplayedFish(dt);
-        updateSkyComboPill();
         updateHUD();
       } catch (err) {
         console.warn('Frame loop recovery:', err);
@@ -3815,10 +3994,11 @@
         lanternPath: (state.glacierLevel || 1) >= 3 || (state.iglooTier || 0) >= 1,
         colonyPennants: (state.fishingHolesUnlocked || 3) >= 4 || totalPenguinsCount >= 25,
         auroraMonoliths: (state.iglooTier || 0) >= 3 || (state.glacierLevel || 1) >= 10,
-        monolithBoost: (state.starlightFrenzyTimer || 0) > 0 || (state.paradeBoostTimer || 0) > 0 || Boolean(state.isAuroraAlertActive),
+        monolithBoost: (state.paradeBoostTimer || 0) > 0 || Boolean(state.isAuroraAlertActive),
         rebirthMonument: (state.totalRebirths || 0) >= 1,
         rebirthCount: state.totalRebirths || 0
       } : {};
+      const activeHotspotId = state ? state.getActiveHotspotHoleId() : null;
 
       CoreSceneRenderer.drawScene(ctx, dt, {
         width,
@@ -3835,8 +4015,8 @@
         snowParticles,
         maxSnow: MAX_SNOW,
         weatherMix,
-        hotspotHoleId: state ? state.hotspotHoleId : 1,
-        hotspotSurgeActive: Boolean(state && (state.hotspotSurgeTimer || 0) > 0),
+        hotspotHoleId: activeHotspotId,
+        hotspotSurgeActive: Boolean(activeHotspotId !== null && state && (state.hotspotSurgeTimer || 0) > 0),
         hotspotColor: synProfile.hotspotColor,
         hotspotSecondary: synProfile.hotspotSecondary,
         landmarks
@@ -3870,21 +4050,22 @@
           dailyManager.track('taps', 1);
           state.totalManualClicks = (state.totalManualClicks || 0) + 1;
           state.skyEventsCaught = (state.skyEventsCaught || 0) + 1;
-          state.bestSkyCombo = Math.max(state.bestSkyCombo || 0, skyRes.comboCount || 1);
-          if (skyRes.frenzyTriggered && skyRes.frenzyDurationSec > 0) {
-            state.starlightFrenzyTimer = Math.max(state.starlightFrenzyTimer || 0, skyRes.frenzyDurationSec);
-          }
-          // Additive Hotspot Event Surge (+25% capped at +85% / 1.85x for 20s)
+          // If a 30s Hotspot is currently active, boost it with an additive Event Surge (+25% capped at 1.85x)
+          const activeHsId = state.getActiveHotspotHoleId();
           const surgeDur = CorePolarSynergy ? CorePolarSynergy.HOTSPOT_SURGE_DURATION_SEC : 20;
-          state.hotspotSurgeTimer = Math.max(state.hotspotSurgeTimer || 0, surgeDur);
-          const surgeHole = FISHING_HOLES.find(h => h.id === state.hotspotHoleId);
-          if (surgeHole) {
-            spawnHoleRipple(surgeHole, 'rgba(254, 240, 138, 0.96)');
+          let surgedHotspot = false;
+          if (activeHsId !== null) {
+            state.hotspotSurgeTimer = Math.max(state.hotspotSurgeTimer || 0, Math.min(surgeDur, Math.ceil(state.hotspotActiveTimer || 0)));
+            const surgeHole = FISHING_HOLES.find(h => h.id === activeHsId);
+            if (surgeHole) {
+              spawnHoleRipple(surgeHole, 'rgba(254, 240, 138, 0.96)');
+            }
+            surgedHotspot = true;
           }
           state.addFish(skyRes.rewardFish);
           state.save({ immediate: true });
           sound.playLevelUp();
-          sound.triggerHaptic(skyRes.frenzyTriggered ? 'celebrate' : 'collect');
+          sound.triggerHaptic('collect');
           const burstColors = skyRes.kind === 'krill_swarm'
             ? ['#fb7185', '#fdba74', '#38bdf8']
             : ['#fef08a', '#38bdf8', '#c084fc'];
@@ -3903,10 +4084,9 @@
           }
           const isStar = skyRes.kind === 'shooting_star';
           const label = isStar ? '🌠 Shooting Star' : '🦐 Krill Swarm';
-          addTapParticle(skyRes.x, skyRes.y - 16, `${isStar ? '🌠' : '🦐'} +${formatNumber(skyRes.rewardFish)} 🐟 (${skyRes.comboCount}×)`, '#fef08a', 17);
-          const frenzyNote = skyRes.frenzyTriggered ? ' • 🌟 2× Starlight Frenzy (15s)!' : '';
-          showToast(`${label} Caught! +${formatNumber(skyRes.rewardFish)} 🐟 • ⚡ Hotspot Surge (${surgeDur}s)${frenzyNote}`, isStar ? '🌠' : '🦐', { category: 'boost', durationMs: 3900 });
-          updateSkyComboPill();
+          addTapParticle(skyRes.x, skyRes.y - 16, `${isStar ? '🌠' : '🦐'} +${formatNumber(skyRes.rewardFish)} 🐟`, '#fef08a', 17);
+          const surgeText = surgedHotspot ? ' • ⚡ Hotspot Surged!' : '';
+          showToast(`${label} Caught! +${formatNumber(skyRes.rewardFish)} 🐟${surgeText}`, isStar ? '🌠' : '🦐', { category: 'boost', durationMs: 3900 });
           if (typeof updateMilestoneBarUI === 'function') updateMilestoneBarUI();
           if (state.currentTab === 'stats') {
             updateSheetContent();
@@ -4387,8 +4567,16 @@
     function renderAuroraModal() {
       const container = document.getElementById('perks-grid');
       container.innerHTML = '';
+      const persistentDps = state.calculatePersistentOfflineDPS();
 
       state.currentAuroraCards.forEach((perk, index) => {
+        const isDuplicateCapped = state.isCappedPerkOwned(perk);
+        const dupBonus = isDuplicateCapped
+          ? (CoreEconomy
+              ? CoreEconomy.calculateDuplicatePerkFishBonus(perk.rarity, persistentDps)
+              : { fish: Math.max(perk.rarity === 'mythic' ? 320 : 160, Math.round(persistentDps * (perk.rarity === 'mythic' ? 240 : 120))), seconds: perk.rarity === 'mythic' ? 240 : 120 })
+          : null;
+
         const card = document.createElement('label');
         card.className = `perk-card rarity-${perk.rarity}`;
         card.setAttribute('role', 'button');
@@ -4396,10 +4584,13 @@
         card.setAttribute('data-ios-haptic-label', '1');
         card.innerHTML = `
           <div class="perk-badge badge-${perk.rarity}">${perk.rarity}</div>
+          ${isDuplicateCapped ? '<div class="perk-owned-pill">OWNED • MAX 1/1</div>' : ''}
           <div class="perk-icon">${perk.icon}</div>
           <div class="perk-title">${perk.name}</div>
-          <div class="perk-desc">${perk.desc}</div>
-          <span class="perk-select-btn">CLAIM BLESSING</span>
+          <div class="perk-desc">${isDuplicateCapped
+            ? `Already acquired (Max 1/1)! Converts into +${formatNumber(dupBonus.fish)} 🐟 Instant Fish (${dupBonus.seconds}s DPS).`
+            : perk.desc}</div>
+          <span class="perk-select-btn">${isDuplicateCapped ? `CLAIM +${formatNumber(dupBonus.fish)} 🐟` : 'CLAIM BLESSING'}</span>
         `;
 
         card.addEventListener('click', () => {
@@ -4420,9 +4611,18 @@
       resetAuroraInteractionPause();
 
       const chosenPerk = state.currentAuroraCards[cardIndex];
+      let dupFishAwarded = null;
       if (chosenPerk) {
-        state.addCollectedPerk(chosenPerk);
-        chosenPerk.grant(state);
+        if (state.isCappedPerkOwned(chosenPerk)) {
+          const persistentDps = state.calculatePersistentOfflineDPS();
+          dupFishAwarded = CoreEconomy
+            ? CoreEconomy.calculateDuplicatePerkFishBonus(chosenPerk.rarity, persistentDps)
+            : { fish: Math.max(chosenPerk.rarity === 'mythic' ? 320 : 160, Math.round(persistentDps * (chosenPerk.rarity === 'mythic' ? 240 : 120))), seconds: chosenPerk.rarity === 'mythic' ? 240 : 120 };
+          state.addFish(dupFishAwarded.fish);
+        } else {
+          state.addCollectedPerk(chosenPerk);
+          chosenPerk.grant(state);
+        }
         dailyManager.track('aurora', 1);
         state.totalAuroraBlessingsClaimed = (state.totalAuroraBlessingsClaimed || 0) + 1;
         checkAchievements();
@@ -4434,11 +4634,19 @@
 
       if (isPenalty) {
         sound.playBuzzer();
-        showToast(`🚨 TIMEOUT PENALTY! Lowest tier chosen: "${chosenPerk.name}"`, '⚠️', { category: 'boost' });
+        if (dupFishAwarded) {
+          showToast(`🚨 TIMEOUT PENALTY! Duplicate "${chosenPerk.name}" converted to +${formatNumber(dupFishAwarded.fish)} 🐟`, '⚠️', { category: 'boost' });
+        } else {
+          showToast(`🚨 TIMEOUT PENALTY! Lowest tier chosen: "${chosenPerk.name}"`, '⚠️', { category: 'boost' });
+        }
       } else {
         sound.playLevelUp();
         sound.triggerHaptic('collect');
-        showToast(`✨ Aurora Boon Granted: "${chosenPerk.name}"!`, '✨', { category: 'boost' });
+        if (dupFishAwarded) {
+          showToast(`✨ Duplicate "${chosenPerk.name}" (Max 1/1) granted +${formatNumber(dupFishAwarded.fish)} 🐟 (${dupFishAwarded.seconds}s DPS)!`, '🐟', { category: 'boost' });
+        } else {
+          showToast(`✨ Aurora Boon Granted: "${chosenPerk.name}"!`, '✨', { category: 'boost' });
+        }
       }
 
       updateSheetContent();
@@ -4852,20 +5060,17 @@
       state.slushDebuffTimer = 0;
       state.goldenFishTimer = 0;
       state.paradeBoostTimer = 0;
-      state.starlightFrenzyTimer = 0;
-      state.hotspotSurgeTimer = 0;
+      state.clearActiveHotspot(true);
+      state.auroraEventInterval = CoreEconomy ? CoreEconomy.AURORA_BASE_INTERVAL_SEC : 540;
+      state.auroraEventTimer = state.auroraEventInterval;
       state.tempSpeedBoost = 0;
       state.completedRunMilestones = [];
       state.currentShownMilestoneId = null;
-      state.syncHotspotHole(false);
       if (typeof paradeController !== 'undefined' && paradeController) {
         paradeController.cancelAndReset(activePenguins);
       }
       if (typeof skyEventController !== 'undefined' && skyEventController) {
         skyEventController.resetTransient();
-      }
-      if (typeof updateSkyComboPill === 'function') {
-        updateSkyComboPill();
       }
 
       checkAchievements();
@@ -5264,6 +5469,32 @@
       return true;
     }
 
+    function openDailyTabFromNotification() {
+      if (!state) return false;
+      if (!Array.isArray(state.unlockedTabs)) {
+        state.unlockedTabs = ['penguins', 'stats', 'settings'];
+      }
+      if (!state.unlockedTabs.includes('daily')) {
+        state.unlockedTabs.push('daily');
+      }
+      if (typeof syncProgressiveTabs === 'function') {
+        syncProgressiveTabs(false);
+      }
+      if (sheetSnapState === 'collapsed') {
+        setBottomSheetState('default');
+      }
+      const switched = selectBottomTab('daily');
+      const container = document.getElementById('sheet-content-container');
+      if (container) {
+        container.scrollTop = 0;
+      }
+      if (typeof sound !== 'undefined' && sound && typeof sound.playPlink === 'function') {
+        sound.playPlink();
+      }
+      return switched;
+    }
+    window.openDailyTabFromNotification = openDailyTabFromNotification;
+
     function syncProgressiveTabs(announceNew = true) {
       if (!CoreMilestoneEngine || !state) return [];
       const prevUnlocked = new Set(Array.isArray(state.unlockedTabs) ? state.unlockedTabs : CoreMilestoneEngine.STARTER_TAB_IDS);
@@ -5589,11 +5820,14 @@
             const w = state.getCurrentWeather();
             const timeStr = formatWeatherCountdown(state.weatherTimer);
             const synProfile = CorePolarSynergy ? CorePolarSynergy.getWeatherSynergyProfile(w.id) : null;
-            const hotspotHole = FISHING_HOLES.find(h => h.id === state.hotspotHoleId);
-            const surgeNote = (state.hotspotSurgeTimer || 0) > 0
-              ? ` • ⚡ Surge ${Math.ceil(state.hotspotSurgeTimer)}s`
+            const activeHsId = state.getActiveHotspotHoleId();
+            const hotspotHole = activeHsId !== null ? FISHING_HOLES.find(h => h.id === activeHsId) : null;
+            const surgeNote = hotspotHole && (state.hotspotSurgeTimer || 0) > 0
+              ? ` ⚡${Math.ceil(state.hotspotSurgeTimer)}s`
               : '';
-            const hotspotTxt = hotspotHole ? ` • ★ ${hotspotHole.name}${surgeNote}` : '';
+            const hotspotTxt = hotspotHole
+              ? ` • ★ ${hotspotHole.name} (${Math.ceil(state.hotspotActiveTimer)}s${surgeNote})`
+              : ` • ⏳ Hotspot in ${formatWeatherCountdown(state.hotspotCooldownTimer || 0)}`;
             return {
               icon: w.icon,
               text: `${w.name} (${timeStr}) — ${synProfile ? synProfile.badge : w.desc}${hotspotTxt}`
@@ -5609,7 +5843,7 @@
       }
 
       document.getElementById('info-btn').addEventListener('click', () => {
-        showToast('🐧 Tap penguins, Shooting Stars & Krill Swarms! Drag menu up to 80% or tap the sky to shrink.', 'ℹ️', { category: 'system', durationMs: 4000 });
+        showToast('🐧 Tap penguins, rare Shooting Stars & Krill Swarms! Drag menu up to 80% or tap the sky to shrink.', 'ℹ️', { category: 'system', durationMs: 4000 });
       });
     }
 
@@ -5630,16 +5864,33 @@
         if (CorePolarSynergy) {
           const curWeather = state.getCurrentWeather();
           const synProfile = CorePolarSynergy.getWeatherSynergyProfile(curWeather.id);
-          const hotspotHole = FISHING_HOLES.find(h => h.id === state.hotspotHoleId);
+          const activeHsId = state.getActiveHotspotHoleId();
+          const hotspotHole = activeHsId !== null ? FISHING_HOLES.find(h => h.id === activeHsId) : null;
           const surgeSec = Math.ceil(state.hotspotSurgeTimer || 0);
           const banner = document.createElement('div');
           banner.className = 'weather-synergy-banner';
           banner.innerHTML = `
             <span>${synProfile.badge}</span>
-            <strong>${hotspotHole ? `★ ${hotspotHole.name}` : '★ Hotspot'}${surgeSec > 0 ? ` ⚡${surgeSec}s` : ''}</strong>
+            <strong>${hotspotHole
+              ? `★ ${hotspotHole.name} (${Math.ceil(state.hotspotActiveTimer)}s${surgeSec > 0 ? ` ⚡` : ''})`
+              : `⏳ Next Hotspot ${formatWeatherCountdown(state.hotspotCooldownTimer || 0)}`}</strong>
           `;
           container.appendChild(banner);
         }
+
+        const totalColonyCount = state.getTotalPenguinCount();
+        const colonyCap = state.getColonyCap();
+        const remainingCapSlots = state.getRemainingColonySlots();
+        const capBanner = document.createElement('div');
+        capBanner.id = 'colony-cap-banner';
+        capBanner.className = `colony-cap-banner ${remainingCapSlots <= 0 ? 'is-full' : ''}`;
+        capBanner.innerHTML = `
+          <span>🐧 Colony Cap: <strong>${totalColonyCount} / ${colonyCap}</strong></span>
+          <span class="colony-cap-hint">${remainingCapSlots <= 0
+            ? 'Cap full! Glacier Lv (+5) or Rebirth (+10)'
+            : '+5/Glacier Lv • +10/Rebirth'}</span>
+        `;
+        container.appendChild(capBanner);
 
         const synWrap = document.createElement('div');
         synWrap.innerHTML = renderColonySynergiesHtml(state.getColonySynergies());
@@ -5655,6 +5906,7 @@
           let qty = 1;
           let cost = 0;
           let canAfford = false;
+          let atColonyCap = remainingCapSlots <= 0;
 
           if (CoreEconomy && typeof CoreEconomy.calculateBulkPenguinPurchase === 'function') {
             const bulk = CoreEconomy.calculateBulkPenguinPurchase(
@@ -5663,40 +5915,29 @@
               state.fish,
               state.buyMultiplier,
               firstCostMult,
-              100
+              100,
+              remainingCapSlots
             );
             qty = bulk.qty;
             cost = bulk.cost;
-            canAfford = bulk.canAfford;
+            canAfford = bulk.canAfford && !bulk.cappedOut && remainingCapSlots > 0;
+            atColonyCap = Boolean(bulk.cappedOut) || remainingCapSlots <= 0;
           } else {
             qty = typeof state.buyMultiplier === 'number' ? state.buyMultiplier : 1;
-            let affordableQty = 0;
-            if (state.buyMultiplier === 'MAX') {
-              let tempFish = state.fish;
-              let tempCount = pData.count;
-              while (true) {
-                let nextCost = state.getPenguinCost(sp.id, tempCount, affordableQty === 0);
-                if (tempFish >= nextCost && affordableQty < 100) {
-                  tempFish -= nextCost;
-                  cost += nextCost;
-                  tempCount++;
-                  affordableQty++;
-                } else {
-                  break;
-                }
-              }
-              if (affordableQty === 0) {
-                cost = state.getPenguinCost(sp.id, pData.count, true);
-                qty = 1;
-              } else {
-                qty = affordableQty;
-              }
+            if (remainingCapSlots > 0) {
+              qty = Math.min(qty, remainingCapSlots);
             } else {
+              qty = 0;
+            }
+            if (qty > 0) {
               for (let i = 0; i < qty; i++) {
                 cost += state.getPenguinCost(sp.id, pData.count + i, i === 0);
               }
+              canAfford = state.fish >= cost;
+            } else {
+              cost = state.getPenguinCost(sp.id, pData.count, true);
+              canAfford = false;
             }
-            canAfford = state.fish >= cost;
           }
 
           card.className = `roster-card ${canAfford ? 'can-afford' : ''}`;
@@ -5743,22 +5984,28 @@
               </div>
             </div>
             <label class="buy-btn ${canAfford ? '' : 'is-disabled'}" role="button" tabindex="${canAfford ? '0' : '-1'}" aria-disabled="${canAfford ? 'false' : 'true'}" data-ios-haptic-label="${canAfford ? '1' : '0'}">
-              <span class="buy-btn-label">RECRUIT +${qty}</span>
-              <span class="buy-btn-cost">🐟 ${formatNumber(cost)}</span>
+              <span class="buy-btn-label">${atColonyCap ? 'CAP REACHED' : `RECRUIT +${qty}`}</span>
+              <span class="buy-btn-cost">${atColonyCap ? `Cap ${colonyCap}` : `🐟 ${formatNumber(cost)}`}</span>
             </label>
           `;
 
           const btn = card.querySelector('.buy-btn');
           btn.addEventListener('click', () => {
-            if (Number.isFinite(cost) && cost > 0 && state.fish >= cost) {
+            const liveRemaining = state.getRemainingColonySlots();
+            if (liveRemaining <= 0 || qty <= 0) {
+              showToast(`🐧 Colony Cap (${state.getColonyCap()}) reached! Raise Glacier Level (+5) or Rebirth (+10) to recruit more.`, '🔒', { category: 'system', durationMs: 3400 });
+              return;
+            }
+            const actualQty = Math.min(qty, liveRemaining);
+            if (Number.isFinite(cost) && cost > 0 && actualQty === qty && state.fish >= cost) {
               state.fish = Math.max(0, state.fish - cost);
-              pData.count += qty;
+              pData.count += actualQty;
               pData.level = Math.floor(1 + pData.count / 10);
 
               if (!pData.traitCounts) pData.traitCounts = {};
               const firstTraitId = nextTrait.id;
               pData.traitCounts[firstTraitId] = (pData.traitCounts[firstTraitId] || 0) + 1;
-              for (let i = 1; i < qty; i++) {
+              for (let i = 1; i < actualQty; i++) {
                 const extraTrait = rollRandomTraitId();
                 pData.traitCounts[extraTrait] = (pData.traitCounts[extraTrait] || 0) + 1;
               }
@@ -5769,8 +6016,8 @@
               } else {
                 sound.playChirp();
               }
-              showToast(`Recruited ${nextTrait.icon} ${nextTrait.name} ${sp.name}${qty > 1 ? ` (+${qty - 1} more)` : ''}!`, '🐧', { category: 'purchase' });
-              dailyManager.track('recruits', qty);
+              showToast(`Recruited ${nextTrait.icon} ${nextTrait.name} ${sp.name}${actualQty > 1 ? ` (+${actualQty - 1} more)` : ''}!`, '🐧', { category: 'purchase' });
+              dailyManager.track('recruits', actualQty);
               checkAchievements();
               syncProgressiveTabs(true);
               updateMilestoneBarUI();
@@ -5983,13 +6230,18 @@
         });
         glacierWrap.appendChild(castleCard);
 
-        // 2. Purchasable Ice Fishing Holes Card (3 Starter + 3 Expansion = 6 Max)
+        // 2. Purchasable Ice Fishing Holes Card (3 Starter + 3 Expansion = 6 Max; Expansion gated at 5 Rebirths)
         const holeDefs = CoreEconomy ? CoreEconomy.FISHING_HOLE_DEFS : [];
         const maxHoles = CoreEconomy ? CoreEconomy.MAX_FISHING_HOLES : 6;
         const unlockedHoles = Math.max(3, Math.min(maxHoles, state.fishingHolesUnlocked || 3));
         const totalSlots = unlockedHoles * 10;
         const maxSlots = maxHoles * 10;
         const slotPct = Math.round((unlockedHoles / maxHoles) * 100);
+        const minHoleRebirths = CoreEconomy ? CoreEconomy.FISHING_HOLES_MIN_REBIRTHS : 5;
+        const holesGateOpen = CoreEconomy && typeof CoreEconomy.canUnlockAdditionalFishingHoles === 'function'
+          ? CoreEconomy.canUnlockAdditionalFishingHoles(state.totalRebirths)
+          : ((state.totalRebirths || 0) >= minHoleRebirths);
+        const activeHotspotIdNow = state.getActiveHotspotHoleId();
 
         const holesCard = document.createElement('div');
         holesCard.id = 'glacier-fishing-holes-card';
@@ -6006,28 +6258,36 @@
           <div class="hole-progress-track">
             <div class="hole-progress-fill" style="width: ${slotPct}%"></div>
           </div>
+          ${!holesGateOpen ? `
+            <div class="prestige-gate-banner" id="fishing-holes-prestige-gate">
+              <span>🔒 Extra Fishing Holes (4–6) unlock after <strong>${minHoleRebirths} Glacial Rebirths</strong>.</span>
+              <strong>${state.totalRebirths || 0}/${minHoleRebirths}</strong>
+            </div>
+          ` : ''}
           <div class="hole-list">
             ${holeDefs.map(h => {
               const isOpen = h.id <= unlockedHoles;
               const isNext = h.id === unlockedHoles + 1;
-              const canBuy = isNext && state.fish >= h.cost;
-              const isHotspot = isOpen && h.id === state.hotspotHoleId;
+              const canBuy = holesGateOpen && isNext && state.fish >= h.cost;
+              const isHotspot = isOpen && activeHotspotIdNow !== null && h.id === activeHotspotIdNow;
               const surgeActive = isHotspot && (state.hotspotSurgeTimer || 0) > 0;
               return `
                 <div class="hole-item-row ${isOpen ? 'is-open' : (canBuy ? 'can-afford' : 'is-locked')}">
                   <div class="hole-item-info">
                     <div class="hole-item-name">
                       <span>${isHotspot ? '⭐' : (isOpen ? '🌊' : '🧊')} ${h.name}</span>
-                      ${isHotspot ? `<span class="weather-synergy-pill">${surgeActive ? '⚡ SURGE HOTSPOT' : '★ HOTSPOT'}</span>` : (h.starter ? '<span class="hole-tag starter">Starter</span>' : (isOpen ? '<span class="hole-tag open">Open</span>' : ''))}
+                      ${isHotspot ? `<span class="weather-synergy-pill">${surgeActive ? '⚡ SURGE' : '★ HOTSPOT'} ${Math.ceil(state.hotspotActiveTimer)}s</span>` : (h.starter ? '<span class="hole-tag starter">Starter</span>' : (isOpen ? '<span class="hole-tag open">Open</span>' : ''))}
                     </div>
                     <div class="hole-item-desc">${h.desc || 'Glacier diving basin'} • +${h.slots || 10} diving slots</div>
                   </div>
                   <div>
                     ${isOpen
                       ? '<span class="hole-status-badge">Active ✓</span>'
-                      : isNext
-                        ? `<label class="buy-btn hole-buy-btn ${canBuy ? '' : 'is-disabled'}" role="button" tabindex="${canBuy ? '0' : '-1'}" aria-disabled="${canBuy ? 'false' : 'true'}" data-ios-haptic-label="${canBuy ? '1' : '0'}"><span class="buy-btn-label">CARVE</span><span class="buy-btn-cost">🐟 ${formatNumber(h.cost)}</span></label>`
-                        : `<span class="hole-status-badge locked">Unlock Hole #${h.id - 1}</span>`
+                      : !holesGateOpen
+                        ? `<span class="hole-status-badge locked">🔒 ${minHoleRebirths} Rebirths</span>`
+                        : isNext
+                          ? `<label class="buy-btn hole-buy-btn ${canBuy ? '' : 'is-disabled'}" role="button" tabindex="${canBuy ? '0' : '-1'}" aria-disabled="${canBuy ? 'false' : 'true'}" data-ios-haptic-label="${canBuy ? '1' : '0'}"><span class="buy-btn-label">CARVE</span><span class="buy-btn-cost">🐟 ${formatNumber(h.cost)}</span></label>`
+                          : `<span class="hole-status-badge locked">Unlock Hole #${h.id - 1}</span>`
                     }
                   </div>
                 </div>
@@ -6049,177 +6309,215 @@
         }
         glacierWrap.appendChild(holesCard);
 
-        // --- CARD 3: COLONY WARDROBE (Ultra-Prestige Frost Essence Cosmetic Shop) ---
+        // --- CARD 3: COLONY WARDROBE (Ultra-Prestige Frost Essence Cosmetic Shop; Unlocks after 6 Rebirths) ---
         if (CoreWardrobe && Array.isArray(CoreWardrobe.WARDROBE_ITEMS)) {
           const wardrobeCard = document.createElement('div');
           wardrobeCard.id = 'colony-wardrobe-card';
           wardrobeCard.setAttribute('data-milestone-target', 'glacier-wardrobe-card');
           wardrobeCard.className = 'glacier-feature-card wardrobe-card';
 
-          const scope = state.wardrobeScope || 'all';
-          const unlockedSet = new Set(Array.isArray(state.unlockedHats) ? state.unlockedHats : ['none']);
-          unlockedSet.add('none');
-          const armedInfo = wardrobePurchaseGuard ? wardrobePurchaseGuard.getArmed(Date.now()) : null;
-          const currentEssence = Math.max(0, Math.floor(Number(state.prestigeShards) || 0));
+          const minWardrobeRebirths = CoreWardrobe.WARDROBE_MIN_REBIRTHS || 6;
+          const wardrobeOpen = typeof CoreWardrobe.isWardrobeUnlocked === 'function'
+            ? CoreWardrobe.isWardrobeUnlocked(state.totalRebirths)
+            : ((state.totalRebirths || 0) >= minWardrobeRebirths);
 
-          const scopeOptions = [
-            { id: 'all', label: '🐧 All Colony' },
-            { id: 'adelie', label: 'Adélie' },
-            { id: 'gentoo', label: 'Gentoo' },
-            { id: 'chinstrap', label: 'Chinstrap' },
-            { id: 'emperor', label: 'Emperor' },
-            { id: 'cyber', label: 'Cyber' }
-          ];
-
-          const isEquippedInScope = (hatId) => {
-            if (scope === 'all') {
-              return CoreWardrobe.SPECIES_IDS.every(spId => state.getSpeciesHat(spId) === hatId);
-            }
-            return state.getSpeciesHat(scope) === hatId;
-          };
-
-          const scopeHintText = scope === 'all'
-            ? 'Applying to Whole Colony — tap any unlocked accessory to dress every penguin together.'
-            : `Mixing hats for ${(PENGUIN_SPECIES.find(s => s.id === scope) || {}).name || scope} — customize each species independently.`;
-
-          wardrobeCard.innerHTML = `
-            <div class="glacier-card-header">
-              <div class="glacier-card-title-group">
-                <div class="glacier-card-title">🎩 Colony Wardrobe</div>
-                <div class="glacier-card-sub">Ultra-Prestige penguin hats &amp; accessories bought with Frost Essence</div>
+          if (!wardrobeOpen) {
+            wardrobeCard.innerHTML = `
+              <div class="glacier-card-header">
+                <div class="glacier-card-title-group">
+                  <div class="glacier-card-title">🎩 Colony Wardrobe</div>
+                  <div class="glacier-card-sub">Ultra-Prestige penguin hats &amp; accessories bought with Frost Essence</div>
+                </div>
+                <span class="glacier-tier-pill">🔒 Locked</span>
               </div>
-              <span class="glacier-tier-pill">${unlockedSet.size}/${CoreWardrobe.WARDROBE_ITEMS.length} Owned</span>
-            </div>
+              <div class="prestige-gate-banner" id="wardrobe-prestige-gate">
+                <span>🔒 Unlocks after <strong>${minWardrobeRebirths} Glacial Rebirths</strong> to customize your penguins with Frost Essence hats &amp; accessories.</span>
+                <strong>${state.totalRebirths || 0}/${minWardrobeRebirths}</strong>
+              </div>
+            `;
+            glacierWrap.appendChild(wardrobeCard);
+          } else {
+            const scope = state.wardrobeScope || 'all';
+            const unlockedSet = new Set(Array.isArray(state.unlockedHats) ? state.unlockedHats : ['none']);
+            unlockedSet.add('none');
+            const armedInfo = wardrobePurchaseGuard ? wardrobePurchaseGuard.getArmed(Date.now()) : null;
+            const currentEssence = Math.max(0, Math.floor(Number(state.prestigeShards) || 0));
 
-            <div class="wardrobe-essence-bar">
-              <span class="wardrobe-essence-balance" id="wardrobe-essence-balance">💎 ${currentEssence.toLocaleString()} Frost Essence</span>
-              <span class="wardrobe-cosmetic-pill">Purely Visual • Resets on Rebirth</span>
-            </div>
+            const scopeOptions = [
+              { id: 'all', label: '🐧 All Colony' },
+              { id: 'adelie', label: 'Adélie' },
+              { id: 'gentoo', label: 'Gentoo' },
+              { id: 'chinstrap', label: 'Chinstrap' },
+              { id: 'emperor', label: 'Emperor' },
+              { id: 'cyber', label: 'Cyber' }
+            ];
 
-            <div class="wardrobe-scope-bar" role="group" aria-label="Wardrobe species scope">
-              ${scopeOptions.map(opt => `
-                <button type="button" class="wardrobe-scope-btn ${scope === opt.id ? 'is-active' : ''}" data-wardrobe-scope="${opt.id}" aria-pressed="${scope === opt.id ? 'true' : 'false'}">
-                  ${opt.label}
-                </button>
-              `).join('')}
-            </div>
-            <div class="wardrobe-scope-hint">${scopeHintText}</div>
+            const isEquippedInScope = (hatId) => {
+              if (scope === 'all') {
+                const eligibleSpecies = CoreWardrobe.SPECIES_IDS.filter(spId =>
+                  typeof CoreWardrobe.canSpeciesWearHat !== 'function' || CoreWardrobe.canSpeciesWearHat(spId, hatId)
+                );
+                return eligibleSpecies.length > 0 && eligibleSpecies.every(spId => state.getSpeciesHat(spId) === hatId);
+              }
+              return state.getSpeciesHat(scope) === hatId;
+            };
 
-            <div class="wardrobe-grid">
-              ${CoreWardrobe.WARDROBE_ITEMS.map(item => {
-                const owned = unlockedSet.has(item.id);
-                const equipped = owned && isEquippedInScope(item.id);
-                const canAfford = !owned && currentEssence >= item.costEssence;
-                const isArmed = !owned && armedInfo && armedInfo.hatId === item.id && armedInfo.scope === scope;
+            const scopeHintText = scope === 'all'
+              ? 'Applying to Whole Colony — tap any unlocked accessory to dress every eligible penguin together (Emperors keep their native crown).'
+              : (scope === 'emperor'
+                ? 'Mixing hats for Emperor Monarch — Emperors keep their native royal crown instead of the Starlight Crown.'
+                : `Mixing hats for ${(PENGUIN_SPECIES.find(s => s.id === scope) || {}).name || scope} — customize each species independently.`);
 
-                let tileClass = 'wardrobe-tile';
-                let badgeHtml = '';
-                let actionText = '';
+            wardrobeCard.innerHTML = `
+              <div class="glacier-card-header">
+                <div class="glacier-card-title-group">
+                  <div class="glacier-card-title">🎩 Colony Wardrobe</div>
+                  <div class="glacier-card-sub">Ultra-Prestige penguin hats &amp; accessories bought with Frost Essence</div>
+                </div>
+                <span class="glacier-tier-pill">${unlockedSet.size}/${CoreWardrobe.WARDROBE_ITEMS.length} Owned</span>
+              </div>
 
-                if (equipped) {
-                  tileClass += ' is-unlocked is-equipped';
-                  badgeHtml = '<span class="wardrobe-tile-badge equipped">Equipped ✓</span>';
-                  actionText = scope === 'all' ? 'Worn by all penguins' : 'Worn by this species';
-                } else if (owned) {
-                  tileClass += ' is-unlocked';
-                  badgeHtml = item.costEssence === 0
-                    ? '<span class="wardrobe-tile-badge owned">Free</span>'
-                    : '<span class="wardrobe-tile-badge owned">Owned</span>';
-                  actionText = scope === 'all' ? 'Tap to equip colony-wide' : 'Tap to equip on species';
-                } else if (isArmed) {
-                  tileClass += ' is-affordable is-armed';
-                  badgeHtml = '<span class="wardrobe-tile-badge armed">CONFIRM</span>';
-                  actionText = `Tap again: Spend ${item.costEssence.toLocaleString()} 💎?`;
-                } else if (canAfford) {
-                  tileClass += ' is-affordable';
-                  badgeHtml = `<span class="wardrobe-tile-badge price">${item.costEssence.toLocaleString()} 💎</span>`;
-                  actionText = `Tap to unlock (${item.costEssence.toLocaleString()} 💎)`;
-                } else {
-                  tileClass += ' is-locked';
-                  badgeHtml = `<span class="wardrobe-tile-badge price">${item.costEssence.toLocaleString()} 💎</span>`;
-                  actionText = `Need ${(item.costEssence - currentEssence).toLocaleString()} more 💎`;
-                }
+              <div class="wardrobe-essence-bar">
+                <span class="wardrobe-essence-balance" id="wardrobe-essence-balance">💎 ${currentEssence.toLocaleString()} Frost Essence</span>
+                <span class="wardrobe-cosmetic-pill">Purely Visual • Resets on Rebirth</span>
+              </div>
 
-                return `
-                  <button type="button" class="${tileClass}" data-hat-id="${item.id}" aria-label="${item.name} — ${actionText}">
-                    <div class="wardrobe-tile-top">
-                      <span class="wardrobe-tile-icon" aria-hidden="true">${item.icon}</span>
-                      ${badgeHtml}
-                    </div>
-                    <div class="wardrobe-tile-name">${item.name}</div>
-                    <div class="wardrobe-tile-desc">${item.desc}</div>
-                    <div class="wardrobe-tile-action">${actionText}</div>
+              <div class="wardrobe-scope-bar" role="group" aria-label="Wardrobe species scope">
+                ${scopeOptions.map(opt => `
+                  <button type="button" class="wardrobe-scope-btn ${scope === opt.id ? 'is-active' : ''}" data-wardrobe-scope="${opt.id}" aria-pressed="${scope === opt.id ? 'true' : 'false'}">
+                    ${opt.label}
                   </button>
-                `;
-              }).join('')}
-            </div>
-          `;
+                `).join('')}
+              </div>
+              <div class="wardrobe-scope-hint">${scopeHintText}</div>
 
-          wardrobeCard.querySelectorAll('.wardrobe-scope-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-              const nextScope = btn.getAttribute('data-wardrobe-scope') || 'all';
-              state.wardrobeScope = nextScope;
-              if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
-              if (wardrobeConfirmTimerId) {
-                clearTimeout(wardrobeConfirmTimerId);
-                wardrobeConfirmTimerId = null;
-              }
-              sound.playPlink();
-              updateSheetContent();
+              <div class="wardrobe-grid">
+                ${CoreWardrobe.WARDROBE_ITEMS.map(item => {
+                  const incompatibleForScope = scope !== 'all' && typeof CoreWardrobe.canSpeciesWearHat === 'function' && !CoreWardrobe.canSpeciesWearHat(scope, item.id);
+                  const owned = unlockedSet.has(item.id);
+                  const equipped = !incompatibleForScope && owned && isEquippedInScope(item.id);
+                  const canAfford = !incompatibleForScope && !owned && currentEssence >= item.costEssence;
+                  const isArmed = !incompatibleForScope && !owned && armedInfo && armedInfo.hatId === item.id && armedInfo.scope === scope;
+                  const emperorNoteAll = (scope === 'all' && typeof CoreWardrobe.canSpeciesWearHat === 'function' && !CoreWardrobe.canSpeciesWearHat('emperor', item.id));
+
+                  let tileClass = 'wardrobe-tile';
+                  let badgeHtml = '';
+                  let actionText = '';
+
+                  if (incompatibleForScope) {
+                    tileClass += ' is-incompatible';
+                    badgeHtml = '<span class="wardrobe-tile-badge incompatible">Native Crown</span>';
+                    actionText = 'Emperors cannot wear Starlight Crown';
+                  } else if (equipped) {
+                    tileClass += ' is-unlocked is-equipped';
+                    badgeHtml = '<span class="wardrobe-tile-badge equipped">Equipped ✓</span>';
+                    actionText = emperorNoteAll ? 'Worn by colony (Emperor native crown)' : (scope === 'all' ? 'Worn by all penguins' : 'Worn by this species');
+                  } else if (owned) {
+                    tileClass += ' is-unlocked';
+                    badgeHtml = item.costEssence === 0
+                      ? '<span class="wardrobe-tile-badge owned">Free</span>'
+                      : '<span class="wardrobe-tile-badge owned">Owned</span>';
+                    actionText = emperorNoteAll ? 'Tap to equip (Emperor keeps native crown)' : (scope === 'all' ? 'Tap to equip colony-wide' : 'Tap to equip on species');
+                  } else if (isArmed) {
+                    tileClass += ' is-affordable is-armed';
+                    badgeHtml = '<span class="wardrobe-tile-badge armed">CONFIRM</span>';
+                    actionText = `Tap again: Spend ${item.costEssence.toLocaleString()} 💎?`;
+                  } else if (canAfford) {
+                    tileClass += ' is-affordable';
+                    badgeHtml = `<span class="wardrobe-tile-badge price">${item.costEssence.toLocaleString()} 💎</span>`;
+                    actionText = `Tap to unlock (${item.costEssence.toLocaleString()} 💎)`;
+                  } else {
+                    tileClass += ' is-locked';
+                    badgeHtml = `<span class="wardrobe-tile-badge price">${item.costEssence.toLocaleString()} 💎</span>`;
+                    actionText = `Need ${(item.costEssence - currentEssence).toLocaleString()} more 💎`;
+                  }
+
+                  return `
+                    <button type="button" class="${tileClass}" data-hat-id="${item.id}" ${incompatibleForScope ? 'disabled aria-disabled="true"' : ''} aria-label="${item.name} — ${actionText}">
+                      <div class="wardrobe-tile-top">
+                        <span class="wardrobe-tile-icon" aria-hidden="true">${item.icon}</span>
+                        ${badgeHtml}
+                      </div>
+                      <div class="wardrobe-tile-name">${item.name}</div>
+                      <div class="wardrobe-tile-desc">${item.desc}</div>
+                      <div class="wardrobe-tile-action">${actionText}</div>
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            `;
+
+            wardrobeCard.querySelectorAll('.wardrobe-scope-btn').forEach(btn => {
+              btn.addEventListener('click', () => {
+                const nextScope = btn.getAttribute('data-wardrobe-scope') || 'all';
+                state.wardrobeScope = nextScope;
+                if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
+                if (wardrobeConfirmTimerId) {
+                  clearTimeout(wardrobeConfirmTimerId);
+                  wardrobeConfirmTimerId = null;
+                }
+                sound.playPlink();
+                updateSheetContent();
+              });
             });
-          });
 
-          wardrobeCard.querySelectorAll('.wardrobe-tile').forEach(btn => {
-            btn.addEventListener('click', () => {
-              sound.init();
-              const hatId = btn.getAttribute('data-hat-id');
-              const item = CoreWardrobe.getWardrobeItem(hatId);
-              if (!item || item.id !== hatId) return;
-              const isOwned = Array.isArray(state.unlockedHats) && state.unlockedHats.includes(hatId);
+            wardrobeCard.querySelectorAll('.wardrobe-tile').forEach(btn => {
+              btn.addEventListener('click', () => {
+                sound.init();
+                const hatId = btn.getAttribute('data-hat-id');
+                const item = CoreWardrobe.getWardrobeItem(hatId);
+                if (!item || item.id !== hatId) return;
+                const activeScope = state.wardrobeScope || 'all';
+                if (activeScope !== 'all' && typeof CoreWardrobe.canSpeciesWearHat === 'function' && !CoreWardrobe.canSpeciesWearHat(activeScope, hatId)) {
+                  showToast(`👑 Emperor Penguins keep their native royal crown and cannot equip ${item.name}.`, '👑', { category: 'system', durationMs: 3200 });
+                  return;
+                }
+                const isOwned = Array.isArray(state.unlockedHats) && state.unlockedHats.includes(hatId);
 
-              if (isOwned) {
-                if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
-                state.purchaseOrEquipHat(hatId, state.wardrobeScope || 'all');
-                updateSheetContent();
-                return;
-              }
-
-              if ((state.prestigeShards || 0) < item.costEssence) {
-                if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
-                showToast(`💎 Need ${item.costEssence.toLocaleString()} Frost Essence for ${item.name} (you have ${(state.prestigeShards || 0).toLocaleString()} 💎).`, '🔒', { category: 'system', durationMs: 3200 });
-                updateSheetContent();
-                return;
-              }
-
-              // Inline 4-second Tap-Again Safety Confirm before deducting Frost Essence
-              if (wardrobePurchaseGuard) {
-                const guardRes = wardrobePurchaseGuard.armOrConfirm(hatId, state.wardrobeScope || 'all', Date.now());
-                if (!guardRes.confirmed) {
-                  sound.playPlink();
-                  if (wardrobeConfirmTimerId) clearTimeout(wardrobeConfirmTimerId);
-                  wardrobeConfirmTimerId = setTimeout(() => {
-                    wardrobeConfirmTimerId = null;
-                    if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
-                    if (state.currentTab === 'glacier') updateSheetContent();
-                  }, wardrobePurchaseGuard.windowMs + 50);
+                if (isOwned) {
+                  if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
+                  state.purchaseOrEquipHat(hatId, activeScope);
                   updateSheetContent();
                   return;
                 }
-              }
 
-              if (wardrobeConfirmTimerId) {
-                clearTimeout(wardrobeConfirmTimerId);
-                wardrobeConfirmTimerId = null;
-              }
-              const res = state.purchaseOrEquipHat(hatId, state.wardrobeScope || 'all');
-              if (res.ok) {
-                updateSheetContent();
-                updateHUD();
-              }
+                if ((state.prestigeShards || 0) < item.costEssence) {
+                  if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
+                  showToast(`💎 Need ${item.costEssence.toLocaleString()} Frost Essence for ${item.name} (you have ${(state.prestigeShards || 0).toLocaleString()} 💎).`, '🔒', { category: 'system', durationMs: 3200 });
+                  updateSheetContent();
+                  return;
+                }
+
+                // Inline 4-second Tap-Again Safety Confirm before deducting Frost Essence
+                if (wardrobePurchaseGuard) {
+                  const guardRes = wardrobePurchaseGuard.armOrConfirm(hatId, activeScope, Date.now());
+                  if (!guardRes.confirmed) {
+                    sound.playPlink();
+                    if (wardrobeConfirmTimerId) clearTimeout(wardrobeConfirmTimerId);
+                    wardrobeConfirmTimerId = setTimeout(() => {
+                      wardrobeConfirmTimerId = null;
+                      if (wardrobePurchaseGuard) wardrobePurchaseGuard.disarm();
+                      if (state.currentTab === 'glacier') updateSheetContent();
+                    }, wardrobePurchaseGuard.windowMs + 50);
+                    updateSheetContent();
+                    return;
+                  }
+                }
+
+                if (wardrobeConfirmTimerId) {
+                  clearTimeout(wardrobeConfirmTimerId);
+                  wardrobeConfirmTimerId = null;
+                }
+                const res = state.purchaseOrEquipHat(hatId, activeScope);
+                if (res.ok) {
+                  updateSheetContent();
+                  updateHUD();
+                }
+              });
             });
-          });
 
-          glacierWrap.appendChild(wardrobeCard);
+            glacierWrap.appendChild(wardrobeCard);
+          }
         }
 
         container.appendChild(glacierWrap);
@@ -6593,8 +6891,8 @@
               <div class="stat-card-val">${formatNumber(state.skyEventsCaught || 0)}</div>
             </div>
             <div class="stat-card gold-highlight">
-              <div class="stat-card-header">🔥 Best Sky Combo</div>
-              <div class="stat-card-val">${state.bestSkyCombo || 0}×</div>
+              <div class="stat-card-header">🐧 Colony Cap</div>
+              <div class="stat-card-val">${totalPenguins} / ${state.getColonyCap()}</div>
             </div>
             <div class="stat-card purple-highlight">
               <div class="stat-card-header">🎺 Parades Witnessed</div>
@@ -6675,7 +6973,9 @@
                   <div class="perk-stat-title-row">
                     <span class="perk-stat-name">${perk.name}</span>
                     <span class="perk-badge badge-${perk.rarity}">${perk.rarity}</span>
-                    ${perk.count > 1 ? `<span class="perk-stat-count">x${perk.count}</span>` : ''}
+                    ${(isLeg || isMythic)
+                      ? `<span class="perk-stat-count">MAX 1/1</span>`
+                      : (perk.count > 1 ? `<span class="perk-stat-count">x${perk.count}</span>` : '')}
                   </div>
                   <div class="perk-stat-desc">${perk.desc}</div>
                 </div>
@@ -7264,15 +7564,20 @@
       document.getElementById('pill-dps').textContent = `${formatNumber(Math.round(state.dps * 60))}/min`;
 
       let affordableCount = 0;
-      PENGUIN_SPECIES.forEach(sp => {
-        const cost = state.getPenguinCost(sp.id, state.penguins[sp.id].count);
-        if (state.fish >= cost) affordableCount++;
-      });
+      if (state.getRemainingColonySlots() > 0) {
+        PENGUIN_SPECIES.forEach(sp => {
+          const cost = state.getPenguinCost(sp.id, state.penguins[sp.id].count);
+          if (state.fish >= cost) affordableCount++;
+        });
+      }
       GLACIER_TECH.forEach(tech => {
         const cost = state.getTechCost(tech.id, state.tech[tech.id]);
         if (state.fish >= cost) affordableCount++;
       });
-      const nextHoleDef = CoreEconomy ? CoreEconomy.getNextFishingHoleDef(state.fishingHolesUnlocked) : null;
+      const holesGateForHud = CoreEconomy && typeof CoreEconomy.canUnlockAdditionalFishingHoles === 'function'
+        ? CoreEconomy.canUnlockAdditionalFishingHoles(state.totalRebirths)
+        : ((state.totalRebirths || 0) >= 5);
+      const nextHoleDef = (holesGateForHud && CoreEconomy) ? CoreEconomy.getNextFishingHoleDef(state.fishingHolesUnlocked) : null;
       if (nextHoleDef && state.fish >= nextHoleDef.cost) {
         affordableCount++;
       }

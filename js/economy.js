@@ -14,16 +14,37 @@
   const PRESTIGE_BONUS_PER_SHARD = 0.0125;          // +1.25% per Frost Essence (75% reduction from +5%)
   const MIN_FISHING_HOLES = 3;
   const MAX_FISHING_HOLES = 6;
+  const FISHING_HOLES_MIN_REBIRTHS = 5;             // Additional fishing holes (4-6) require 5 Glacial Rebirths
+  const WARDROBE_MIN_REBIRTHS = 6;                  // Colony Wardrobe unlocks after 6 Glacial Rebirths
   const MAX_IGLOO_TIER = 5;
-  const OFFLINE_BASE_RATE = 2 / 3;
-  const OFFLINE_FULL_CAP_SECONDS = 24 * 3600;       // 24 hours at full offline rate (2/3 DPS)
+
+  // Global penguin collection slowdown (~40% slower overall collection cycle)
+  const COLLECTION_SPEED_SCALE = 0.65;              // -35% waddle & slide velocity across all species
+  const DIVE_TIME_SCALE = 1.33;                     // +33% longer dive cycle across all species
+
+  // Scaling Colony Cap: 15 base + 5 per Glacier Level above 1 + 10 per Glacial Rebirth
+  const COLONY_CAP_BASE = 15;
+  const COLONY_CAP_PER_GLACIER_LEVEL = 5;
+  const COLONY_CAP_PER_REBIRTH = 10;
+
+  // Aurora Blessing cadence & nerfed Resonance Coils
+  const AURORA_BASE_INTERVAL_SEC = 540;             // 9 minutes base
+  const AURORA_COILS_REDUCTION_PER_LEVEL = 1;       // -1s per Resonance Coils level
+  const AURORA_MIN_INTERVAL_SEC = 420;              // 7 minutes hard floor
+
+  // Duplicate owned Legendary/Mythic perk instant fish conversion
+  const DUPLICATE_LEGENDARY_FISH_SECONDS = 120;
+  const DUPLICATE_MYTHIC_FISH_SECONDS = 240;
+
+  const OFFLINE_BASE_RATE = 0.35;                   // 35% offline idle rate
+  const OFFLINE_FULL_CAP_SECONDS = 24 * 3600;       // 24 hours at full offline rate (35% DPS)
   const OFFLINE_MAX_SECONDS = 7 * 24 * 3600;        // 7-day absolute ceiling
   const OFFLINE_DIMINISHING_FACTOR = 0.25;          // 25% of offline rate between 24h and 7d
   const OFFLINE_MIN_ELAPSED_SECONDS = 10;
   const OFFLINE_MIN_FISH_THRESHOLD = 5;
 
-  const GOLDEN_FISH_BASE_COOLDOWN_MIN = 78;
-  const GOLDEN_FISH_BASE_COOLDOWN_SPAN = 36;
+  const GOLDEN_FISH_BASE_COOLDOWN_MIN = 360;        // 6-9 min rare Golden Fish cadence
+  const GOLDEN_FISH_BASE_COOLDOWN_SPAN = 180;
   const GOLDEN_FISH_BOOST_MULTIPLIER = 2.0;
   const GOLDEN_FISH_DURATION_SEC = 7.2;
   const GOLDEN_FISH_MIN_REWARD = 50;
@@ -52,7 +73,7 @@
       tier: 2,
       id: 'twin_spire_keep',
       name: 'Twin-Spire Ice Keep',
-      cost: 3000000,
+      cost: 35000000,
       icon: '🗼',
       desc: 'Flanks the depot with sculpted crystal spires and an ornate frosted gatehouse.'
     },
@@ -60,7 +81,7 @@
       tier: 3,
       id: 'frosted_citadel',
       name: 'Frosted Citadel',
-      cost: 45000000,
+      cost: 3000000000,
       icon: '🏰',
       desc: 'Builds crenellated battlements, twin watch turrets, and fluttering colony banners.'
     },
@@ -68,7 +89,7 @@
       tier: 4,
       id: 'aurora_bastion',
       name: 'Aurora Bastion',
-      cost: 750000000,
+      cost: 75000000000,
       icon: '🏛️',
       desc: 'Raises a towering crystalline central keep with a stained-ice rose window and frost motes.'
     },
@@ -76,7 +97,7 @@
       tier: 5,
       id: 'grand_glacial_palace',
       name: 'Grand Glacial Palace',
-      cost: 15000000000,
+      cost: 1500000000000,
       icon: '👑',
       desc: 'Completes the full multi-spired Ice Castle with polar star finial, four crystal turrets, and royal aurora halo.'
     }
@@ -221,9 +242,9 @@
     { id: 1, name: 'West Starter Hole', desc: 'Shallow glacier cove near the western ridge', slots: 10, xRatio: 0.22, yRatio: 0.73, radiusX: 44, radiusY: 20, rippleOffset: 0.0, cost: 0, starter: true },
     { id: 2, name: 'Center Starter Hole', desc: 'Main colony plunge basin right below the igloo', slots: 10, xRatio: 0.50, yRatio: 0.81, radiusX: 50, radiusY: 22, rippleOffset: 1.2, cost: 0, starter: true },
     { id: 3, name: 'East Starter Hole', desc: 'Sheltered drift channel along the eastern shelf', slots: 10, xRatio: 0.78, yRatio: 0.74, radiusX: 44, radiusY: 20, rippleOffset: 2.4, cost: 0, starter: true },
-    { id: 4, name: 'Western Shelf Basin', desc: 'Carved outer ice basin expanding west-flank diving', slots: 10, xRatio: 0.16, yRatio: 0.59, radiusX: 40, radiusY: 18, rippleOffset: 0.6, cost: 15000, starter: false },
-    { id: 5, name: 'Eastern Shelf Basin', desc: 'Deep twilight fishing pool on the eastern shelf', slots: 10, xRatio: 0.84, yRatio: 0.59, radiusX: 40, radiusY: 18, rippleOffset: 1.8, cost: 750000, starter: false },
-    { id: 6, name: 'Deep Abyssal Rift', desc: 'Central thermal fissure teeming with midnight schools', slots: 10, xRatio: 0.50, yRatio: 0.67, radiusX: 44, radiusY: 19, rippleOffset: 3.0, cost: 25000000, starter: false }
+    { id: 4, name: 'Western Shelf Basin', desc: 'Carved outer ice basin expanding west-flank diving (Unlocks at 5 Rebirths)', slots: 10, xRatio: 0.16, yRatio: 0.59, radiusX: 40, radiusY: 18, rippleOffset: 0.6, cost: 150000, starter: false },
+    { id: 5, name: 'Eastern Shelf Basin', desc: 'Deep twilight fishing pool on the eastern shelf (Unlocks at 5 Rebirths)', slots: 10, xRatio: 0.84, yRatio: 0.59, radiusX: 40, radiusY: 18, rippleOffset: 1.8, cost: 2500000, starter: false },
+    { id: 6, name: 'Deep Abyssal Rift', desc: 'Central thermal fissure teeming with midnight schools (Unlocks at 5 Rebirths)', slots: 10, xRatio: 0.50, yRatio: 0.67, radiusX: 44, radiusY: 19, rippleOffset: 3.0, cost: 50000000, starter: false }
   ];
 
   function sanitizeFiniteNumber(value, fallback = 0, min = 0, max = MAX_SAFE_RESOURCE) {
@@ -346,6 +367,37 @@
     return count < MAX_FISHING_HOLES ? FISHING_HOLE_DEFS[count] : null;
   }
 
+  function calculateColonyCap(glacierLevel, totalRebirths = 0) {
+    const lvl = sanitizeInteger(glacierLevel, 1, 1, MAX_GLACIER_LEVEL);
+    const reb = sanitizeInteger(totalRebirths, 0, 0, 1e6);
+    return COLONY_CAP_BASE + Math.max(0, lvl - 1) * COLONY_CAP_PER_GLACIER_LEVEL + reb * COLONY_CAP_PER_REBIRTH;
+  }
+
+  function canUnlockAdditionalFishingHoles(totalRebirths = 0) {
+    return sanitizeInteger(totalRebirths, 0, 0, 1e6) >= FISHING_HOLES_MIN_REBIRTHS;
+  }
+
+  function isWardrobeUnlocked(totalRebirths = 0) {
+    return sanitizeInteger(totalRebirths, 0, 0, 1e6) >= WARDROBE_MIN_REBIRTHS;
+  }
+
+  function calculateAuroraIntervalSec(coilsLevel = 0) {
+    const lvl = sanitizeInteger(coilsLevel, 0, 0, 1e6);
+    return Math.max(AURORA_MIN_INTERVAL_SEC, AURORA_BASE_INTERVAL_SEC - lvl * AURORA_COILS_REDUCTION_PER_LEVEL);
+  }
+
+  function calculateDuplicatePerkFishBonus(rarity, persistentDps = 0) {
+    const safeDps = sanitizeFiniteNumber(persistentDps, 0, 0, MAX_SAFE_RESOURCE);
+    const isMythic = rarity === 'mythic';
+    const seconds = isMythic ? DUPLICATE_MYTHIC_FISH_SECONDS : DUPLICATE_LEGENDARY_FISH_SECONDS;
+    const minFloor = isMythic ? 500 : 250;
+    const raw = Math.round(safeDps * seconds);
+    const fish = (!Number.isFinite(raw) || raw > MAX_SAFE_RESOURCE)
+      ? MAX_SAFE_RESOURCE
+      : Math.max(minFloor, raw);
+    return { fish, seconds };
+  }
+
   function computeSafeFrameDeltaSec(nowMs, lastTimeMs, maxDt = 0.1) {
     if (!Number.isFinite(nowMs) || !Number.isFinite(lastTimeMs)) return 0;
     const raw = (nowMs - lastTimeMs) / 1000;
@@ -384,11 +436,21 @@
     availableFish,
     multiplier,
     firstTraitCostMult = 1.0,
-    maxBulk = 100
+    maxBulk = 100,
+    remainingCapSlots = null
   ) {
     const fish = sanitizeFiniteNumber(availableFish, 0, 0, MAX_SAFE_RESOURCE);
     const count = sanitizeInteger(currentCount, 0, 0, MAX_COUNT);
-    const cap = sanitizeInteger(maxBulk, 100, 1, 1000);
+    const baseCap = sanitizeInteger(maxBulk, 100, 1, 1000);
+    const hasCapLimit = remainingCapSlots !== null && remainingCapSlots !== undefined && Number.isFinite(Number(remainingCapSlots));
+    const slotsLeft = hasCapLimit ? Math.max(0, Math.floor(Number(remainingCapSlots))) : baseCap;
+
+    if (hasCapLimit && slotsLeft <= 0) {
+      const singleCost = calculatePenguinCost(speciesDef, count, firstTraitCostMult);
+      return { qty: 0, cost: singleCost, canAfford: false, capReached: true };
+    }
+
+    const cap = Math.min(baseCap, slotsLeft);
 
     if (multiplier === 'MAX') {
       let tempFish = fish;
@@ -413,12 +475,13 @@
 
       if (affordableQty === 0) {
         const singleCost = calculatePenguinCost(speciesDef, count, firstTraitCostMult);
-        return { qty: 1, cost: singleCost, canAfford: fish >= singleCost };
+        return { qty: 1, cost: singleCost, canAfford: fish >= singleCost, capReached: false };
       }
-      return { qty: affordableQty, cost: totalCost, canAfford: fish >= totalCost };
+      return { qty: affordableQty, cost: totalCost, canAfford: fish >= totalCost, capReached: false };
     }
 
-    const qty = sanitizeInteger(multiplier, 1, 1, cap);
+    const desiredQty = sanitizeInteger(multiplier, 1, 1, baseCap);
+    const qty = Math.min(desiredQty, cap);
     let totalCost = 0;
     for (let i = 0; i < qty; i++) {
       const nextCost = calculatePenguinCost(speciesDef, count + i, i === 0 ? firstTraitCostMult : 1.0);
@@ -428,7 +491,7 @@
         break;
       }
     }
-    return { qty, cost: totalCost, canAfford: fish >= totalCost && totalCost < MAX_SAFE_RESOURCE };
+    return { qty, cost: totalCost, canAfford: fish >= totalCost && totalCost < MAX_SAFE_RESOURCE, capReached: false };
   }
 
   function calculateTechCost(techDef, currentLevel) {
@@ -631,7 +694,19 @@
     PRESTIGE_BONUS_PER_SHARD,
     MIN_FISHING_HOLES,
     MAX_FISHING_HOLES,
+    FISHING_HOLES_MIN_REBIRTHS,
+    WARDROBE_MIN_REBIRTHS,
     MAX_IGLOO_TIER,
+    COLLECTION_SPEED_SCALE,
+    DIVE_TIME_SCALE,
+    COLONY_CAP_BASE,
+    COLONY_CAP_PER_GLACIER_LEVEL,
+    COLONY_CAP_PER_REBIRTH,
+    AURORA_BASE_INTERVAL_SEC,
+    AURORA_COILS_REDUCTION_PER_LEVEL,
+    AURORA_MIN_INTERVAL_SEC,
+    DUPLICATE_LEGENDARY_FISH_SECONDS,
+    DUPLICATE_MYTHIC_FISH_SECONDS,
     IGLOO_TIERS,
     IGLOO_THEMES,
     FISHING_HOLE_DEFS,
@@ -662,6 +737,11 @@
     getIglooThemeDef,
     getActiveFishingHoleDefs,
     getNextFishingHoleDef,
+    calculateColonyCap,
+    canUnlockAdditionalFishingHoles,
+    isWardrobeUnlocked,
+    calculateAuroraIntervalSec,
+    calculateDuplicatePerkFishBonus,
     computeSafeFrameDeltaSec,
     positiveModulo,
     calculateGlacierLevelMultiplier,

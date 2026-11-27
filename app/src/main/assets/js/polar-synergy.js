@@ -8,6 +8,9 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
+  const HOTSPOT_ACTIVE_DURATION_SEC = 30;  // Strictly 30s active window, 1 Hotspot active at a time
+  const HOTSPOT_COOLDOWN_MIN_SEC = 300;    // 5 minutes min between Hotspots
+  const HOTSPOT_COOLDOWN_MAX_SEC = 420;    // 7 minutes max between Hotspots
   const HOTSPOT_SURGE_DURATION_SEC = 20;
   const HOTSPOT_EVENT_SURGE_ADD = 0.25;
   const MAX_HOTSPOT_BONUS = 0.85; // Hard cap: +85% (1.85x max Hotspot multiplier)
@@ -174,6 +177,74 @@
     return Math.min(HOTSPOT_SURGE_DURATION_SEC, n);
   }
 
+  function rollHotspotCooldownSec(rng) {
+    const r = typeof rng === 'function' ? rng() : Math.random();
+    const clamped = Math.max(0, Math.min(1, Number.isFinite(Number(r)) ? Number(r) : 0.5));
+    return HOTSPOT_COOLDOWN_MIN_SEC + clamped * (HOTSPOT_COOLDOWN_MAX_SEC - HOTSPOT_COOLDOWN_MIN_SEC);
+  }
+
+  /**
+   * Advances the single-Hotspot 30-second active window & 5-7 minute cooldown lifecycle.
+   * Guarantees at most ONE Hotspot hole is active at any instant and strictly lasts 30 seconds.
+   */
+  function stepHotspotLifecycle(current = {}, dtSec = 0, options = {}) {
+    const safeDt = Number.isFinite(Number(dtSec)) && Number(dtSec) > 0 ? Number(dtSec) : 0;
+    const weatherId = options.weatherId || 'clear';
+    const unlockedHoleIds = Array.isArray(options.unlockedHoleIds) && options.unlockedHoleIds.length > 0
+      ? options.unlockedHoleIds.filter(id => Number.isFinite(Number(id)))
+      : [1, 2, 3];
+    const rng = typeof options.rng === 'function' ? options.rng : Math.random;
+
+    let holeId = (current.holeId !== null && current.holeId !== undefined && unlockedHoleIds.includes(current.holeId))
+      ? current.holeId
+      : null;
+    let activeTimer = (holeId !== null && Number.isFinite(Number(current.activeTimer)) && Number(current.activeTimer) > 0)
+      ? Math.min(HOTSPOT_ACTIVE_DURATION_SEC, Number(current.activeTimer))
+      : 0;
+    let cooldownTimer = (Number.isFinite(Number(current.cooldownTimer)) && Number(current.cooldownTimer) > 0)
+      ? Number(current.cooldownTimer)
+      : rollHotspotCooldownSec(rng);
+    let rotationEpoch = Number.isFinite(Number(current.rotationEpoch)) ? Math.max(0, Math.floor(Number(current.rotationEpoch))) : 0;
+    let surgeTimer = (holeId !== null && activeTimer > 0) ? clampHotspotSurgeTimer(current.surgeTimer) : 0;
+
+    let spawned = false;
+    let expired = false;
+
+    if (holeId !== null && activeTimer > 0) {
+      activeTimer = Math.max(0, activeTimer - safeDt);
+      surgeTimer = Math.max(0, surgeTimer - safeDt);
+      if (activeTimer <= 0) {
+        holeId = null;
+        activeTimer = 0;
+        surgeTimer = 0;
+        cooldownTimer = rollHotspotCooldownSec(rng);
+        expired = true;
+      }
+    } else {
+      holeId = null;
+      activeTimer = 0;
+      surgeTimer = 0;
+      cooldownTimer = Math.max(0, cooldownTimer - safeDt);
+      if (cooldownTimer <= 0) {
+        rotationEpoch += 1;
+        holeId = selectHotspotHoleId(weatherId, unlockedHoleIds, rotationEpoch);
+        activeTimer = HOTSPOT_ACTIVE_DURATION_SEC;
+        cooldownTimer = 0;
+        spawned = true;
+      }
+    }
+
+    return {
+      holeId,
+      activeTimer,
+      cooldownTimer,
+      surgeTimer,
+      rotationEpoch,
+      spawned,
+      expired
+    };
+  }
+
   /**
    * Stable 4-Rule Hotspot Routing for diving penguins:
    * 1. Prefer the active Hotspot Hole if it has an open dive slot.
@@ -241,6 +312,9 @@
   }
 
   return {
+    HOTSPOT_ACTIVE_DURATION_SEC,
+    HOTSPOT_COOLDOWN_MIN_SEC,
+    HOTSPOT_COOLDOWN_MAX_SEC,
     HOTSPOT_SURGE_DURATION_SEC,
     HOTSPOT_EVENT_SURGE_ADD,
     MAX_HOTSPOT_BONUS,
@@ -252,6 +326,8 @@
     calculateEffectiveYield,
     selectHotspotHoleId,
     clampHotspotSurgeTimer,
+    rollHotspotCooldownSec,
+    stepHotspotLifecycle,
     chooseFishingHoleForPenguin,
     stripTransientBoostsForOffline
   };

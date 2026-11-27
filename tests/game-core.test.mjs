@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-import { runProfileSimulation } from './pacing-simulator.mjs';
+import { runProfileSimulation, runMultiDayFrostedCitadelSimulation } from './pacing-simulator.mjs';
 
 const require = createRequire(import.meta.url);
 const Economy = require('../js/economy.js');
@@ -93,6 +93,33 @@ test('Economy: bulk penguin and tech purchases handle fixed qty, MAX, and insuff
   assert.equal(maxTech.qty, 2);
   assert.equal(maxTech.cost, 117);
   assert.equal(maxTech.canAfford, true);
+
+  // Update 2.7.2: Colony Cap scaling (15 + 5*(Lv-1) + 10*Rebirths) & bulk cap clamping
+  assert.equal(Economy.calculateColonyCap(1, 0), 15);
+  assert.equal(Economy.calculateColonyCap(2, 0), 20);
+  assert.equal(Economy.calculateColonyCap(1, 1), 25);
+  assert.equal(Economy.calculateColonyCap(10, 6), 15 + 45 + 60);
+
+  const clampedBuy = Economy.calculateBulkPenguinPurchase(adelie, 1, 100000, 10, 1.0, 100, 3);
+  assert.equal(clampedBuy.qty, 3);
+  assert.equal(clampedBuy.capReached, false);
+  const fullCapBuy = Economy.calculateBulkPenguinPurchase(adelie, 1, 100000, 1, 1.0, 100, 0);
+  assert.equal(fullCapBuy.qty, 0);
+  assert.equal(fullCapBuy.canAfford, false);
+  assert.equal(fullCapBuy.capReached, true);
+
+  // Update 2.7.2: Prestige gates, 9m Aurora cadence with -1s/lv Coils & 7m floor, duplicate Legendary/Mythic fish bonus
+  assert.equal(Economy.canUnlockAdditionalFishingHoles(4), false);
+  assert.equal(Economy.canUnlockAdditionalFishingHoles(5), true);
+  assert.equal(Economy.isWardrobeUnlocked(5), false);
+  assert.equal(Economy.isWardrobeUnlocked(6), true);
+  assert.equal(Economy.calculateAuroraIntervalSec(0), 540);
+  assert.equal(Economy.calculateAuroraIntervalSec(10), 530);
+  assert.equal(Economy.calculateAuroraIntervalSec(500), 420);
+  assert.deepEqual(Economy.calculateDuplicatePerkFishBonus('legendary', 100), { fish: 12000, seconds: 120 });
+  assert.deepEqual(Economy.calculateDuplicatePerkFishBonus('mythic', 100), { fish: 24000, seconds: 240 });
+  assert.deepEqual(Economy.calculateDuplicatePerkFishBonus('legendary', 0), { fish: 250, seconds: 120 });
+  assert.deepEqual(Economy.calculateDuplicatePerkFishBonus('mythic', 0), { fish: 500, seconds: 240 });
 });
 
 test('Economy: prestige shards (+1.25% each, 75% reduced) and glacier level scaling preserve progression rules', () => {
@@ -118,18 +145,20 @@ test('Economy: Igloo-to-Ice-Castle tiers, color palettes, purchasable fishing ho
     assert.ok(Economy.IGLOO_TIERS[i].cost > Economy.IGLOO_TIERS[i - 1].cost, 'Castle tiers must escalate substantially');
   }
   assert.equal(Economy.getNextIglooTierDef(0).tier, 1);
-  assert.equal(Economy.IGLOO_TIERS[1].cost, 65000); // Tuned Lantern-Lit Igloo (v2.7)
+  assert.equal(Economy.IGLOO_TIERS[1].cost, 65000);
+  assert.equal(Economy.IGLOO_TIERS[3].cost, 3000000000); // Calibrated 3-5 day Frosted Citadel (v2.7.2)
   assert.equal(Economy.getNextIglooTierDef(5), null);
 
   assert.equal(Economy.IGLOO_THEMES.length, 6);
   assert.equal(Economy.getIglooThemeDef('glacier').cost, 0);
   assert.equal(Economy.getIglooThemeDef('unknown_theme').id, 'glacier');
 
-  // Fishing holes: 3 starter + 3 purchasable = 6 max
+  // Fishing holes: 3 starter + 3 purchasable = 6 max (4-6 gated behind 5 Rebirths)
   assert.equal(Economy.MIN_FISHING_HOLES, 3);
   assert.equal(Economy.MAX_FISHING_HOLES, 6);
+  assert.equal(Economy.FISHING_HOLES_MIN_REBIRTHS, 5);
   assert.equal(Economy.FISHING_HOLE_DEFS.length, 6);
-  assert.equal(Economy.FISHING_HOLE_DEFS[3].cost, 15000); // Tuned Western Shelf Basin (v2.7)
+  assert.equal(Economy.FISHING_HOLE_DEFS[3].cost, 150000);
   assert.equal(Economy.getActiveFishingHoleDefs(3).length, 3);
   assert.equal(Economy.getActiveFishingHoleDefs(1).length, 3);
   assert.equal(Economy.getActiveFishingHoleDefs(6).length, 6);
@@ -175,14 +204,15 @@ test('Economy: offline earnings enforce 24h full + diminishing up to 7d and bloc
   assert.equal(backward.earned, 0);
   assert.equal(backward.clockMovedBackward, true);
 
-  // 12 hours -> full offline rate (2/3 DPS)
+  // 12 hours -> full offline rate (35% DPS in v2.7.2)
+  assert.equal(Economy.OFFLINE_BASE_RATE, 0.35);
   const twelveHours = Economy.calculateOfflineEarnings({
     dps: 30,
     lastSaveTimeMs: now - 12 * 3600 * 1000,
     nowMs: now
   });
   assert.equal(twelveHours.capped, false);
-  assert.equal(twelveHours.earned, Math.floor(30 * (12 * 3600) * (2 / 3)));
+  assert.equal(twelveHours.earned, Math.floor(30 * (12 * 3600) * 0.35));
 
   // 48 hours -> 24h full + 24h * 0.25 = 30 effective hours
   const fortyEightHours = Economy.calculateOfflineEarnings({
@@ -192,7 +222,7 @@ test('Economy: offline earnings enforce 24h full + diminishing up to 7d and bloc
   });
   assert.equal(fortyEightHours.capped, true);
   assert.equal(fortyEightHours.effectiveSec, 30 * 3600);
-  assert.equal(fortyEightHours.earned, Math.floor(30 * (30 * 3600) * (2 / 3)));
+  assert.equal(fortyEightHours.earned, Math.floor(30 * (30 * 3600) * 0.35));
 
   // 30 days -> capped at 7d ceiling (24h + 6d * 0.25 = 60 effective hours)
   const thirtyDays = Economy.calculateOfflineEarnings({
@@ -246,8 +276,10 @@ test('Golden Fish: cooldown ticks at 2x when perk timer active, pauses when bloc
   assert.equal(blocked.nextCooldownSec, 5);
   assert.equal(blocked.shouldSpawn, false);
 
-  // Next cooldown is halved when boost active
+  // Rare Golden Fish base cooldown is 6–9 minutes (360–540s) and halved when boost active
+  assert.equal(Economy.GOLDEN_FISH_BASE_COOLDOWN_MIN, 360);
   const baseCd = Economy.computeGoldenFishNextCooldown({ goldenFishTimerSec: 0, rng: () => 0.5 });
+  assert.equal(baseCd, 450);
   const boostedCd = Economy.computeGoldenFishNextCooldown({ goldenFishTimerSec: 30, rng: () => 0.5 });
   assert.equal(boostedCd, baseCd / 2);
 
@@ -459,18 +491,23 @@ test('SaveSystem: migrates legacy v0 saves, sanitizes corrupt values/NaN/prototy
   assert.deepEqual(sanitizedV4.data.unlockedHats, ['none', 'scarf', 'star_crown']);
   assert.equal(sanitizedV4.data.equippedHat, 'none');
   assert.equal(sanitizedV4.data.speciesHats.adelie, 'scarf');
-  assert.equal(sanitizedV4.data.speciesHats.emperor, 'star_crown');
+  assert.equal(sanitizedV4.data.speciesHats.emperor, 'none'); // Emperor cannot wear star_crown (v2.7.2)
   assert.equal(sanitizedV4.data.speciesHats.cyber, 'none');
   assert.equal(sanitizedV4.data.skyEventsCaught, 19);
   assert.equal(sanitizedV4.data.bestSkyCombo, 5);
   assert.equal(sanitizedV4.data.paradesWitnessed, 4);
 
-  // Native v5 save preserves valid permanent/run milestones, skipped list, and settings without re-migrating
+  // Native v5 save preserves valid permanent/run milestones, clamps legacy Legendary/Mythic perk stacks to 1
   const nativeV5 = SaveSystem.sanitizeSaveData({
     saveVersion: 5,
     fish: 250,
     lifetimeFish: 500,
     runFish: 500,
+    collectedPerks: [
+      { id: 'c_sharp', name: 'Sharp Beak', icon: '🗡️', rarity: 'common', desc: '+4% Yield', count: 5 },
+      { id: 'l_midas', name: 'Midas Touch', icon: '👑', rarity: 'legendary', desc: '+14% Yield', count: 4 },
+      { id: 'm_eternal', name: 'Eternal Frost', icon: '🌌', rarity: 'mythic', desc: '+20% Yield', count: 3 }
+    ],
     completedPermanentMilestones: ['recruit_5_adelie', 'castle_tier_1', 'bogus_id'], // castle_tier_1 is run-scoped -> stripped from permanent
     completedRunMilestones: ['carve_fourth_hole', 'recruit_5_adelie'],
     skippedMilestones: ['catch_sky_or_parade'],
@@ -481,6 +518,11 @@ test('SaveSystem: migrates legacy v0 saves, sanitizes corrupt values/NaN/prototy
   }, {}, now);
   assert.equal(nativeV5.migrated, false);
   assert.equal(nativeV5.data.saveVersion, 5);
+  assert.equal(nativeV5.data.collectedPerks.find(p => p.id === 'c_sharp').count, 5);
+  assert.equal(nativeV5.data.collectedPerks.find(p => p.id === 'l_midas').count, 1);
+  assert.equal(nativeV5.data.collectedPerks.find(p => p.id === 'm_eternal').count, 1);
+  assert.ok(nativeV5.repairs.includes('clamped_perk_l_midas'));
+  assert.ok(nativeV5.repairs.includes('clamped_perk_m_eternal'));
   assert.ok(nativeV5.data.completedPermanentMilestones.includes('recruit_5_adelie'));
   assert.equal(nativeV5.data.completedPermanentMilestones.includes('castle_tier_1'), false);
   assert.deepEqual(nativeV5.data.skippedMilestones, ['catch_sky_or_parade']);
@@ -544,13 +586,33 @@ test('Wardrobe: Ultra-Prestige Frost Essence catalog, 4s tap-again safety guard,
       time: 1.0
     });
   }
+  // Update 2.7.2: 6-Rebirth Wardrobe gate & Emperor Penguin Starlight Crown exclusion
+  assert.equal(Wardrobe.WARDROBE_MIN_REBIRTHS, 6);
+  assert.equal(Wardrobe.isWardrobeUnlocked(5), false);
+  assert.equal(Wardrobe.isWardrobeUnlocked(6), true);
+  assert.equal(Wardrobe.canSpeciesWearHat('emperor', 'star_crown'), false);
+  assert.equal(Wardrobe.canSpeciesWearHat('adelie', 'star_crown'), true);
+  assert.equal(Wardrobe.canSpeciesWearHat('emperor', 'goggles'), true);
+  assert.equal(Wardrobe.resolveHatForSpecies('emperor', 'star_crown'), 'none');
+  assert.equal(Wardrobe.resolveHatForSpecies('adelie', 'star_crown'), 'star_crown');
+
+  const sanitizedW = Wardrobe.sanitizeWardrobeState(
+    ['none', 'star_crown', 'scarf'],
+    'star_crown',
+    { adelie: 'star_crown', emperor: 'star_crown', gentoo: 'scarf' }
+  );
+  assert.equal(sanitizedW.speciesHats.adelie, 'star_crown');
+  assert.equal(sanitizedW.speciesHats.emperor, 'none');
+  assert.equal(sanitizedW.speciesHats.gentoo, 'scarf');
 });
 
-test('SkyEvents: Shooting Stars stay in top 20% sky, Krill Swarm respects expanded sheet, Sky Combo builds to 5x & triggers 2x Starlight Frenzy', () => {
-  assert.equal(SkyEvents.STARLIGHT_FRENZY_MULTIPLIER, 2);
-  assert.equal(SkyEvents.STARLIGHT_FRENZY_DURATION_SEC, 15);
-  assert.equal(SkyEvents.SKY_COMBO_MAX, 5);
-  assert.equal(SkyEvents.SKY_COMBO_DECAY_SEC, 20);
+test('SkyEvents: rare standalone Shooting Stars (3–4.5m) in top 20% sky & Krill Swarms (4–6m), with Sky Combo completely removed', () => {
+  assert.equal(SkyEvents.SHOOTING_STAR_MIN_CD, 180);
+  assert.equal(SkyEvents.SHOOTING_STAR_MAX_CD, 270);
+  assert.equal(SkyEvents.KRILL_SWARM_MIN_CD, 240);
+  assert.equal(SkyEvents.KRILL_SWARM_MAX_CD, 360);
+  assert.equal('SKY_COMBO_MAX' in SkyEvents, false);
+  assert.equal('STARLIGHT_FRENZY_MULTIPLIER' in SkyEvents, false);
 
   const ctrl = new SkyEvents.SkyMiniEventController({
     initialStarCooldownSec: 0.2,
@@ -564,12 +626,12 @@ test('SkyEvents: Shooting Stars stay in top 20% sky, Krill Swarm respects expand
   assert.equal(ctrl.activeKrill, null, 'Expected Krill Swarm to pause when menu is expanded');
   assert.ok(ctrl.activeStar.y >= 800 * 0.08 && ctrl.activeStar.y <= 800 * 0.18, 'Shooting Star must stay within top 20% sky band');
 
-  // Catching 3 events builds Sky Combo 1 -> 2 -> 3 and triggers 15s 2x Starlight Frenzy
+  // Standalone Shooting Star catch awards flat bonus with no Sky Combo / Starlight Frenzy
   const catch1 = ctrl.tryCatch(ctrl.activeStar.x, ctrl.activeStar.y, { dps: 100, sheetExpanded: true });
   assert.equal(catch1.caught, true);
   assert.equal(catch1.kind, 'shooting_star');
-  assert.equal(catch1.comboCount, 1);
-  assert.equal(catch1.frenzyTriggered, false);
+  assert.ok(catch1.rewardFish > 0);
+  assert.equal(ctrl.starCooldownSec, 225); // 180 + 0.5 * 90
 
   // Un-expand sheet -> Krill Swarm can spawn on visible ice shelf
   ctrl.update(0.25, { width: 390, height: 800, sheetExpanded: false, visibleBottomY: 620, isBlocked: false });
@@ -577,35 +639,31 @@ test('SkyEvents: Shooting Stars stay in top 20% sky, Krill Swarm respects expand
   const catch2 = ctrl.tryCatch(ctrl.activeKrill.x, ctrl.activeKrill.y, { dps: 100, sheetExpanded: false });
   assert.equal(catch2.caught, true);
   assert.equal(catch2.kind, 'krill_swarm');
-  assert.equal(catch2.comboCount, 2);
-  assert.equal(catch2.frenzyTriggered, false);
+  assert.ok(catch2.rewardFish > 0);
+  assert.equal(ctrl.krillCooldownSec, 300); // 240 + 0.5 * 120
 
-  // 3rd catch triggers Starlight Frenzy
-  ctrl.spawnShootingStar(390, 800);
-  const catch3 = ctrl.tryCatch(ctrl.activeStar.x, ctrl.activeStar.y, { dps: 100, sheetExpanded: true });
-  assert.equal(catch3.caught, true);
-  assert.equal(catch3.comboCount, 3);
-  assert.equal(catch3.frenzyTriggered, true);
-  assert.equal(catch3.frenzyDurationSec, 15);
-
-  // Combo decay pauses while blocked by modals/cutscenes, then decays to 0 after 20s unblocked
-  ctrl.update(0.25, { width: 390, height: 800, sheetExpanded: true, isBlocked: true });
-  assert.equal(ctrl.comboCount, 3);
-  for (let i = 0; i < 84; i++) {
-    ctrl.update(0.25, { width: 390, height: 800, sheetExpanded: true, isBlocked: false });
-  }
-  assert.equal(ctrl.comboCount, 0);
   ctrl.resetTransient();
   assert.equal(ctrl.activeStar, null);
   assert.equal(ctrl.activeKrill, null);
 });
 
-test('GameData & SceneRenderer & DailyManager: extracted modules expose complete data and render Hotspot & Landmarks safely', () => {
+test('GameData & SceneRenderer & DailyManager: 40-perk pool, nerfed Coils, v2.7.2 release metadata, and Hotspot/Landmark rendering', () => {
   assert.equal(GameData.PENGUIN_SPECIES.length, 5);
   assert.equal(GameData.GLACIER_TECH.length, 6);
-  assert.equal(GameData.AURORA_PERKS_POOL.length, 28);
+  const coils = GameData.GLACIER_TECH.find(t => t.id === 'aurora_coils');
+  assert.equal(coils.effect, 1);
+
+  assert.equal(GameData.AURORA_PERKS_POOL.length, 40);
+  const perkIds = new Set(GameData.AURORA_PERKS_POOL.map(p => p.id));
+  assert.equal(perkIds.size, 40, 'All 40 Aurora perks must have unique IDs');
+  assert.equal(GameData.AURORA_PERKS_POOL.filter(p => p.rarity === 'legendary').length, 8);
+  assert.equal(GameData.AURORA_PERKS_POOL.filter(p => p.rarity === 'mythic').length, 6);
+  assert.equal(GameData.isCappedPerkRarity('legendary'), true);
+  assert.equal(GameData.isCappedPerkRarity('mythic'), true);
+  assert.equal(GameData.isCappedPerkRarity('rare'), false);
+
   assert.equal(GameData.ACHIEVEMENTS_LIST.length, 22);
-  assert.equal(GameData.LATEST_FEATURE_RELEASE.version, '2.7');
+  assert.equal(GameData.LATEST_FEATURE_RELEASE.version, '2.7.2');
   assert.equal(typeof DailyManager.DailyObjectivesManager, 'function');
   const sky = SceneRenderer.getCurrentSkyAtmosphere(-15);
   assert.match(sky.top, /^rgb\(/);
@@ -772,6 +830,26 @@ test('MilestoneEngine: deterministic priority scoring, stickiness, Castle-before
   const completeRes = MilestoneEngine.selectActiveMilestone(maxed);
   assert.equal(completeRes.milestone.id, 'all_milestones_complete');
   assert.equal(completeRes.milestone.canSkip, false);
+
+  // Update 2.7.2: Fishing Hole 4 milestone respects 5-Rebirth gate & Wardrobe milestone respects 6-Rebirth gate
+  const preGate = {
+    fish: 500000, runFish: 500000, lifetimeFish: 500000, glacierLevel: 10,
+    iglooTier: 1, fishingHolesUnlocked: 3, totalRebirths: 4, prestigeShards: 150,
+    skyEventsCaught: 3, paradesWitnessed: 1, unlockedHats: ['none'],
+    penguins: { adelie: { count: 10 }, gentoo: { count: 5 }, chinstrap: { count: 5 }, emperor: { count: 2 }, cyber: { count: 1 } },
+    tech: { thermal_parkas: 3 },
+    completedPermanentMilestones: ['recruit_5_adelie', 'unlock_gentoo', 'unlock_chinstrap', 'unlock_emperor', 'first_rebirth', 'catch_sky_or_parade', 'unlock_cyber_penguin'],
+    completedRunMilestones: ['first_tech_upgrade', 'castle_tier_1']
+  };
+  const preGatePick = MilestoneEngine.selectActiveMilestone(preGate);
+  assert.notEqual(preGatePick.milestone.id, 'carve_fourth_hole');
+  assert.notEqual(preGatePick.milestone.id, 'first_wardrobe_accessory');
+
+  const atFiveReb = { ...preGate, totalRebirths: 5 };
+  assert.equal(MilestoneEngine.selectActiveMilestone(atFiveReb).milestone.id, 'carve_fourth_hole');
+
+  const atSixReb = { ...preGate, totalRebirths: 6, fishingHolesUnlocked: 4 };
+  assert.equal(MilestoneEngine.selectActiveMilestone(atSixReb).milestone.id, 'first_wardrobe_accessory');
 });
 
 test('PolarSynergy: single-source yield math, additive capped Event Surge (1.85x), Parade no-double-count, and mid-walk Hotspot shift stability', () => {
@@ -833,20 +911,74 @@ test('PolarSynergy: single-source yield math, additive capped Event Surge (1.85x
   ];
   const fallbackPick = PolarSynergy.chooseFishingHoleForPenguin({ currentTargetHoleId: null, holes: fullHotspotHoles, hotspotHoleId: 2, rng: () => 0 });
   assert.equal(fallbackPick.id, 3);
+
+  // Update 2.7.2: Timed 30-second single-active Hotspot lifecycle (5–7 min cooldown)
+  assert.equal(PolarSynergy.HOTSPOT_ACTIVE_DURATION_SEC, 30);
+  assert.equal(PolarSynergy.HOTSPOT_COOLDOWN_MIN_SEC, 300);
+  assert.equal(PolarSynergy.HOTSPOT_COOLDOWN_MAX_SEC, 420);
+  assert.equal(PolarSynergy.rollHotspotCooldownSec(() => 0), 300);
+  assert.equal(PolarSynergy.rollHotspotCooldownSec(() => 1), 420);
+
+  // Cooldown reaches 0 -> activates exactly 1 Hotspot hole for 30s
+  const activated = PolarSynergy.stepHotspotLifecycle(
+    { holeId: null, activeTimer: 0, cooldownTimer: 3, surgeTimer: 0, rotationEpoch: 0 },
+    5,
+    { weatherId: 'clear', unlockedHoleIds: [1, 2, 3], rng: () => 0.5 }
+  );
+  assert.equal(activated.spawned, true);
+  assert.ok([1, 2, 3].includes(activated.holeId));
+  assert.equal(activated.activeTimer, 30);
+
+  // Active 30s window ticks down and expires back to null + fresh 5–7 min cooldown
+  const midActive = PolarSynergy.stepHotspotLifecycle(
+    activated,
+    10,
+    { weatherId: 'clear', unlockedHoleIds: [1, 2, 3], rng: () => 0.5 }
+  );
+  assert.equal(midActive.holeId, activated.holeId);
+  assert.equal(midActive.activeTimer, 20);
+
+  const expired = PolarSynergy.stepHotspotLifecycle(
+    midActive,
+    21,
+    { weatherId: 'clear', unlockedHoleIds: [1, 2, 3], rng: () => 0.5 }
+  );
+  assert.equal(expired.expired, true);
+  assert.equal(expired.holeId, null);
+  assert.equal(expired.activeTimer, 0);
+  assert.equal(expired.cooldownTimer, 360);
 });
 
-test('Pacing & Time-State Simulator: Efficient, Casual, Active, and Idle profiles validate tuned early-game pacing and zero transient offline leakage', () => {
+test('Pacing & Time-State Simulator: early-to-Rebirth profiles, Colony Cap integrity, and 3–5 day mostly-idle Frosted Citadel pacing', () => {
   for (const profile of ['efficient', 'casual', 'active', 'idle']) {
-    const { timeline } = runProfileSimulation(profile, { hole4Cost: 15000, igloo1Cost: 65000, maxMinutes: 180 });
+    const { timeline } = runProfileSimulation(profile);
     assert.equal(timeline.deadEndDetected, false, `${profile} profile hit a dead end`);
     assert.equal(timeline.unreachableCount, 0, `${profile} profile had unreachable milestones`);
+    assert.equal(timeline.colonyCapViolated, false, `${profile} profile violated Colony Cap`);
     assert.equal(timeline.transientLeakDetected, false, `${profile} profile leaked transient bonuses across offline gap`);
-    assert.ok(timeline.hole4Min !== null, `${profile} must unlock Fishing Hole 4`);
     assert.ok(timeline.castle1Min !== null, `${profile} must build Lantern-Lit Igloo Tier 1`);
     assert.ok(timeline.rebirth1Min !== null, `${profile} must complete First Rebirth`);
-    assert.ok(timeline.hole4Min <= timeline.rebirth1Min, `${profile}: Hole 4 should precede Rebirth`);
     assert.ok(timeline.castle1Min <= timeline.rebirth1Min, `${profile}: Castle Tier 1 should precede Rebirth`);
   }
+
+  // Multi-day mostly-idle simulation validates Frosted Citadel lands inside 3–5 days (72–125h)
+  const idleZeroReb = runMultiDayFrostedCitadelSimulation({ targetRebirthsBeforePush: 0 });
+  const idleTwoReb = runMultiDayFrostedCitadelSimulation({ targetRebirthsBeforePush: 2 });
+  const idleThreeReb = runMultiDayFrostedCitadelSimulation({ targetRebirthsBeforePush: 3 });
+  assert.equal(idleZeroReb.transientLeakDetected, false);
+  assert.equal(idleTwoReb.transientLeakDetected, false);
+  assert.ok(
+    idleZeroReb.frostedCitadelHours >= 72 && idleZeroReb.frostedCitadelHours <= 125,
+    `Expected 0-rebirth mostly-idle Frosted Citadel in 72–125h, got ${idleZeroReb.frostedCitadelHours}h`
+  );
+  assert.ok(
+    idleTwoReb.frostedCitadelHours >= 72 && idleTwoReb.frostedCitadelHours <= 125,
+    `Expected 2-rebirth mostly-idle Frosted Citadel in 72–125h, got ${idleTwoReb.frostedCitadelHours}h`
+  );
+  assert.ok(
+    idleThreeReb.frostedCitadelHours >= 72 && idleThreeReb.frostedCitadelHours <= 125,
+    `Expected 3-rebirth mostly-idle Frosted Citadel in 72–125h, got ${idleThreeReb.frostedCitadelHours}h`
+  );
 });
 
 test('ParadeEvent: 15-minute cadence, full-colony single-file march, chimes, 2x boost, enrollment, and Rebirth cancellation', () => {
@@ -1118,29 +1250,30 @@ test('Integration invariants: viewport zoom policy, modular CSS, offline PWA cac
     assert.match(sw, new RegExp(`'\\.\\/js\\/${scriptName.replace('.', '\\.')}'`), `Missing SW precache entry: ${scriptName}`);
   }
   assert.doesNotMatch(html, /<style>/i, 'Inline <style> block should be fully extracted into styles/*.css');
-  assert.ok(html.split('\n').length < 7800, 'index.html should remain compact after modular JS extraction');
+  assert.ok(html.split('\n').length < 8000, 'index.html should remain compact after modular JS extraction');
 
   // 80% vertical menu cap, top-HUD interactivity, and Next Milestone mobile layout protection CSS invariants
   const coreCss = fs.readFileSync(path.join(ROOT, 'styles/core.css'), 'utf8');
   assert.match(coreCss, /#top-bar\s*\{[\s\S]*?z-index:\s*48;/);
   assert.match(coreCss, /#bottom-sheet\.expanded\s*\{[\s\S]*?height:\s*80dvh;[\s\S]*?max-height:\s*80dvh;[\s\S]*?z-index:\s*35;/);
   assert.match(coreCss, /@media\s*\(max-height:\s*540px\)/);
-  assert.match(html, /id="sky-combo-pill"/);
+  assert.doesNotMatch(html, /id="sky-combo-pill"/);
+  assert.match(html, /function openDailyTabFromNotification/);
   assert.match(html, /id="milestone-bar"/);
   assert.match(html, /id="milestone-go-btn"/);
   assert.match(html, /id="milestone-skip-btn"/);
   assert.match(html, /calculatePersistentOfflineDPS/);
   assert.match(html, /decayTransientTimers/);
 
-  // Version 2.7 consistency across HTML, GameData, Service Worker, Android Gradle, and README
+  // Version 2.7.2 consistency across HTML, GameData, Service Worker, Android Gradle, and README
   const gradleKts = fs.readFileSync(path.join(ROOT, 'app/build.gradle.kts'), 'utf8');
   const readmeMd = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
-  assert.match(html, /id="splash-version-label"[^>]*>v2\.7</);
-  assert.equal(GameData.LATEST_FEATURE_RELEASE.version, '2.7');
-  assert.match(sw, /penguin-glacial-empire-v27/);
-  assert.match(gradleKts, /versionName\s*=\s*"2\.7"/);
-  assert.match(gradleKts, /versionCode\s*=\s*17/);
-  assert.match(readmeMd, /Penguin Glacial Empire \(v2\.7\)/);
+  assert.match(html, /id="splash-version-label"[^>]*>v2\.7\.2</);
+  assert.equal(GameData.LATEST_FEATURE_RELEASE.version, '2.7.2');
+  assert.match(sw, /penguin-glacial-empire-v272/);
+  assert.match(gradleKts, /versionName\s*=\s*"2\.7\.2"/);
+  assert.match(gradleKts, /versionCode\s*=\s*18/);
+  assert.match(readmeMd, /Penguin Glacial Empire \(v2\.7\.2\)/);
 
   // Themed Glacial Rebirth modal replaces native browser confirm()
   assert.match(html, /id="rebirth-confirm-modal"/);
@@ -1374,9 +1507,9 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   const inlineScript = html.match(/<script>([\s\S]*?)<\/script>/)[1];
   vm.runInContext(inlineScript, ctx, { filename: 'index.html' });
 
-  // Splash started and updates version to v2.7
+  // Splash started and updates version to v2.7.2
   assert.equal(rafs.length >= 2, true, 'Expected splash and gameLoop rAF callbacks');
-  assert.equal(getEl('splash-version-label').textContent, 'v2.7');
+  assert.equal(getEl('splash-version-label').textContent, 'v2.7.2');
 
   // Complete splash screen
   const splashRaf = rafs[0];
@@ -1395,16 +1528,77 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   assert.equal(sandbox.paradeController.isActive(), true);
   assert.equal(vm.runInContext('state.paradesWitnessed', ctx), 1);
 
-  // Verify Glacier tab renders cleanly with 3 cards: Ice Castle, Fishing Holes, and Colony Wardrobe
+  // Verify Daily Goals tap banner opens bottom sheet & switches to Daily tab even if tab was hidden/collapsed
+  const dailyBannerNav = vm.runInContext(`
+    setBottomSheetState('collapsed');
+    state.currentTab = 'penguins';
+    window.openDailyTabFromNotification();
+    ({
+      tab: state.currentTab,
+      snap: sheetSnapState,
+      dailyUnlocked: state.unlockedTabs.includes('daily')
+    });
+  `, ctx);
+  assert.equal(dailyBannerNav.tab, 'daily');
+  assert.equal(dailyBannerNav.snap, 'default');
+  assert.equal(dailyBannerNav.dailyUnlocked, true);
+
+  // Verify Colony Cap reaches 0 remaining slots & renders CAP REACHED on Penguins tab at 15/15
   const sheetContent = getEl('sheet-content-container');
+  sheetContent.children = [];
+  const capCheck = vm.runInContext(`
+    state.fish = 1_000_000;
+    state.penguins.adelie.count = 15;
+    state.currentTab = 'penguins';
+    updateSheetContent();
+    ({
+      cap: state.getColonyCap(),
+      remaining: state.getRemainingColonySlots(),
+      count: state.getTotalPenguinCount()
+    });
+  `, ctx);
+  assert.equal(capCheck.cap, 15);
+  assert.equal(capCheck.count, 15);
+  assert.equal(capCheck.remaining, 0);
+  const penguinsHtmlAtCap = sheetContent.children.filter(Boolean).map(c => c.innerHTML).join('\n');
+  assert.match(penguinsHtmlAtCap, /Colony Cap:/);
+  assert.match(penguinsHtmlAtCap, /15 \/ 15/);
+  assert.match(penguinsHtmlAtCap, /CAP REACHED/);
+  vm.runInContext(`state.penguins.adelie.count = 1; state.fish = 0;`, ctx);
+
+  // Verify Glacier tab renders cleanly with locked 5-Rebirth Fishing Holes gate & 6-Rebirth Wardrobe gate at 0 Rebirths
   sheetContent.children = [];
   vm.runInContext(`
     state.currentTab = 'glacier';
     updateSheetContent();
   `, ctx);
   assert.equal(sheetContent.children.length, 1, 'Expected glacier-tab-container appended to sheet-content-container');
+  const lockedGlacierWrap = sheetContent.children[0];
+  assert.equal(lockedGlacierWrap.children.length, 3, 'Expected Ice Castle, Fishing Holes, and Colony Wardrobe cards');
+  assert.match(lockedGlacierWrap.children[1].innerHTML, /5 Glacial Rebirths/);
+  assert.match(lockedGlacierWrap.children[2].innerHTML, /6 Glacial Rebirths/);
+
+  const preGateActions = vm.runInContext(`
+    state.fish = 1_000_000;
+    state.prestigeShards = 500;
+    ({
+      holeLocked: state.purchaseFishingHole(),
+      wardrobeLocked: state.purchaseOrEquipHat('scarf', 'adelie')
+    });
+  `, ctx);
+  assert.equal(preGateActions.holeLocked.ok, false);
+  assert.equal(preGateActions.holeLocked.reason, 'rebirth_locked');
+  assert.equal(preGateActions.wardrobeLocked.ok, false);
+  assert.equal(preGateActions.wardrobeLocked.reason, 'rebirth_locked');
+
+  // After 6 Rebirths, both Fishing Holes and Colony Wardrobe unlock; verify rendering & Emperor star_crown exclusion
+  sheetContent.children = [];
+  vm.runInContext(`
+    state.totalRebirths = 6;
+    state.currentTab = 'glacier';
+    updateSheetContent();
+  `, ctx);
   const glacierWrap = sheetContent.children[0];
-  assert.equal(glacierWrap.children.length, 3, 'Expected Ice Castle, Fishing Holes, and Colony Wardrobe cards');
   const castleHtml = glacierWrap.children[0].innerHTML;
   const holesHtml = glacierWrap.children[1].innerHTML;
   const wardrobeHtml = glacierWrap.children[2].innerHTML;
@@ -1423,14 +1617,18 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   assert.match(wardrobeHtml, /All Colony/);
   assert.doesNotMatch(wardrobeHtml, /undefined/);
 
-  // Verify Wardrobe Frost Essence purchase + per-species hat mixing + Rebirth reset
+  // Verify Wardrobe Frost Essence purchase, per-species hat mixing, and Emperor Starlight Crown exclusion
   const wardrobeRes = vm.runInContext(`
-    state.prestigeShards = 500;
+    state.prestigeShards = 5000;
     const buyScarf = state.purchaseOrEquipHat('scarf', 'adelie');
     const buyGoggles = state.purchaseOrEquipHat('goggles', 'emperor');
+    const emperorCrownBlocked = state.purchaseOrEquipHat('star_crown', 'emperor');
+    const wholeColonyCrown = state.purchaseOrEquipHat('star_crown', 'all');
     ({
       buyScarf,
       buyGoggles,
+      emperorCrownBlocked,
+      wholeColonyCrown,
       shardsLeft: state.prestigeShards,
       adelieHat: state.getSpeciesHat('adelie'),
       emperorHat: state.getSpeciesHat('emperor'),
@@ -1441,10 +1639,14 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   assert.equal(wardrobeRes.buyScarf.purchased, true);
   assert.equal(wardrobeRes.buyGoggles.ok, true);
   assert.equal(wardrobeRes.buyGoggles.purchased, true);
-  assert.equal(wardrobeRes.shardsLeft, 50); // 500 - 100 - 350
-  assert.equal(wardrobeRes.adelieHat, 'scarf');
-  assert.equal(wardrobeRes.emperorHat, 'goggles');
-  assert.equal(wardrobeRes.gentooHat, 'none');
+  assert.equal(wardrobeRes.emperorCrownBlocked.ok, false);
+  assert.equal(wardrobeRes.emperorCrownBlocked.reason, 'species_incompatible');
+  assert.equal(wardrobeRes.wholeColonyCrown.ok, true);
+  assert.equal(wardrobeRes.shardsLeft, 1550); // 5000 - 100 - 350 - 3000
+  assert.equal(wardrobeRes.adelieHat, 'star_crown');
+  assert.equal(wardrobeRes.emperorHat, 'goggles'); // Emperor skips star_crown even in Whole Colony mode, keeping prior hat
+  assert.notEqual(wardrobeRes.emperorHat, 'star_crown');
+  assert.equal(wardrobeRes.gentooHat, 'star_crown');
 
   // Verify tapping empty top 20% sky while bottom sheet is expanded shrinks menu back to default (52%)
   const shrinkRes = vm.runInContext(`
@@ -1456,19 +1658,35 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   assert.equal(shrinkRes.before, 'expanded');
   assert.equal(shrinkRes.after, 'default');
 
-  // Verify Stats tab displays Sky Events Caught, Best Sky Combo, and Parades Witnessed
+  // Verify duplicate owned Legendary/Mythic perk grants instant fish bonus without exceeding count 1
+  const dupPerkCheck = vm.runInContext(`
+    const legPerk = AURORA_PERKS_POOL.find(p => p.rarity === 'legendary');
+    state.addCollectedPerk(legPerk);
+    state.isAuroraModalOpen = true;
+    state.currentAuroraCards = [legPerk];
+    const fishBefore = state.fish;
+    selectAuroraPerk(0, false);
+    const entry = state.collectedPerks.find(p => p.id === legPerk.id);
+    ({
+      countAfter: entry ? entry.count : 0,
+      fishGained: state.fish - fishBefore
+    });
+  `, ctx);
+  assert.equal(dupPerkCheck.countAfter, 1);
+  assert.ok(dupPerkCheck.fishGained >= 250, 'Duplicate owned Legendary perk must grant instant fish bonus');
+
+  // Verify Stats tab displays Sky Events Caught, Parades Witnessed, and Colony Cap (and NO Best Sky Combo)
   sheetContent.children = [];
   vm.runInContext(`
     state.skyEventsCaught = 7;
-    state.bestSkyCombo = 4;
     state.currentTab = 'stats';
     updateSheetContent();
   `, ctx);
   const statsHtml = sheetContent.children.map(c => c.innerHTML).join('\n');
   assert.match(statsHtml, /Sky Events Caught/);
-  assert.match(statsHtml, /Best Sky Combo/);
+  assert.match(statsHtml, /Colony Cap/);
   assert.match(statsHtml, /Parades Witnessed/);
-  assert.match(statsHtml, /4×/);
+  assert.doesNotMatch(statsHtml, /Best Sky Combo/);
 
   // Verify Next Milestone Compass, Persistent Offline DPS isolation, and Rebirth permanent vs run scope
   const v27Checks = vm.runInContext(`
@@ -1477,15 +1695,17 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
     const msAfterSkip = updateMilestoneBarUI();
     state.skippedMilestones = [];
     state.frenzyTimer = 60;
+    state.hotspotHoleId = 1;
+    state.hotspotActiveTimer = 30;
     state.hotspotSurgeTimer = 20;
     state.paradeBoostTimer = 60;
-    state.starlightFrenzyTimer = 15;
     const liveDpsBoosted = state.calculateDPS();
     const offlineDpsBase = state.calculatePersistentOfflineDPS();
     state.frenzyTimer = 0;
+    state.hotspotHoleId = null;
+    state.hotspotActiveTimer = 0;
     state.hotspotSurgeTimer = 0;
     state.paradeBoostTimer = 0;
-    state.starlightFrenzyTimer = 0;
     const offlineDpsClean = state.calculatePersistentOfflineDPS();
     ({
       msBeforeId: msBeforeSkip.id,
@@ -1499,10 +1719,12 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   assert.ok(v27Checks.liveDpsBoosted > v27Checks.offlineDpsBase, 'Live boosted DPS should exceed persistent offline baseline');
   assert.ok(Math.abs(v27Checks.offlineDpsBase - v27Checks.offlineDpsClean) < 1e-6, 'Persistent offline DPS must ignore all transient timers');
 
-  // Verify Rebirth reset clears Wardrobe hats, run milestones & hotspot surge while keeping permanent milestones, tabs & Sky/Parade stats
+  // Verify Rebirth reset clears Wardrobe hats, run milestones, active Hotspot & hotspot surge while keeping permanent milestones, tabs & Sky/Parade stats
   const postRebirth = vm.runInContext(`
     state.completedPermanentMilestones = ['recruit_5_adelie'];
     state.completedRunMilestones = ['carve_fourth_hole', 'castle_tier_1'];
+    state.hotspotHoleId = 2;
+    state.hotspotActiveTimer = 25;
     state.hotspotSurgeTimer = 15;
     state.runFish = 1_500_000;
     executeGlacialRebirthReset(state.getPendingPrestigeShards());
@@ -1511,10 +1733,11 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
       equippedHat: state.equippedHat,
       adelieHat: state.getSpeciesHat('adelie'),
       skyEventsCaught: state.skyEventsCaught,
-      bestSkyCombo: state.bestSkyCombo,
       paradesWitnessed: state.paradesWitnessed,
       permMilestones: state.completedPermanentMilestones,
       runMilestones: state.completedRunMilestones,
+      hotspotHoleId: state.hotspotHoleId,
+      hotspotActiveTimer: state.hotspotActiveTimer,
       hotspotSurgeTimer: state.hotspotSurgeTimer
     });
   `, ctx);
@@ -1522,10 +1745,11 @@ test('Cold-boot smoke test: index.html initializes with zero TDZ/runtime errors,
   assert.equal(postRebirth.equippedHat, 'none');
   assert.equal(postRebirth.adelieHat, 'none');
   assert.equal(postRebirth.skyEventsCaught, 7);
-  assert.equal(postRebirth.bestSkyCombo, 4);
   assert.equal(postRebirth.paradesWitnessed, 1);
   assert.ok(Array.from(postRebirth.permMilestones).includes('recruit_5_adelie'));
   assert.deepEqual(Array.from(postRebirth.runMilestones), []);
+  assert.equal(postRebirth.hotspotHoleId, null);
+  assert.equal(postRebirth.hotspotActiveTimer, 0);
   assert.equal(postRebirth.hotspotSurgeTimer, 0);
 
   // Verify themed Glacial Rebirth modal opens cleanly and dismisses via Android Back button

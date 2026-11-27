@@ -217,30 +217,30 @@
   // Ordered newest-first; contains only the current update notice so launch alerts stay focused
   const APP_FEATURE_RELEASES = [
     {
-      id: '2026-11-update-v27',
-      version: '2.7',
-      title: "What's New in Update 2.7",
-      subtitle: 'Polar Weather × Species synergies, glowing Hotspot Fishing Holes, collapsible Next Milestone compass, distinctive colony audio, and scenic Glacier Landmarks!',
+      id: '2026-11-update-v272',
+      version: '2.7.2',
+      title: "What's New in Update 2.7.2",
+      subtitle: 'Long-haul idle rebalance, scaling Colony Cap, 30s rare Hotspot windows, 40 Aurora Perks with 1/1 Legendary & Mythic caps, Prestige gates for Fishing Holes & Wardrobe, and Daily Goals banner fix!',
       features: [
         {
-          icon: '🧭',
-          title: 'Collapsible Next Milestone Compass & Calm Tab Reveal',
-          desc: 'A slim collapsible bar at the top of the bottom menu highlights your highest-impact next milestone with a 1-tap Go button, skip option, and clean progressive tab reveals for new colonies.'
+          icon: '⚖️',
+          title: 'Multi-Day Rebalance & Scaling Colony Cap',
+          desc: 'Slower colony collection, 35% offline idle rate, rebalanced Frosted Citadel tiers, and a scaling Colony Cap (15 base + 5 per Glacier Lv + 10 per Rebirth) create a rewarding multi-day progression arc.'
         },
         {
-          icon: '🌊',
-          title: 'Weather × Species Synergies & Hotspot Fishing Holes',
-          desc: 'Clear skies, Light Snow, and Blizzards now boost matching penguin species and illuminate a glowing Hotspot Fishing Hole — supercharged additively whenever you catch Shooting Stars or Krill Swarms!'
+          icon: '✨',
+          title: '40 Aurora Perks & 1/1 High-Tier Caps',
+          desc: 'Added 12 new perks, tuned Aurora Blessings to every 9 minutes with softer Resonance Coils, and capped Legendary & Mythic perks at 1 each—duplicate rolls now grant instant fish bursts (+120s / +240s DPS).'
         },
         {
-          icon: '🔊',
-          title: 'Species Calls, Castle Chimes & Milestone Fanfares',
-          desc: 'Every penguin species now has its own procedural voice call, joined by crystalline Ice Castle upgrade chimes and ascending Milestone bells.'
+          icon: '🔥',
+          title: 'Rare 30-Second Hotspots & Standalone Sky Events',
+          desc: 'One glowing Hotspot now appears for 30 seconds every 5–7 minutes, while Shooting Stars, Krill Swarms, and Golden Fish are rarer standalone catches (with Sky Combo removed).'
         },
         {
-          icon: '🏮',
-          title: 'Visible Glacier Landmarks & Tuned Early Pacing',
-          desc: 'Unlock Frost Lantern Posts, wind-reactive Colony Pennants, Aurora Crystal Monoliths, and a permanent Rebirth Star Monument — with smoother early pacing for Fishing Hole 4 and Lantern-Lit Igloo.'
+          icon: '🕳️',
+          title: 'Prestige Unlock Gates & Daily Banner Fix',
+          desc: 'Additional Fishing Holes now unlock after 5 Rebirths, the Colony Wardrobe unlocks after 6 Rebirths (with Emperors keeping their native crown), and tapping the Daily Goals banner jumps straight to Goals.'
         }
       ]
     }
@@ -341,47 +341,68 @@
       id: 'aurora_coils',
       name: 'Aurora Resonance Coils',
       icon: '🌌',
-      desc: 'Aurora Blessing events arrive 4s faster per level',
+      desc: 'Aurora Blessing events arrive 1s faster per level (min 7m)',
       baseCost: 100000,
       costMult: 1.7,
-      effect: 4
+      effect: 1
     }
   ];
 
-  // 28 UNIQUE AURORA BLESSING PERKS
+  function isCappedPerkRarity(rarity) {
+    return rarity === 'legendary' || rarity === 'mythic';
+  }
+
+  // 40 UNIQUE AURORA BLESSING PERKS (Legendary & Mythic capped at 1/1; duplicates convert into instant fish)
   const AURORA_PERKS_POOL = [
+    // TRIVIAL (5)
     { id: 't_pebble', tier: 1, rarity: 'trivial', name: 'Chilly Pebble', icon: '🪨', desc: 'Tripped on a smooth arctic pebble. +1 Flat Fish immediately.', grant: (g) => { g.addFish(1); } },
     { id: 't_slush', tier: 1, rarity: 'trivial', name: 'Slushy Feet (Debuff)', icon: '🧊', desc: 'Cold slush! -8% waddle speed for 20s, but grants +5 flat fish.', grant: (g) => { g.addFish(5); g.slushDebuffTimer = 20; } },
     { id: 't_breeze', tier: 1, rarity: 'trivial', name: 'Breeze of Frost', icon: '💨', desc: 'A tiny polar gust blows by. +0.5% temporary slide speed.', grant: (g) => { g.tempSpeedBoost += 0.005; } },
+    { id: 't_snowdrift', tier: 1, rarity: 'trivial', name: 'Snowdrift Sneeze', icon: '🤧', desc: 'A frosty sneeze shakes loose +8 flat fish from a snowbank.', grant: (g) => { g.addFish(8); } },
+    { id: 't_frozen_compass', tier: 1, rarity: 'trivial', name: 'Frozen Compass', icon: '🧭', desc: 'Spins wildly in the cold, uncovering +12 flat fish under the ice.', grant: (g) => { g.addFish(12); } },
 
-    { id: 'c_booties', tier: 2, rarity: 'common', name: 'Thermal Booties', icon: '🥾', desc: '+15% penguin waddle speed across all species permanently.', grant: () => {} },
-    { id: 'c_herring', tier: 2, rarity: 'common', name: 'Schooling Herring', icon: '🐟', desc: 'Dense fish school in the hole! +20% catch capacity permanently.', grant: () => {} },
-    { id: 'c_quickcatch', tier: 2, rarity: 'common', name: 'Quick Net Catch', icon: '⏱️', desc: 'Instantly gain 30 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(25, g.dps * 30)); } },
-    { id: 'c_flappers', tier: 2, rarity: 'common', name: 'Crisp Flappers', icon: '🪽', desc: '+35% manual screen and penguin tap/click fish yield.', grant: () => {} },
-    { id: 'c_sonar', tier: 2, rarity: 'common', name: 'Echo Ice Finder', icon: '📡', desc: '+12% catch yield and +10% dive speed permanently.', grant: () => {} },
-    { id: 'c_wax', tier: 2, rarity: 'common', name: 'Glacier Belly Wax', icon: '🧈', desc: '+25% belly-slide speed and +10% tap fish yield permanently.', grant: () => {} },
-    { id: 'c_krill_snack', tier: 2, rarity: 'common', name: 'Krill Ration Crate', icon: '🦐', desc: 'Instantly harvest 45 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(40, g.dps * 45)); } },
+    // COMMON (10)
+    { id: 'c_booties', tier: 2, rarity: 'common', name: 'Thermal Booties', icon: '🥾', desc: '+10% penguin waddle speed across all species this run.', grant: () => {} },
+    { id: 'c_herring', tier: 2, rarity: 'common', name: 'Schooling Herring', icon: '🐟', desc: 'Dense fish school in the hole! +12% catch capacity this run.', grant: () => {} },
+    { id: 'c_quickcatch', tier: 2, rarity: 'common', name: 'Quick Net Catch', icon: '⏱️', desc: 'Instantly gain 25 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(25, g.dps * 25)); } },
+    { id: 'c_flappers', tier: 2, rarity: 'common', name: 'Crisp Flappers', icon: '🪽', desc: '+25% manual screen and penguin tap/click fish yield.', grant: () => {} },
+    { id: 'c_sonar', tier: 2, rarity: 'common', name: 'Echo Ice Finder', icon: '📡', desc: '+8% catch yield and +8% dive speed this run.', grant: () => {} },
+    { id: 'c_wax', tier: 2, rarity: 'common', name: 'Glacier Belly Wax', icon: '🧈', desc: '+18% belly-slide speed and +10% tap fish yield this run.', grant: () => {} },
+    { id: 'c_krill_snack', tier: 2, rarity: 'common', name: 'Krill Ration Crate', icon: '🦐', desc: 'Instantly harvest 35 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(35, g.dps * 35)); } },
+    { id: 'c_waxed_flippers', tier: 2, rarity: 'common', name: 'Waxed Flippers', icon: '🦭', desc: '+12% dive speed and +6% waddle speed this run.', grant: () => {} },
+    { id: 'c_bait_bucket', tier: 2, rarity: 'common', name: 'Arctic Bait Bucket', icon: '🪣', desc: '+10% catch capacity and +15s instant colony fish.', grant: (g) => { g.addFish(Math.max(20, g.dps * 15)); } },
+    { id: 'c_shelf_map', tier: 2, rarity: 'common', name: 'Ice-Shelf Map', icon: '🗺️', desc: '+12% belly-slide speed and +8% catch yield this run.', grant: () => {} },
 
-    { id: 'r_sledding', tier: 3, rarity: 'rare', name: 'Glacial Sledding League', icon: '🛷', desc: 'Gentoo and sliding penguins gain +50% slide speed permanently.', grant: () => {} },
-    { id: 'r_trench', tier: 3, rarity: 'rare', name: 'Deep Trench Oxygen', icon: '🌊', desc: 'Diving cycle 25% faster and carries +40% dive capacity.', grant: () => {} },
-    { id: 'r_squid', tier: 3, rarity: 'rare', name: 'Abyssal Squid Haul', icon: '🦑', desc: 'Instantly harvest 100 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(90, g.dps * 100)); } },
-    { id: 'r_magnetic', tier: 3, rarity: 'rare', name: 'Aurora Magnetic Krill', icon: '🧲', desc: 'Rare Golden Fish spawns swim across the ice shelf twice as often for 120s.', grant: (g) => { g.goldenFishTimer = 120; } },
-    { id: 'r_cryo_net', tier: 3, rarity: 'rare', name: 'Cryo-Weave Trawler', icon: '🕸️', desc: '+30% catch capacity and +20% tap fish yield permanently.', grant: () => {} },
-    { id: 'r_storm_sail', tier: 3, rarity: 'rare', name: 'Gale-Force Flippers', icon: '⛵', desc: '+25% waddle speed and +30% belly-slide speed permanently.', grant: () => {} },
-    { id: 'r_polar_surge', tier: 3, rarity: 'rare', name: 'Polar Current Surge', icon: '🌀', desc: 'Double (2x) all fish yield for 60s and immediately gain 75s of fish!', grant: (g) => { g.polarSurgeTimer = 60; g.addFish(Math.max(70, g.dps * 75)); } },
-    { id: 'r_ember_lantern', tier: 3, rarity: 'rare', name: 'Thermal Igloo Lanterns', icon: '🏮', desc: '+20% dive speed and +25% catch capacity permanently.', grant: () => {} },
+    // RARE (11)
+    { id: 'r_sledding', tier: 3, rarity: 'rare', name: 'Glacial Sledding League', icon: '🛷', desc: 'Gentoo and sliding penguins gain +30% slide speed this run.', grant: () => {} },
+    { id: 'r_trench', tier: 3, rarity: 'rare', name: 'Deep Trench Oxygen', icon: '🌊', desc: 'Diving cycle +18% faster and carries +20% dive capacity.', grant: () => {} },
+    { id: 'r_squid', tier: 3, rarity: 'rare', name: 'Abyssal Squid Haul', icon: '🦑', desc: 'Instantly harvest 75 seconds of passive colony fish production.', grant: (g) => { g.addFish(Math.max(80, g.dps * 75)); } },
+    { id: 'r_magnetic', tier: 3, rarity: 'rare', name: 'Aurora Magnetic Krill', icon: '🧲', desc: 'Rare Golden Fish spawns swim across the ice shelf twice as often for 120s.', grant: (g) => { g.goldenFishTimer = Math.max(g.goldenFishTimer || 0, 120); } },
+    { id: 'r_cryo_net', tier: 3, rarity: 'rare', name: 'Cryo-Weave Trawler', icon: '🕸️', desc: '+18% catch capacity and +15% tap fish yield this run.', grant: () => {} },
+    { id: 'r_storm_sail', tier: 3, rarity: 'rare', name: 'Gale-Force Flippers', icon: '⛵', desc: '+16% waddle speed and +20% belly-slide speed this run.', grant: () => {} },
+    { id: 'r_polar_surge', tier: 3, rarity: 'rare', name: 'Polar Current Surge', icon: '🌀', desc: 'Double (2x) all fish yield for 35s and immediately gain 50s of fish!', grant: (g) => { g.polarSurgeTimer = Math.max(g.polarSurgeTimer || 0, 35); g.addFish(Math.max(60, g.dps * 50)); } },
+    { id: 'r_ember_lantern', tier: 3, rarity: 'rare', name: 'Thermal Igloo Lanterns', icon: '🏮', desc: '+14% dive speed and +16% catch capacity this run.', grant: () => {} },
+    { id: 'r_frost_harpoon', tier: 3, rarity: 'rare', name: 'Frost-Forged Harpoon', icon: '🔱', desc: '+22% catch capacity and +10% dive speed this run.', grant: () => {} },
+    { id: 'r_wind_tunnel', tier: 3, rarity: 'rare', name: 'Glacial Wind Tunnel', icon: '🌬️', desc: '+18% waddle speed and +22% slide speed this run.', grant: () => {} },
+    { id: 'r_huddle_warmth', tier: 3, rarity: 'rare', name: 'Huddle Warmth', icon: '🔥', desc: '+14% catch yield, +12% tap yield, and +40s instant fish.', grant: (g) => { g.addFish(Math.max(50, g.dps * 40)); } },
 
-    { id: 'l_frenzy', tier: 4, rarity: 'legendary', name: 'Blizzard Feeding Frenzy', icon: '🌨️', desc: 'Antarctic storm triples (3x) fish yield for 45s & grants +15% catch permanently!', grant: (g) => { g.frenzyTimer = 45; } },
-    { id: 'l_monarch', tier: 4, rarity: 'legendary', name: "Emperor's Royal Decree", icon: '👑', desc: 'Emperor Monarch aura +100%, and boosts all penguin speeds by +50% permanently.', grant: () => {} },
-    { id: 'l_mammoth', tier: 4, rarity: 'legendary', name: 'Mammoth Ice Cache', icon: '🦣', desc: 'Unearth frozen cache (+300s instant fish) & gain +20% catch yield permanently!', grant: (g) => { g.addFish(Math.max(250, g.dps * 300)); } },
-    { id: 'l_glacier_heart', tier: 4, rarity: 'legendary', name: 'Heart of the Glacier', icon: '💠', desc: 'Permanent +50% catch yield and +35% tap yield across all rebirths!', grant: () => {} },
-    { id: 'l_chrono_flipper', tier: 4, rarity: 'legendary', name: 'Chrono-Slide Mastery', icon: '⏳', desc: 'Permanent +40% waddle speed, +60% slide speed, and +30% dive speed!', grant: () => {} },
-    { id: 'l_golden_aurora', tier: 4, rarity: 'legendary', name: 'Golden Aurora Conduit', icon: '🌟', desc: 'Permanent +40% catch yield & activates 240s Golden Fish frequency boost!', grant: (g) => { g.goldenFishTimer = Math.max(g.goldenFishTimer || 0, 240); } },
+    // LEGENDARY (8 — Capped at 1/1 each; duplicates grant +120s instant DPS fish)
+    { id: 'l_frenzy', tier: 4, rarity: 'legendary', name: 'Blizzard Feeding Frenzy', icon: '🌨️', desc: 'Max 1/1: 2x fish yield for 30s & permanent +8% catch yield!', grant: (g) => { g.frenzyTimer = Math.max(g.frenzyTimer || 0, 30); } },
+    { id: 'l_monarch', tier: 4, rarity: 'legendary', name: "Emperor's Royal Decree", icon: '👑', desc: 'Max 1/1: Emperor Monarch aura +35% & +15% all penguin walk speed forever.', grant: () => {} },
+    { id: 'l_mammoth', tier: 4, rarity: 'legendary', name: 'Mammoth Ice Cache', icon: '🦣', desc: 'Max 1/1: Unearth +90s instant fish & permanent +10% catch yield!', grant: (g) => { g.addFish(Math.max(180, g.dps * 90)); } },
+    { id: 'l_glacier_heart', tier: 4, rarity: 'legendary', name: 'Heart of the Glacier', icon: '💠', desc: 'Max 1/1: Permanent +18% catch yield and +15% tap yield across rebirths!', grant: () => {} },
+    { id: 'l_chrono_flipper', tier: 4, rarity: 'legendary', name: 'Chrono-Slide Mastery', icon: '⏳', desc: 'Max 1/1: Permanent +14% waddle, +20% slide, and +12% dive speed!', grant: () => {} },
+    { id: 'l_golden_aurora', tier: 4, rarity: 'legendary', name: 'Golden Aurora Conduit', icon: '🌟', desc: 'Max 1/1: Permanent +15% catch yield & 180s Golden Fish frequency boost!', grant: (g) => { g.goldenFishTimer = Math.max(g.goldenFishTimer || 0, 180); } },
+    { id: 'l_solstice_crown', tier: 4, rarity: 'legendary', name: 'Solstice Crown', icon: '☀️', desc: 'Max 1/1: Permanent +14% catch yield and +14% dive speed forever!', grant: () => {} },
+    { id: 'l_boreal_echo', tier: 4, rarity: 'legendary', name: 'Boreal Echo Chamber', icon: '🔔', desc: 'Max 1/1: Permanent +12% catch, +12% waddle speed, and +20% tap yield!', grant: () => {} },
 
-    { id: 'm_supernova', tier: 5, rarity: 'mythic', name: 'Cosmic Glacial Supernova', icon: '🌌', desc: '+35% catch & +30% speed forever, plus 60s of +4x yield & instant 600s fish!', grant: (g) => { g.addFish(Math.max(600, g.dps * 600)); g.supernovaTimer = 60; } },
-    { id: 'm_eternal_frost', tier: 5, rarity: 'mythic', name: "Eternal Sovereign's Mantle", icon: '🔱', desc: 'Mythic power retained forever: +100% catch yield, +50% speed, and +50% dive speed!', grant: () => {} },
-    { id: 'm_starlight_nexus', tier: 5, rarity: 'mythic', name: 'Starlight Tap Singularity', icon: '💫', desc: 'Mythic radiance retained forever: +150% tap yield, +60% slide speed & +450s fish!', grant: (g) => { g.addFish(Math.max(450, g.dps * 450)); } },
-    { id: 'm_glacial_ascension', tier: 5, rarity: 'mythic', name: 'Glacial Ascension Core', icon: '❄️', desc: 'Mythic core retained forever: +75% catch & tap yield, plus 45s 3x Frenzy!', grant: (g) => { g.frenzyTimer = Math.max(g.frenzyTimer || 0, 45); } }
+    // MYTHIC (6 — Capped at 1/1 each; duplicates grant +240s instant DPS fish)
+    { id: 'm_supernova', tier: 5, rarity: 'mythic', name: 'Cosmic Glacial Supernova', icon: '🌌', desc: 'Max 1/1: +18% catch & +14% speed forever, plus 30s 2.5x yield & +180s fish!', grant: (g) => { g.addFish(Math.max(350, g.dps * 180)); g.supernovaTimer = Math.max(g.supernovaTimer || 0, 30); } },
+    { id: 'm_eternal_frost', tier: 5, rarity: 'mythic', name: "Eternal Sovereign's Mantle", icon: '🔱', desc: 'Max 1/1: Mythic relic forever: +30% catch yield, +18% speed, and +18% dive speed!', grant: () => {} },
+    { id: 'm_starlight_nexus', tier: 5, rarity: 'mythic', name: 'Starlight Tap Singularity', icon: '💫', desc: 'Max 1/1: Mythic radiance forever: +40% tap yield, +22% slide speed & +150s fish!', grant: (g) => { g.addFish(Math.max(300, g.dps * 150)); } },
+    { id: 'm_glacial_ascension', tier: 5, rarity: 'mythic', name: 'Glacial Ascension Core', icon: '❄️', desc: 'Max 1/1: Mythic core forever: +25% catch & +25% tap yield, plus 30s 2x Frenzy!', grant: (g) => { g.frenzyTimer = Math.max(g.frenzyTimer || 0, 30); } },
+    { id: 'm_polar_core', tier: 5, rarity: 'mythic', name: 'Polar Starlight Core', icon: '🌠', desc: 'Max 1/1: Mythic relic forever: +22% catch, +15% slide speed, and +15% dive speed!', grant: () => {} },
+    { id: 'm_abyssal_crest', tier: 5, rarity: 'mythic', name: 'Abyssal Sovereign Crest', icon: '🦪', desc: 'Max 1/1: Mythic relic forever: +28% catch yield & Emperor aura +30%!', grant: () => {} }
   ];
 
   const ACHIEVEMENTS_LIST = [
@@ -701,6 +722,7 @@
     MAX_VISIBLE_PER_COLONY,
     COLONY_SYNERGIES,
     GLACIER_TECH,
+    isCappedPerkRarity,
     AURORA_PERKS_POOL,
     ACHIEVEMENTS_LIST,
     GLACIAL_LORE_CHRONICLES,

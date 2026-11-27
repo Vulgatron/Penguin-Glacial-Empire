@@ -1,4 +1,4 @@
-# Penguin Glacial Empire (v2.7)
+# Penguin Glacial Empire (v2.7.2)
 
 An incremental/idle penguin colony game built with HTML5 Canvas, CSS, modular JavaScript, Progressive Web App (PWA) offline support, and a hardened Android WebView wrapper in Kotlin.
 
@@ -12,12 +12,12 @@ An incremental/idle penguin colony game built with HTML5 Canvas, CSS, modular Ja
 │   ├── splash-cutscene.css     # Animated launch splash screen & Glacial Rebirth cutscene styles
 │   └── game.css                # Glacier tab (Ice Castle, Fishing Holes & Colony Wardrobe), responsive polish
 ├── js/
-│   ├── economy.js              # Overflow/NaN-safe economy, +1.25%/shard prestige, tuned castle & fishing hole defs, safe frame timing
-│   ├── game-data.js            # Species, traits, weather, colony speech, tech, Aurora perks, achievements & lore catalogs
-│   ├── wardrobe.js             # Ultra-Prestige Frost Essence Colony Wardrobe, per-species mixing, tap-again confirm & hat vectors
+│   ├── economy.js              # Overflow/NaN-safe economy, Colony Cap, 35% offline rate, Prestige gates, calibrated castle & hole defs
+│   ├── game-data.js            # Species, traits, weather, colony speech, tech, 40-perk Aurora pool (1/1 Legendary/Mythic cap), achievements & lore
+│   ├── wardrobe.js             # 6-Rebirth Ultra-Prestige Frost Essence Colony Wardrobe, Emperor Crown exclusion, per-species mixing & hat vectors
 │   ├── milestone-engine.js     # Deterministic priority-scored Next Milestone compass, permanent/run lifecycles & progressive tab reveal
-│   ├── polar-synergy.js        # Single-source Weather × Species × Hotspot Fishing Hole stacking math & stable 4-rule hole routing
-│   ├── sky-events.js           # Top-20% Shooting Stars, Ice Krill Swarms, 1×–5× Sky Combo & 2× Starlight Frenzy
+│   ├── polar-synergy.js        # Single-source Weather × Species × timed 30s Hotspot Hole (5–7m cadence) stacking math & stable 4-rule hole routing
+│   ├── sky-events.js           # Rare standalone top-20% Shooting Stars (3–4.5m) & Ice Krill Swarms (4–6m)
 │   ├── daily-system.js         # 3:00 AM daily cycle keys, streak tracking, idempotent claims & sanitization
 │   ├── daily-manager.js        # Daily Objectives manager, modal rendering, badge & celebration banners
 │   ├── save-system.js          # Schema v5 migrations, validation, multi-slot recovery & throttled persistence
@@ -107,12 +107,12 @@ To build a release bundle or APK, use your configured Android signing environmen
 
 ## Save Reliability, Versioning & Offline Cap
 
-- Saves are schema-versioned (`saveVersion: 4`) with automatic migration from legacy v0/v1/v2/v3 saves (preserving Ice Castle, Fishing Holes, Colony Wardrobe & Sky/Parade defaults) and forward-version safety for newer schemas.
+- Saves are schema-versioned (`saveVersion: 5`) with automatic migration from legacy v0–v4 saves (clamping legacy Legendary/Mythic perk stacks to `1`, enforcing Emperor crown exclusion, and preserving Ice Castle, Fishing Holes & Wardrobe defaults) and forward-version safety for newer schemas.
 - Every field is sanitized on load (protecting against `NaN`, `Infinity`, negative balances, prototype pollution keys, 0-penguin deadlocks, and future-tampered device clocks).
 - Routine autosaves run on a throttled 15-second cadence and skip disk I/O when colony state is unchanged; critical milestones (purchases, rebirths, offline catch claims, daily claims, factory reset, and lifecycle pauses) flush immediately.
 - Multi-slot recovery walks native storage, web primary storage, and validated web backup storage before flagging unrecoverable corruption, quarantining damaged payloads without silently wiping progress.
 - Android native saves run on a dedicated single-threaded async queue with atomic temp-file-fsync-rename writes, orphaned `.tmp` cleanup, dual backups (`penguin_save_backup.json` and `penguin_save_last_good.json`), and corruption quarantine (`penguin_save_corrupted.json`).
-- Offline earnings pay full offline efficiency (`2/3` DPS) for up to 24 hours, followed by diminishing returns (`25%`) up to a 7-day ceiling, and return `0` if the system clock moves backward.
+- Offline earnings pay full offline efficiency (`35%` DPS) for up to 24 hours, followed by diminishing returns (`25%`) up to a 7-day ceiling, and return `0` if the system clock moves backward.
 
 ## PWA Deployment Instructions
 

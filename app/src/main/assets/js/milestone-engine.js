@@ -325,15 +325,15 @@
       scope: 'run',
       icon: '🕳️',
       title: 'Carve 4th Fishing Hole',
-      whyItMatters: 'Adds +10 diving slots, unlocks Colony Pennants, and expands Hotspot rotation.',
-      unlocksNext: '🚩 Colony Pennant Landmark',
+      whyItMatters: 'Unlocked at 5 Rebirths! Adds +10 diving slots and expands Hotspot rotation.',
+      unlocksNext: '🕳️ 4/6 Fishing Holes & Colony Pennants',
       targetTab: 'glacier',
       targetCardId: 'glacier-fishing-holes-card',
-      getImpactTier: (s) => (s.totalRebirths === 0 ? 330 : 230),
+      getImpactTier: () => 310,
       isCompleted: (s) => s.fishingHolesUnlocked >= 4,
-      isEligible: (s) => s.lifetimeFish >= 1500 || s.chinstrap >= 1 || s.glacierLevel >= 3,
+      isEligible: (s) => s.totalRebirths >= 5,
       isIrrelevant: () => false,
-      isReadyNow: (s) => s.fish >= s.hole4Cost,
+      isReadyNow: (s) => s.totalRebirths >= 5 && s.fish >= s.hole4Cost,
       getProgress: (s) => {
         const target = Math.max(1, s.hole4Cost);
         const ratio = s.fishingHolesUnlocked >= 4 ? 1 : Math.min(0.99, s.fish / target);
@@ -353,7 +353,7 @@
       // Deliberately outranks First Rebirth before Castle Tier 1 is experienced on Run 1
       getImpactTier: (s) => (s.totalRebirths === 0 ? 380 : 250),
       isCompleted: (s) => s.iglooTier >= 1,
-      isEligible: (s) => s.fishingHolesUnlocked >= 4 || s.emperor >= 1 || s.lifetimeFish >= 12000,
+      isEligible: (s) => s.emperor >= 1 || s.lifetimeFish >= 12000 || s.fishingHolesUnlocked >= 4,
       isIrrelevant: () => false,
       isReadyNow: (s) => s.fish >= s.iglooTier1Cost,
       getProgress: (s) => {
@@ -367,9 +367,9 @@
       orderIndex: 9,
       scope: 'permanent',
       icon: '🌠',
-      title: 'Catch 3 Sky/Ice Events',
-      whyItMatters: 'Triggers 2× Starlight Frenzy and surges the glowing Hotspot Hole.',
-      unlocksNext: '⚡ Hotspot Surge mastery',
+      title: 'Catch 3 Rare Sky/Ice Events',
+      whyItMatters: 'Rare Shooting Stars and Krill Swarms grant instant fish and surge active Hotspots.',
+      unlocksNext: '⚡ Rare Event Mastery',
       targetTab: 'stats',
       targetCardId: 'stats-colony-activity-card',
       getImpactTier: () => 210,
@@ -430,15 +430,15 @@
       scope: 'permanent',
       icon: '🧣',
       title: 'Unlock a Colony Wardrobe Hat',
-      whyItMatters: 'Dress your whole colony or mix hats per species using Frost Essence.',
+      whyItMatters: 'Unlocks at 6 Rebirths! Dress your colony or mix hats per species using Frost Essence.',
       unlocksNext: '🎩 Ultra-Prestige Colony Style',
       targetTab: 'glacier',
       targetCardId: 'glacier-wardrobe-card',
       getImpactTier: () => 260,
       isCompleted: (s) => s.ownedPaidHats >= 1,
-      isEligible: (s) => s.totalRebirths >= 1 || s.prestigeShards >= 25,
+      isEligible: (s) => s.totalRebirths >= 6,
       isIrrelevant: () => false,
-      isReadyNow: (s) => s.prestigeShards >= 100,
+      isReadyNow: (s) => s.totalRebirths >= 6 && s.prestigeShards >= 100,
       getProgress: (s) => {
         const cur = Math.min(100, s.prestigeShards);
         return { current: cur, target: 100, ratio: s.ownedPaidHats >= 1 ? 1 : cur / 100, label: `${cur}/100 💎` };
@@ -451,7 +451,7 @@
   function buildDynamicEndgameGoals(snap) {
     const goals = [];
 
-    if (snap.nextHoleDef) {
+    if (snap.nextHoleDef && snap.totalRebirths >= 5) {
       const target = Math.max(1, safeNum(snap.nextHoleDef.cost));
       goals.push({
         id: `dynamic_hole_${snap.nextHoleDef.id}`,
@@ -500,7 +500,9 @@
     }
 
     const wardrobeItems = Wardrobe && Array.isArray(Wardrobe.WARDROBE_ITEMS) ? Wardrobe.WARDROBE_ITEMS : [];
-    const nextHat = wardrobeItems.find(item => item.costEssence > 0 && !snap.unlockedHats.includes(item.id));
+    const nextHat = snap.totalRebirths >= 6
+      ? wardrobeItems.find(item => item.costEssence > 0 && !snap.unlockedHats.includes(item.id))
+      : null;
     if (nextHat) {
       const target = Math.max(1, nextHat.costEssence);
       goals.push({

@@ -269,7 +269,7 @@
       tech[techId] = safeInt(srcTech[techId], 0, 0, 1e6);
     });
 
-    // Sanitize collected perks
+    // Sanitize collected perks (Update 2.7.2: immediately clamp Legendary & Mythic stacks to 1/1)
     const collectedPerks = [];
     if (Array.isArray(src.collectedPerks)) {
       const seenPerks = new Map();
@@ -277,9 +277,16 @@
         if (!isPlainObject(p) || typeof p.id !== 'string' || !p.id.trim()) continue;
         const id = p.id.slice(0, 60);
         const rarity = ['common', 'rare', 'legendary', 'mythic'].includes(p.rarity) ? p.rarity : 'common';
-        const count = safeInt(p.count, 1, 1, 10000);
+        const isCapped = rarity === 'legendary' || rarity === 'mythic';
+        const maxPerkCount = isCapped ? 1 : 10000;
+        const rawCount = safeInt(p.count, 1, 1, 10000);
+        const count = Math.min(maxPerkCount, rawCount);
+        if (isCapped && rawCount > 1) {
+          repairs.push(`clamped_perk_${id}`);
+        }
         if (seenPerks.has(id)) {
-          seenPerks.get(id).count = Math.min(10000, seenPerks.get(id).count + count);
+          const prevEntry = seenPerks.get(id);
+          prevEntry.count = Math.min(maxPerkCount, prevEntry.count + count);
         } else {
           const entry = {
             id,
@@ -289,7 +296,7 @@
             desc: typeof p.desc === 'string' ? p.desc.slice(0, 240) : '',
             count,
             isLegendary: rarity === 'legendary',
-            isPreserved: rarity === 'legendary' || rarity === 'mythic',
+            isPreserved: isCapped,
             firstAcquiredAt: safeNum(p.firstAcquiredAt, safeNow, 0, safeNow),
             lastAcquiredAt: safeNum(p.lastAcquiredAt, safeNow, 0, safeNow)
           };
